@@ -1,267 +1,275 @@
 import networkx as nx
-import random
 import numpy as np
 import matplotlib.pyplot as plt
+import random
+from collections import defaultdict
 
-def generate_test_graph(num_vertices, num_cliques, clique_size_distribution='uniform',
-                        within_clique_noise=0.1, between_clique_noise=0.05, seed=None):
+
+def create_disjoint_cliques(clique_sizes):
     """
-    Generate a test graph for clique cover problems.
+    Create a graph with disjoint cliques of specified sizes.
 
-    Parameters:
-    num_vertices (int): Total number of vertices in the graph
-    num_cliques (int): Number of cliques to start with
-    clique_size_distribution (str): 'uniform', 'skewed', or 'power_law'
-    within_clique_noise (float): Probability of removing an edge within a clique
-    between_clique_noise (float): Probability of adding an edge between different cliques
-    seed (int): Random seed for reproducibility
+    Args:
+        clique_sizes (list): List of sizes for each clique
 
     Returns:
-    G (nx.Graph): The generated graph
-    clique_assignments (list): List of vertex sets for the original cliques
+        G: NetworkX graph with disjoint cliques
+        communities: Dictionary mapping node to its clique id
     """
-    if seed is not None:
-        random.seed(seed)
-        np.random.seed(seed)
-
-    # Create empty graph
     G = nx.Graph()
+    communities = {}
 
-    # Determine clique sizes based on the specified distribution
-    if clique_size_distribution == 'uniform':
-        # All cliques have roughly the same size
-        base_size = num_vertices // num_cliques
-        remainder = num_vertices % num_cliques
-        clique_sizes = [base_size + (1 if i < remainder else 0) for i in range(num_cliques)]
+    node_id = 0
+    for i, size in enumerate(clique_sizes):
+        # Create a clique of the given size
+        clique_nodes = list(range(node_id, node_id + size))
 
-    elif clique_size_distribution == 'skewed':
-        # Few large cliques, many small ones
-        total = 0
-        clique_sizes = []
-        # Set the first few cliques to be large
-        large_cliques = min(num_cliques // 3, 1)
-        for i in range(large_cliques):
-            size = num_vertices // (large_cliques + 1)
-            clique_sizes.append(size)
-            total += size
-
-        # Distribute remaining vertices among small cliques
-        remaining = num_vertices - total
-        small_clique_count = num_cliques - large_cliques
-        min_size = 2  # Minimum size for a clique
-
-        if small_clique_count > 0:
-            if remaining >= small_clique_count * min_size:
-                base_small_size = remaining // small_clique_count
-                small_remainder = remaining % small_clique_count
-                for i in range(small_clique_count):
-                    clique_sizes.append(base_small_size + (1 if i < small_remainder else 0))
-            else:
-                # Can't satisfy minimum size requirement
-                for i in range(small_clique_count - 1):
-                    clique_sizes.append(min_size)
-                    remaining -= min_size
-                clique_sizes.append(remaining)  # Last clique gets what's left
-
-    elif clique_size_distribution == 'power_law':
-        # Use a power law distribution
-        alpha = 2.5  # Parameter for power law
-        raw_sizes = np.random.power(alpha, num_cliques) + 1  # +1 to avoid zero-sized cliques
-        # Scale to get the desired total
-        total = sum(raw_sizes)
-        scaling_factor = num_vertices / total
-        clique_sizes = [max(2, int(s * scaling_factor)) for s in raw_sizes]
-
-        # Adjust to get exactly num_vertices
-        while sum(clique_sizes) > num_vertices:
-            idx = random.randrange(len(clique_sizes))
-            if clique_sizes[idx] > 2:
-                clique_sizes[idx] -= 1
-
-        while sum(clique_sizes) < num_vertices:
-            idx = random.randrange(len(clique_sizes))
-            clique_sizes[idx] += 1
-
-    # Create vertices for each clique
-    vertex_id = 0
-    clique_assignments = []
-
-    for size in clique_sizes:
-        clique_vertices = list(range(vertex_id, vertex_id + size))
-        clique_assignments.append(set(clique_vertices))
-
-        # Add all vertices to the graph
-        G.add_nodes_from(clique_vertices)
-
-        # Add all possible edges within the clique
-        for u in clique_vertices:
-            for v in clique_vertices:
-                if u < v:  # Avoid self-loops and duplicate edges
+        # Add all nodes and edges for this clique
+        for u in clique_nodes:
+            G.add_node(u)
+            communities[u] = i  # Mark community membership
+            for v in clique_nodes:
+                if u != v:  # Avoid self-loops
                     G.add_edge(u, v)
 
-        vertex_id += size
+        node_id += size
 
-    # Apply noise: remove edges within cliques
-    edges_to_remove = []
-    for clique_vertices in clique_assignments:
-        for u in clique_vertices:
-            for v in clique_vertices:
-                if u < v and (u, v) in G.edges() and random.random() < within_clique_noise:
-                    edges_to_remove.append((u, v))
+    return G, communities
 
-    G.remove_edges_from(edges_to_remove)
 
-    # Apply noise: add edges between different cliques
-    all_vertices = list(G.nodes())
-    for i, clique1 in enumerate(clique_assignments):
-        for j, clique2 in enumerate(clique_assignments):
-            if i < j:  # Only consider unique pairs of cliques
-                for u in clique1:
-                    for v in clique2:
-                        if random.random() < between_clique_noise:
-                            G.add_edge(u, v)
-
-    return G, clique_assignments
-
-def visualize_graph(G, clique_assignments=None, title="Test Graph"):
+def perturb_graph(G, communities, edge_removal_prob, edge_addition_prob):
     """
-    Visualize the graph with different colors for each original clique.
+    Perturb the graph by removing edges within cliques and adding edges between cliques.
 
-    Parameters:
-    G (nx.Graph): The graph to visualize
-    clique_assignments (list): List of vertex sets for the original cliques
-    title (str): Title for the plot
-    """
-    plt.figure(figsize=(10, 8))
-
-    if clique_assignments:
-        # Color nodes based on their original clique
-        color_map = []
-        color_palette = plt.cm.tab20(np.linspace(0, 1, len(clique_assignments)))
-
-        node_colors = {}
-        for i, clique in enumerate(clique_assignments):
-            for node in clique:
-                node_colors[node] = color_palette[i]
-
-        color_map = [node_colors[node] for node in G.nodes()]
-        nx.draw(G, node_color=color_map, with_labels=True, node_size=300, font_weight='bold')
-    else:
-        nx.draw(G, with_labels=True, node_size=300, font_weight='bold')
-
-    plt.title(title)
-    plt.show()
-
-def save_graph_to_file(G, filename):
-    """
-    Save graph to an adjacency list file.
-
-    Parameters:
-    G (nx.Graph): The graph to save
-    filename (str): Output filename
-    """
-    with open(filename, 'w') as f:
-        f.write(f"{G.number_of_nodes()} {G.number_of_edges()}\n")
-        for edge in G.edges():
-            f.write(f"{edge[0]} {edge[1]}\n")
-
-def get_graph_stats(G, original_cliques):
-    """
-    Calculate statistics for the generated graph.
-
-    Parameters:
-    G (nx.Graph): The graph
-    original_cliques (list): List of vertex sets for the original cliques
+    Args:
+        G: NetworkX graph with cliques
+        communities: Dictionary mapping node to its clique id
+        edge_removal_prob: Probability of removing an edge within a clique
+        edge_addition_prob: Probability of adding an edge between different cliques
 
     Returns:
-    dict: Dictionary with graph statistics
+        G: The perturbed graph
     """
+    # Make a copy of the graph to modify
+    G_perturbed = G.copy()
+
+    # Remove edges within cliques
+    for u, v in list(G.edges()):
+        if communities[u] == communities[v]:  # Same clique
+            if random.random() < edge_removal_prob:
+                G_perturbed.remove_edge(u, v)
+
+    # Add edges between cliques
+    nodes = list(G.nodes())
+    for i, u in enumerate(nodes):
+        for v in nodes[i+1:]:
+            if communities[u] != communities[v]:  # Different cliques
+                if not G_perturbed.has_edge(u, v) and random.random() < edge_addition_prob:
+                    G_perturbed.add_edge(u, v)
+
+    return G_perturbed
+
+
+def generate_uniform_clique_sizes(num_cliques, clique_size):
+    """Generate uniform clique sizes."""
+    return [clique_size] * num_cliques
+
+
+def generate_skewed_clique_sizes(num_cliques, min_size, max_size, skewness="high"):
+    """
+    Generate skewed clique sizes with few large and many small ones.
+
+    Args:
+        num_cliques: Number of cliques to generate
+        min_size: Minimum size of a clique
+        max_size: Maximum size of a clique
+        skewness: "low", "medium", or "high" skewness
+
+    Returns:
+        List of clique sizes
+    """
+    if skewness == "low":
+        # Slightly skewed - closer to uniform
+        alpha = 3.0
+    elif skewness == "medium":
+        # Medium skewness
+        alpha = 1.5
+    else:  # high
+        # Highly skewed
+        alpha = 0.5
+
+    # Generate sizes from a power law distribution
+    sizes = np.random.power(alpha, size=num_cliques)
+
+    # Scale to the desired range
+    sizes = min_size + (max_size - min_size) * sizes
+
+    # Round to integers
+    return [int(size) for size in sizes]
+
+
+def visualize_graph(G, communities, title):
+    """
+    Visualize the graph with different colors for different communities.
+
+    Args:
+        G: NetworkX graph
+        communities: Dictionary mapping node to its community (clique) id
+        title: Title for the plot
+    """
+    plt.figure(figsize=(10, 7))
+
+    # Create a list of colors for each community
+    unique_communities = set(communities.values())
+    color_map = plt.cm.rainbow(np.linspace(0, 1, len(unique_communities)))
+    community_colors = {comm: color_map[i] for i, comm in enumerate(unique_communities)}
+
+    # Set node colors based on community
+    node_colors = [community_colors[communities[node]] for node in G.nodes()]
+
+    # Draw the graph
+    pos = nx.spring_layout(G, seed=42)  # Position nodes using a spring layout
+    nx.draw_networkx_nodes(G, pos, node_size=100, node_color=node_colors, alpha=0.8)
+    nx.draw_networkx_edges(G, pos, width=0.5, alpha=0.5)
+
+    plt.title(title)
+    plt.axis('off')
+    plt.show()
+
+
+def analyze_graph(G, communities):
+    """
+    Analyze properties of the graph.
+
+    Args:
+        G: NetworkX graph
+        communities: Dictionary mapping node to its clique id
+
+    Returns:
+        dict: Dictionary of graph properties
+    """
+    # Group nodes by community
+    community_nodes = defaultdict(list)
+    for node, comm in communities.items():
+        community_nodes[comm].append(node)
+
     # Calculate statistics
     stats = {
-        "num_vertices": G.number_of_nodes(),
+        "num_nodes": G.number_of_nodes(),
         "num_edges": G.number_of_edges(),
-        "num_original_cliques": len(original_cliques),
+        "avg_degree": sum(dict(G.degree()).values()) / G.number_of_nodes(),
+        "num_components": nx.number_connected_components(G),
+        "avg_clustering": nx.average_clustering(G),
         "density": nx.density(G),
-        "average_degree": sum(dict(G.degree()).values()) / G.number_of_nodes(),
-        "clique_sizes": [len(clique) for clique in original_cliques]
+        "community_sizes": [len(nodes) for comm, nodes in community_nodes.items()],
+        "community_densities": []
     }
 
-    # Calculate edge distribution
-    intra_clique_edges = 0
-    total_possible_intra = 0
-
-    for clique in original_cliques:
-        clique = list(clique)
-        for i in range(len(clique)):
-            for j in range(i+1, len(clique)):
-                total_possible_intra += 1
-                if G.has_edge(clique[i], clique[j]):
-                    intra_clique_edges += 1
-
-    stats["intra_clique_edges"] = intra_clique_edges
-    stats["intra_clique_edge_ratio"] = intra_clique_edges / total_possible_intra if total_possible_intra > 0 else 0
-
-    inter_clique_edges = G.number_of_edges() - intra_clique_edges
-    total_possible_inter = (G.number_of_nodes() * (G.number_of_nodes() - 1)) // 2 - total_possible_intra
-
-    stats["inter_clique_edges"] = inter_clique_edges
-    stats["inter_clique_edge_ratio"] = inter_clique_edges / total_possible_inter if total_possible_inter > 0 else 0
+    # Calculate density within each community
+    for comm, nodes in community_nodes.items():
+        subgraph = G.subgraph(nodes)
+        stats["community_densities"].append(nx.density(subgraph))
 
     return stats
 
-# Example usage
-def main():
-    # Generate test graphs with different parameters
-    distributions = ["uniform", "skewed", "power_law"]
 
-    for dist in distributions:
-        # Create small graph for visualization
-        G_small, cliques_small = generate_test_graph(
-            num_vertices=20,
-            num_cliques=4,
-            clique_size_distribution=dist,
-            within_clique_noise=0.1,
-            between_clique_noise=0.05,
-            seed=42
-        )
+def run_simulation(num_cliques=5, distribution_type="uniform",
+                  min_size=5, max_size=20, uniform_size=10,
+                  edge_removal_prob=0.2, edge_addition_prob=0.05,
+                  skewness="high", visualize=True):
+    """
+    Run a full simulation, creating cliques and perturbing them.
 
-        # Visualize
-        visualize_graph(G_small, cliques_small, f"Test Graph with {dist} Distribution")
+    Args:
+        num_cliques: Number of cliques to create
+        distribution_type: "uniform" or "skewed"
+        min_size: Minimum clique size (for skewed distribution)
+        max_size: Maximum clique size (for skewed distribution)
+        uniform_size: Size of each clique (for uniform distribution)
+        edge_removal_prob: Probability of removing edges within cliques
+        edge_addition_prob: Probability of adding edges between cliques
+        skewness: "low", "medium", or "high" (for skewed distribution)
+        visualize: Whether to visualize the graphs
 
-        # Print statistics
-        stats = get_graph_stats(G_small, cliques_small)
-        print(f"\nStats for {dist} distribution:")
-        for key, value in stats.items():
-            print(f"  {key}: {value}")
+    Returns:
+        tuple: (original_graph, perturbed_graph, communities, stats_original, stats_perturbed)
+    """
+    # Generate clique sizes
+    if distribution_type == "uniform":
+        clique_sizes = generate_uniform_clique_sizes(num_cliques, uniform_size)
+    else:
+        clique_sizes = generate_skewed_clique_sizes(num_cliques, min_size, max_size, skewness)
 
-        # Create larger graph for algorithm testing
-        G_large, cliques_large = generate_test_graph(
-            num_vertices=100,
-            num_cliques=10,
-            clique_size_distribution=dist,
-            within_clique_noise=0.1,
-            between_clique_noise=0.05,
-            seed=42
-        )
+    print(f"Generated clique sizes: {clique_sizes}")
 
-        # Save to file
-        save_graph_to_file(G_large, f"test_graph_{dist}.txt")
+    # Create original graph with disjoint cliques
+    G_original, communities = create_disjoint_cliques(clique_sizes)
 
-        # Generate test cases with varying noise levels
-        for within_noise in [0.05, 0.1, 0.2]:
-            for between_noise in [0.02, 0.05, 0.1]:
-                G_noise, cliques_noise = generate_test_graph(
-                    num_vertices=100,
-                    num_cliques=10,
-                    clique_size_distribution=dist,
-                    within_clique_noise=within_noise,
-                    between_clique_noise=between_noise,
-                    seed=100 + int(within_noise*100) + int(between_noise*100)
-                )
+    # Perturb the graph
+    G_perturbed = perturb_graph(G_original, communities, edge_removal_prob, edge_addition_prob)
 
-                filename = f"test_graph_{dist}_w{int(within_noise*100)}_b{int(between_noise*100)}.txt"
-                save_graph_to_file(G_noise, filename)
-                print(f"Generated {filename}")
+    # Analyze the graphs
+    stats_original = analyze_graph(G_original, communities)
+    stats_perturbed = analyze_graph(G_perturbed, communities)
+
+    # Visualize if requested
+    if visualize:
+        visualize_graph(G_original, communities, "Original Disjoint Cliques")
+        visualize_graph(G_perturbed, communities, "Perturbed Graph")
+
+    return G_original, G_perturbed, communities, stats_original, stats_perturbed
+
+
+def print_stats(stats_original, stats_perturbed):
+    """Print comparative statistics for original and perturbed graphs."""
+    print("\nGraph Statistics:")
+    print("-" * 50)
+    print(f"Number of nodes: {stats_original['num_nodes']}")
+    print(f"Original edges: {stats_original['num_edges']} | Perturbed edges: {stats_perturbed['num_edges']}")
+    print(f"Original avg degree: {stats_original['avg_degree']:.2f} | Perturbed: {stats_perturbed['avg_degree']:.2f}")
+    print(f"Original clustering: {stats_original['avg_clustering']:.4f} | Perturbed: {stats_perturbed['avg_clustering']:.4f}")
+    print(f"Original components: {stats_original['num_components']} | Perturbed: {stats_perturbed['num_components']}")
+    print(f"Original density: {stats_original['density']:.4f} | Perturbed: {stats_perturbed['density']:.4f}")
+    print(f"Community sizes: {stats_original['community_sizes']}")
+    print("\nDensity within communities:")
+    print(f"Original: {[f'{d:.4f}' for d in stats_original['community_densities']]}")
+    print(f"Perturbed: {[f'{d:.4f}' for d in stats_perturbed['community_densities']]}")
+
 
 if __name__ == "__main__":
-    main()
+    # Example 1: Uniform distribution with moderate perturbation
+    print("\n=== Example 1: Uniform distribution ===")
+    G_orig1, G_pert1, comm1, stats_orig1, stats_pert1 = run_simulation(
+        num_cliques=5,
+        distribution_type="uniform",
+        uniform_size=8,
+        edge_removal_prob=0.2,
+        edge_addition_prob=0.05
+    )
+    print_stats(stats_orig1, stats_pert1)
+
+    # Example 2: Highly skewed distribution
+    print("\n=== Example 2: Highly skewed distribution ===")
+    G_orig2, G_pert2, comm2, stats_orig2, stats_pert2 = run_simulation(
+        num_cliques=8,
+        distribution_type="skewed",
+        min_size=3,
+        max_size=25,
+        edge_removal_prob=0.3,
+        edge_addition_prob=0.1,
+        skewness="high"
+    )
+    print_stats(stats_orig2, stats_pert2)
+
+    # Example 3: Mildly skewed distribution
+    print("\n=== Example 3: Mildly skewed distribution ===")
+    G_orig3, G_pert3, comm3, stats_orig3, stats_pert3 = run_simulation(
+        num_cliques=6,
+        distribution_type="skewed",
+        min_size=5,
+        max_size=15,
+        edge_removal_prob=0.15,
+        edge_addition_prob=0.03,
+        skewness="low"
+    )
+    print_stats(stats_orig3, stats_pert3)
