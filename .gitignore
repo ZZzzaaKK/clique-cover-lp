@@ -11,4 +11,4 @@ wheels/
 .venv
 
 # Generated test cases
-test_graph*.txt
+data/*
