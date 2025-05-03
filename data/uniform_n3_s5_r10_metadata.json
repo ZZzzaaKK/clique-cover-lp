@@ -1,0 +1,55 @@
+{
+  "communities": {
+    "0": 0,
+    "1": 0,
+    "2": 0,
+    "3": 0,
+    "4": 0,
+    "5": 1,
+    "6": 1,
+    "7": 1,
+    "8": 1,
+    "9": 1,
+    "10": 2,
+    "11": 2,
+    "12": 2,
+    "13": 2,
+    "14": 2
+  },
+  "stats_original": {
+    "num_nodes": 15,
+    "num_edges": 30,
+    "avg_degree": 4.0,
+    "num_components": 3,
+    "avg_clustering": 1.0,
+    "density": 0.2857142857142857,
+    "community_sizes": [
+      5,
+      5,
+      5
+    ],
+    "community_densities": [
+      1.0,
+      1.0,
+      1.0
+    ]
+  },
+  "stats_perturbed": {
+    "num_nodes": 15,
+    "num_edges": 29,
+    "avg_degree": 3.8666666666666667,
+    "num_components": 1,
+    "avg_clustering": 0.6222222222222222,
+    "density": 0.2761904761904762,
+    "community_sizes": [
+      5,
+      5,
+      5
+    ],
+    "community_densities": [
+      1.0,
+      0.7,
+      0.8
+    ]
+  }
+}
