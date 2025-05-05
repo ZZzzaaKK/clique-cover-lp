@@ -8,8 +8,8 @@ Run `python -m experiments.wp0_generate_test_cases.py` to generate test cases of
 
 # Current State of Progress
 
-- [x] WP0 Simulator
-  - [x] Generate test cases for different distributions
+- [ ] WP0 Simulator
+  - [ ] Generate test cases for different distributions
   - [x] Introduce perturbations
   - [x] Add script to visualize test cases
 - [ ] WP1 Exact vs Heuristic
