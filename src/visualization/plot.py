@@ -3,7 +3,7 @@ import numpy as np
 import networkx as nx
 from pathlib import Path
 
-def visualize_graph(G, communities, title):
+def visualize_graph(G, communities, subdirectory, title):
     """
     Visualize the graph with different colors for different communities.
 
@@ -31,8 +31,9 @@ def visualize_graph(G, communities, title):
     plt.axis('off')
     plt.show()
     Path("figures").mkdir(exist_ok=True)
-    plt.savefig(f"figures/{title}.png")
-    print(f"Saved figure to figures/{title}.png")
+    Path(f"figures/{subdirectory}").mkdir(exist_ok=True)
+    plt.savefig(f"figures/{subdirectory}/{title}.png")
+    print(f"Saved figure to figures/{subdirectory}/{title}.png")
 
 def visualize_solution_comparison(G, ground_truth_cliques, algorithm_cliques, title="Solution Comparison"):
     """

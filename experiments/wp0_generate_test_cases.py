@@ -51,10 +51,31 @@ def generate_test_suite():
 
                 # Visualize the first few examples
                 if size <= 10 and num_cliques <= 5:
-                    visualize_graph(G_original, communities, f"Original: {case_name}")
-                    visualize_graph(G_perturbed, communities, f"Perturbed: {case_name}")
+                    visualize_graph(G_original, communities, "original", case_name)
+                    visualize_graph(G_perturbed, communities, "perturbed", case_name)
 
-    # Add code for skewed distribution examples...
+    # Generate skewed distribution examples
+    for min_size in [2, 6, 10]:
+        for max_size in [14, 18, 22]:
+            for num_cliques in [3, 5, 10]:
+                for removal_prob in [0.1, 0.3]:
+                    config = GraphConfig(
+                        num_cliques=num_cliques,
+                        distribution_type="skewed",
+                        min_size=min_size,
+                        max_size=max_size,
+                        edge_removal_prob=removal_prob,
+                        edge_addition_prob=removal_prob/4
+                    )
+
+                    result = GraphGenerator.generate_test_case(config)
+                    G_original, G_perturbed, communities, stats_original, stats_perturbed = result
+
+                    case_name = f"skewed_n{num_cliques}_min{min_size}_max{max_size}_r{int(removal_prob*100)}"
+                    save_test_case(G_original, G_perturbed, communities, stats_original, stats_perturbed, case_name)
+
+                    visualize_graph(G_original, communities, "original", case_name)
+                    visualize_graph(G_perturbed, communities, "perturbed", case_name)
 
 if __name__ == "__main__":
     generate_test_suite()
