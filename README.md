@@ -1,6 +1,25 @@
 # Getting Started
 
-Install [uv](https://github.com/astral-sh/uv). Then add all the dependencies, source `.venv/bin/activate`, and run `python -m experiments.[experiment]` with the experiment of your choosing (and no square brackets).
+Install [uv](https://github.com/astral-sh/uv). Then add all the dependencies and activate the virtual environment with `source .venv/bin/activate`.
+
+## Simulator
+
+Run `python -m experiments.wp0_generate_test_cases.py` to generate test cases of differing distributions. You can visualize these by running e.g. `python -m experiments.visualize_results --case uniform_n10_s10_r10 --perturbed`. Can also show the original with `--original` instead of `--perturbed`.
+
+# Current State of Progress
+
+- [x] WP0 Simulator
+  - [x] Generate test cases for different distributions
+  - [x] Add script to visualize test cases
+- [ ] WP1 Exact vs Heuristic
+  - [ ] Chalupa
+  - [ ] ILP
+- [ ] WP2 Kernelizations for vertex clique cover problem
+- [ ] WP3 Kernelizations for cluster editing problem
+- [ ] WP4 Comparison of vertex clique cover and cluster editing solutions
+- [ ] Bonus
+- [ ] WP5 Real Data
+
 
 # Work Program
 
