@@ -94,7 +94,8 @@ def compare_algorithms(G: nx.Graph, ground_truth: Dict[int, int],
 def batch_comparison(graphs: List[nx.Graph], ground_truths: List[Dict[int, int]],
                     graph_names: List[str],
                     algorithms: Dict[str, Callable],
-                    max_time: int = 300) -> pd.DataFrame:
+                    max_time: int = 300,
+                    visualize: bool = False) -> pd.DataFrame:
     """
     Compare multiple algorithms on multiple graphs.
 
@@ -104,17 +105,92 @@ def batch_comparison(graphs: List[nx.Graph], ground_truths: List[Dict[int, int]]
         graph_names: Names of the graphs
         algorithms: Dictionary mapping algorithm name to function
         max_time: Maximum time (in seconds) to allow for each algorithm
+        visualize: Whether to visualize the solutions
 
     Returns:
         DataFrame with comparison results
     """
     all_results = []
+    all_solutions = {}
 
     for i, (G, truth, name) in enumerate(zip(graphs, ground_truths, graph_names)):
         print(f"Processing graph {i+1}/{len(graphs)}: {name}")
 
         # Compare algorithms on this graph
         results = compare_algorithms(G, truth, algorithms, max_time)
+
+        # Store solutions for visualization
+        if visualize:
+            # Create solution dictionary for this graph
+            solutions_for_graph = {}
+            
+            # Gather solutions from each algorithm
+            for algorithm_name, algorithm_func in algorithms.items():
+                try:
+                    solution, _ = run_algorithm_with_timing(algorithm_func, G, time_limit=max_time)
+                    solutions_for_graph[algorithm_name] = solution
+                except Exception as e:
+                    print(f"Algorithm {algorithm_name} failed during visualization: {e}")
+            
+            all_solutions[name] = solutions_for_graph
+            
+            # Convert ground truth to cliques format for visualization
+            if i == 0:  # Only visualize the first graph to avoid too many plots
+                try:
+                    from src.visualization.plot import visualize_graph, visualize_solution_comparison
+                    import matplotlib.pyplot as plt
+                    
+                    # Create ground truth cliques
+                    gt_communities = {}
+                    for node, comm_id in truth.items():
+                        if comm_id not in gt_communities:
+                            gt_communities[comm_id] = set()
+                        gt_communities[comm_id].add(node)
+                    ground_truth_cliques = list(gt_communities.values())
+                    
+                    # Visualize graph
+                    visualize_graph(G, truth, f"Graph: {name}")
+                    
+                    # Visualize each algorithm's solution
+                    for algorithm_name, solution in solutions_for_graph.items():
+                        visualize_solution_comparison(G, ground_truth_cliques, solution,
+                                                 f"{algorithm_name} vs Ground Truth")
+                    
+                    # Visualize all solutions side by side if there are multiple algorithms
+                    if len(solutions_for_graph) > 1:
+                        fig, axes = plt.subplots(1, len(solutions_for_graph), figsize=(5*len(solutions_for_graph), 5))
+                        fig.suptitle(f"Algorithm Comparison on {name}")
+                        
+                        for j, (algorithm_name, solution) in enumerate(solutions_for_graph.items()):
+                            # Create community mapping for this solution
+                            algo_communities = {}
+                            for k, clique in enumerate(solution):
+                                for node in clique:
+                                    algo_communities[node] = k
+                            
+                            # Use same layout for all algorithms
+                            pos = nx.spring_layout(G, seed=42)
+                            
+                            # Get unique communities and assign colors
+                            unique_communities = set(algo_communities.values())
+                            import numpy as np
+                            color_map = plt.cm.rainbow(np.linspace(0, 1, len(unique_communities)))
+                            community_colors = {comm: color_map[i] for i, comm in enumerate(unique_communities)}
+                            node_colors = [community_colors.get(algo_communities.get(node, -1), 'gray') for node in G.nodes()]
+                            
+                            # Plot on the appropriate subplot
+                            ax = axes[j] if len(solutions_for_graph) > 1 else axes
+                            nx.draw_networkx_nodes(G, pos, node_size=100, node_color=node_colors, alpha=0.8, ax=ax)
+                            nx.draw_networkx_edges(G, pos, width=0.5, alpha=0.5, ax=ax)
+                            ax.set_title(f"{algorithm_name} ({len(solution)} cliques)")
+                            ax.axis('off')
+                        
+                        plt.tight_layout()
+                        plt.show()
+                except ImportError:
+                    print("Visualization modules not available. Skipping visualization.")
+                except Exception as e:
+                    print(f"Error during visualization: {e}")
 
         # Add graph information
         results["graph"] = name

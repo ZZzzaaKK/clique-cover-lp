@@ -10,5 +10,6 @@ wheels/
 # Virtual environments
 .venv
 
-# Generated test cases
+# Generated test cases and figures
 data/*
+figures/*
