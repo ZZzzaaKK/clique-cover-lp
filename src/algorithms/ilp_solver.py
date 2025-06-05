@@ -91,7 +91,7 @@ if __name__ == "__main__":
 
 
 
-""" Das Originalproblem ist doch:
+""" Das Originalproblem ist:
         Finde eine Partition der Knoten in möglichst wenige Cliquen (Vertex Clique Cover).
   Dieser Code:
         Nutzt eine Menge maximaler Cliquen (potenziell überlappend) und versucht, diese mit Farben zu überdecken — nicht notwendigerweise disjunkt!
