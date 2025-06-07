@@ -47,6 +47,7 @@ name = "clique-cover-lp"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
+    { name = "gurobipy" },
     { name = "ipykernel" },
     { name = "matplotlib" },
     { name = "networkx" },
@@ -58,6 +59,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
+    { name = "gurobipy", specifier = ">=12.0.2" },
     { name = "ipykernel", specifier = ">=6.29.5" },
     { name = "matplotlib", specifier = ">=3.10.1" },
     { name = "networkx", specifier = ">=3.4.2" },
@@ -174,6 +176,17 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/4c/e4/6934513ec2c4d3d69ca1bc3bd34d5c69dafcbf68c15388dd3bb062daf345/fonttools-4.57.0-cp313-cp313-win32.whl", hash = "sha256:8e2e12d0d862f43d51e5afb8b9751c77e6bec7d2dc00aad80641364e9df5b199", size = 2144833, upload-time = "2025-04-03T11:06:31.737Z" },
     { url = "https://files.pythonhosted.org/packages/c4/0d/2177b7fdd23d017bcfb702fd41e47d4573766b9114da2fddbac20dcc4957/fonttools-4.57.0-cp313-cp313-win_amd64.whl", hash = "sha256:f1d6bc9c23356908db712d282acb3eebd4ae5ec6d8b696aa40342b1d84f8e9e3", size = 2190799, upload-time = "2025-04-03T11:06:34.784Z" },
     { url = "https://files.pythonhosted.org/packages/90/27/45f8957c3132917f91aaa56b700bcfc2396be1253f685bd5c68529b6f610/fonttools-4.57.0-py3-none-any.whl", hash = "sha256:3122c604a675513c68bd24c6a8f9091f1c2376d18e8f5fe5a101746c81b3e98f", size = 1093605, upload-time = "2025-04-03T11:07:11.341Z" },
+]
+
+[[package]]
+name = "gurobipy"
+version = "12.0.2"
+source = { registry = "https://pypi.org/simple" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/0e/77/005617b41152d0bfddb968690393f20c7931b4b4b8a2aabfeba4e85cc8c7/gurobipy-12.0.2-cp313-cp313-macosx_10_13_universal2.whl", hash = "sha256:5791dc9b029f06b318d54e0dfa07f5c9688c27e5c71f7a54bcdaafdb4c0905e9", size = 12159195, upload-time = "2025-05-06T02:21:01.405Z" },
+    { url = "https://files.pythonhosted.org/packages/77/0d/5d6131fed7ccbd5f7e7773b2cec6eb8d2f66ca1d47def00a4fa46622c521/gurobipy-12.0.2-cp313-cp313-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:b3caebef6a7c6ba23559872ab73dcd8040c7156ef80cde0b59118bbdfd24e779", size = 62573861, upload-time = "2025-05-06T02:21:09.983Z" },
+    { url = "https://files.pythonhosted.org/packages/86/b3/c627ec23998481b056d2cb6af5b2829a333d344b6a55c4e393cc0a803cf8/gurobipy-12.0.2-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:240aab60fcfbfe586f456d6ecbcc8eca3b5aa5ffe717e6a08c41c82964026137", size = 14266673, upload-time = "2025-05-06T02:21:16.578Z" },
+    { url = "https://files.pythonhosted.org/packages/a0/96/0ca5e669fa4923cb6dd661265331d5440aa5451b7f59705e9d16f85848af/gurobipy-12.0.2-cp313-cp313-win_amd64.whl", hash = "sha256:6ee688efdd177cb38697f77237406f5240c47ceb5469b61c9c375d961479b10a", size = 11099909, upload-time = "2025-05-06T02:21:19.134Z" },
 ]
 
 [[package]]
