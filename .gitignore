@@ -13,3 +13,4 @@ wheels/
 # Generated test cases and figures
 data/*
 figures/*
+results/*
