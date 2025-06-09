@@ -21,6 +21,10 @@ Run `python -m experiments.wp0_generate_test_cases` to generate test cases of di
 - [ ] Bonus
 - [ ] WP5 Real Data
 
+# Open Questions
+
+- How will the test data be structured and where is it from? Will connections be sparse similar to social networks?
+- What kinds of graphs does the current chalupa heuristic perform well on and where does it struggle? Is that okay or is there a way to improve?
 
 # Work Program
 
