@@ -13,28 +13,49 @@ References:
 
 import itertools
 import pickle
-import networkx as nx
-import random
 import numpy as np
-from typing import List, Set, Dict
 from helpers import jump, random_permutation, uniformly_random
 
 class ChalupaHeuristic:
-    def load_graph(self, path):
+    def __init__(self, path):
         with open(path, "rb") as f:
             G = pickle.load(f)
             self.V = list(G.nodes())
             self.E = list(G.edges())
             self.n = len(self.V)
             self.node_labels = np.zeros(self.n)
-            self.upper = None
+            self.upper_bound = None
+            self.lower_bound = None
+            self.best_clique_covering = None
+            self.best_independent_set = None
 
-    def estimate_upper_bound(self):
-        self.current_best_solution = self.iterated_greedy_clique_covering()
-        self.upper = self.current_best_solution
+    def run(self):
+        """
+        Main algorithm that implements Chalupa's heuristic.
 
-    def estimate_lower_bound(self):
-        self.lower = self.find_maximum_independent_set_size()
+        Returns a tuple containing:
+        - Lower bound (maximum independent set size)
+        - Upper bound (number of cliques in best covering)
+        - Best clique covering found
+        - Best independent set found
+        """
+        # Step 1: Find upper bound using Iterated Greedy heuristic for clique covering
+        print("Finding upper bound using Iterated Greedy heuristic...")
+        self.best_clique_covering = self.iterated_greedy_clique_covering()
+        self.upper_bound = len(self.best_clique_covering) if self.best_clique_covering else float('inf')
+
+        # Step 2: Find lower bound using Randomized Local Search for maximum independent set
+        print("Finding lower bound using Randomized Local Search...")
+        self.lower_bound, self.best_independent_set = self.find_maximum_independent_set()
+
+        # Return results
+        return {
+            'lower_bound': self.lower_bound,
+            'upper_bound': self.upper_bound,
+            'clique_covering': self.best_clique_covering,
+            'independent_set': self.best_independent_set,
+            'bounds_interval': f"[{self.lower_bound}, {self.upper_bound}]"
+        }
 
     def get_neighbors(self, vertex):
         """Compute neighbors from edge list - O(|E|) time"""
@@ -147,10 +168,48 @@ class ChalupaHeuristic:
             if self.upper is not None and self.upper == len(cliques):
                 return cliques
             # TODO: This permutation probably shouldn't be completely random. But how to do it exactly?
+            # There's more on this in the chalupa paper: On the Efficiency of an Order-based Representation in the
+            # Clique Covering Problem (2012)
             permutation = random_permutation(list(itertools.chain.from_iterable(cliques)))
             iteration += 1
 
     def greedy_independent_set(self, permutation):
+        """
+        Maps a permutation of vertices to an independent set using a greedy algorithm.
+
+        Algorithm from paper:
+        1. Start with empty independent set
+        2. Initialize a(v) = 1 for all vertices (all can be added initially)
+        3. Process vertices in permutation order:
+           - If a(v) = 1, add v to independent set
+           - Set a(w) = 0 for all neighbors w of v
+        4. Continue until all vertices processed
+
+        Args:
+            permutation: Ordering of vertices to process
+
+        Returns:
+            List of vertices forming an independent set
+        """
+        # Initialize Boolean function a(v) - True means vertex can be added
+        can_add = {v: True for v in self.V}
+
+        # Start with empty independent set
+        independent_set = []
+
+        # Process vertices in permutation order
+        for vertex in permutation:
+            # If vertex can be added (not adjacent to any vertex in current set)
+            if can_add[vertex]:
+                # Add vertex to independent set
+                independent_set.append(vertex)
+
+                # Set a(w) = 0 for all neighbors w of vertex
+                neighbors = self.get_neighbors(vertex)
+                for neighbor in neighbors:
+                    can_add[neighbor] = False
+
+        return independent_set
 
     def find_maximum_independent_set_size(self):
         permutation = random_permutation(self.V)
