@@ -14,12 +14,13 @@ References:
 import itertools
 import pickle
 import numpy as np
-from helpers import jump, random_permutation, uniformly_random
+from .helpers import jump, random_permutation, uniformly_random
 
 class ChalupaHeuristic:
     def __init__(self, path):
         with open(path, "rb") as f:
             G = pickle.load(f)
+            self.G = G
             self.V = list(G.nodes())
             self.E = list(G.edges())
             self.n = len(self.V)
@@ -101,7 +102,7 @@ class ChalupaHeuristic:
             neighbor_label = int(self.node_labels[neighbor])
 
             # Only process neighbors that have been assigned to a clique
-            if neighbor_label >= 0:  # Assuming -1 or 0 means unassigned
+            if neighbor_label >= 0:  # Assuming -1 means unassigned
                 if neighbor_label not in original_sizes:
                     original_sizes[neighbor_label] = sizes[neighbor_label]
 
@@ -156,22 +157,46 @@ class ChalupaHeuristic:
             sizes[label] += 1
             self.node_labels[current_vertex] = label
 
-        return cliques
+        # Filter out empty cliques and convert to sets
+        return [set(clique) for clique in cliques if clique]
 
     def iterated_greedy_clique_covering(self):
-        permutation = random_permutation(self.V)
-        iteration = 0
-        stopping_criterion = iteration >= 1000
+        """
+        Iterated Greedy heuristic for clique covering problem.
 
-        while not stopping_criterion:
+        Returns:
+            Best clique covering found
+        """
+        permutation = random_permutation(self.V)
+        best_cliques = None
+        best_count = float('inf')
+        iteration = 0
+        max_iterations = 1000
+        no_improvement_count = 0
+        max_no_improvement = 100
+
+        while iteration < max_iterations and no_improvement_count < max_no_improvement:
             cliques = self.find_greedy_clique_covering(permutation)
-            if self.upper is not None and self.upper == len(cliques):
-                return cliques
-            # TODO: This permutation probably shouldn't be completely random. But how to do it exactly?
-            # There's more on this in the chalupa paper: On the Efficiency of an Order-based Representation in the
-            # Clique Covering Problem (2012)
-            permutation = random_permutation(list(itertools.chain.from_iterable(cliques)))
+            clique_count = len(cliques)
+
+            if clique_count < best_count:
+                best_count = clique_count
+                best_cliques = cliques
+                no_improvement_count = 0
+                print(f"Iteration {iteration}: Found better solution with {clique_count} cliques")
+            else:
+                no_improvement_count += 1
+
+            # Create new permutation based on current cliques
+            if cliques:
+                permutation = random_permutation(list(itertools.chain.from_iterable(cliques)))
+            else:
+                permutation = random_permutation(self.V)
+
             iteration += 1
+
+        print(f"Iterated Greedy completed after {iteration} iterations. Best: {best_count} cliques")
+        return best_cliques
 
     def greedy_independent_set(self, permutation):
         """
@@ -211,20 +236,44 @@ class ChalupaHeuristic:
 
         return independent_set
 
-    def find_maximum_independent_set_size(self):
-        permutation = random_permutation(self.V)
-        lower_bound = 1
-        lower_bound_permutation = permutation
-        iteration = 0
-        stopping_criterion = iteration >= 1000
+    def find_maximum_independent_set(self):
+        """
+        Randomized Local Search algorithm for finding maximum independent set.
 
-        while not stopping_criterion:
-            k = len(self.greedy_independent_set(permutation))
-            if k >= lower_bound:
-                lower_bound = k
-                lower_bound_permutation = permutation
-            j = uniformly_random(1, self.V)
-            permutation = jump(j, 0, lower_bound_permutation)
+        Returns:
+            Tuple of (size of maximum independent set found, the set itself)
+        """
+        permutation = random_permutation(self.V)
+        best_size = 0
+        best_set = []
+        best_permutation = permutation
+        iteration = 0
+        max_iterations = 1000
+        no_improvement_count = 0
+        max_no_improvement = 100
+
+        while iteration < max_iterations and no_improvement_count < max_no_improvement:
+            independent_set = self.greedy_independent_set(permutation)
+            current_size = len(independent_set)
+
+            if current_size > best_size:
+                best_size = current_size
+                best_set = independent_set
+                best_permutation = permutation
+                no_improvement_count = 0
+                print(f"RLS Iteration {iteration}: Found larger independent set of size {current_size}")
+            else:
+                no_improvement_count += 1
+
+            # Jump operation: select random vertex and move it to front
+            try:
+                j = uniformly_random(1, self.V)
+                permutation = jump(j, 0, best_permutation)
+            except Exception as _:
+                # If jump fails, create new random permutation
+                permutation = random_permutation(self.V)
+
             iteration += 1
 
-        return lower_bound
+        print(f"RLS completed after {iteration} iterations. Best independent set size: {best_size}")
+        return best_size, best_set

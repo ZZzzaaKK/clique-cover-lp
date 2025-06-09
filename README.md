@@ -4,7 +4,7 @@ Install [uv](https://github.com/astral-sh/uv). Then add all the dependencies and
 
 ## Simulator
 
-Run `python -m experiments.wp0_generate_test_cases.py` to generate test cases of differing distributions. You can visualize these by running e.g. `python -m experiments.visualize_results --case uniform_n10_s10_r10 --perturbed`. Can also show the original with `--original` instead of `--perturbed`.
+Run `python -m experiments.wp0_generate_test_cases` to generate test cases of differing distributions. You can visualize these by running e.g. `python -m experiments.visualize_results --case uniform_n10_s10_r10 --perturbed`. Can also show the original with `--original` instead of `--perturbed`.
 
 # Current State of Progress
 

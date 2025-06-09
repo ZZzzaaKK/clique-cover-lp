@@ -29,7 +29,6 @@ def visualize_graph(G, communities, subdirectory, title):
 
     plt.title(title)
     plt.axis('off')
-    plt.show()
     Path("figures").mkdir(exist_ok=True)
     Path(f"figures/{subdirectory}").mkdir(exist_ok=True)
     plt.savefig(f"figures/{subdirectory}/{title}.png")
@@ -90,4 +89,3 @@ def visualize_solution_comparison(G, ground_truth_cliques, algorithm_cliques, ti
 
     plt.suptitle(title)
     plt.tight_layout()
-    plt.show()

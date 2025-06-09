@@ -25,8 +25,9 @@ def jump(element, new_index, list):
     result = list.copy()
     try:
         result.remove(element)
-    except:
-        print("Jump went wrong! No element was removed, which shouldn't happen as far as I understand")
+    except Exception as e:
+        print("Jump went wrong! No element was removed, which shouldn't happen as far as I understand.")
+        print(f"Error message: {e}")
     finally:
         result.insert(new_index, element)
 
