@@ -3,6 +3,106 @@ Integer Linear Programming (ILP) formulation for the vertex clique coloring prob
 """
 
 import networkx as nx
+import gurobipy as gp
+from gurobipy import GRB
+import pickle
+
+# ----------------------------------------------------------
+# Funktion zum Laden eines Graphen aus einer Pickle-Datei
+# ----------------------------------------------------------
+def load_graph(path):
+    with open(path, "rb") as f:
+        return pickle.load(f)
+
+# ----------------------------------------------------------
+# Hauptfunktion: Löse Vertex Clique Coloring mit ILP
+# (Assignment Model gemäß Mutzel, Folie 24)
+# ----------------------------------------------------------
+def solve_ilp_clique_cover(G):
+    V = list(G.nodes())           # Liste aller Knoten
+    E = list(G.edges())           # Liste aller Kanten
+    n = len(V)                    # Anzahl Knoten
+    H = n                         # Obergrenze für Farben (max. eine pro Knoten)
+
+    # Neues Gurobi-Modell erstellen
+    model = gp.Model("clique_coloring")
+    model.setParam("OutputFlag", 0)  # Keine Konsolenausgabe von Gurobi
+
+    # Binärvariablen: x[v, i] = 1, wenn Knoten v Farbe i erhält
+    x = model.addVars(V, range(H), vtype=GRB.BINARY)
+
+    # Binärvariablen: w[i] = 1, wenn Farbe i überhaupt verwendet wird
+    w = model.addVars(range(H), vtype=GRB.BINARY)
+
+    # (1) Jeder Knoten bekommt genau eine Farbe
+    for v in V:
+        model.addConstr(gp.quicksum(x[v, i] for i in range(H)) == 1)
+
+    # (2) Benachbarte Knoten dürfen nicht dieselbe Farbe haben
+    for (u, v) in E:
+        for i in range(H):
+            model.addConstr(x[u, i] + x[v, i] <= w[i])
+
+    # (3) Farbe i darf nur verwendet werden (w[i] = 1), wenn sie auch zugewiesen wird
+    for i in range(H):
+        model.addConstr(w[i] <= gp.quicksum(x[v, i] for v in V))
+
+    # (4) Symmetriebrechung: wenn Farbe i verwendet wird, muss auch Farbe i-1 verwendet worden sein
+    for i in range(1, H):
+        model.addConstr(w[i] <= w[i - 1])
+
+    # Ziel: Minimale Anzahl verwendeter Farben (entspricht Cliqueanzahl)
+    model.setObjective(gp.quicksum(w[i] for i in range(H)), GRB.MINIMIZE)
+
+    # Optimierung starten
+    model.optimize()
+
+    # Wenn optimale Lösung gefunden, extrahiere Resultat
+    if model.status == GRB.OPTIMAL:
+        # chromatic_number = Anzahl verwendeter Farben (d.h. Cliquen)
+        chromatic_number = int(sum(w[i].X for i in range(H)))
+
+        # Zuweisung der Farbe (bzw. Clique) für jeden Knoten
+        coloring = {v: [i for i in range(H) if x[v, i].X > 0.5][0] for v in V}
+
+        return {
+            "chromatic_number": chromatic_number,
+            "coloring": coloring,
+            "n_nodes": len(V),
+            "n_edges": len(E),
+        }
+    else:
+        return {"error": "Keine optimale Lösung gefunden."}
+
+# ----------------------------------------------------------
+# Beispiel: Graph laden und ILP lösen
+# (erzeugt mit WP0-Simulator... Pickle)
+# ----------------------------------------------------------
+if __name__ == "__main__":
+    graph_path = "example_graph_wp0_original.pkl"  # Pfad anpassen!
+
+    try:
+        G = load_graph(graph_path)
+        result = solve_ilp_clique_cover(G)
+
+        print("Anzahl Knoten:", result["n_nodes"])
+        print("Anzahl Kanten:", result["n_edges"])
+        print("Minimale Anzahl Cliquen (ILP):", result["chromatic_num_]()
+
+
+
+""" Das Originalproblem ist:
+        Finde eine Partition der Knoten in möglichst wenige Cliquen (Vertex Clique Cover).
+  Dieser Code:
+        Nutzt eine Menge maximaler Cliquen (potenziell überlappend) und versucht, diese mit Farben zu überdecken — nicht notwendigerweise disjunkt!
+ evtl schwierig weil:
+    Eine Clique Cover muss aus disjunkten Cliquen bestehen.
+    hier werden alle maximalen Cliquen verwendet, die sich überlappen dürfen, und es wird auf Constraints gesetzt, dass überlappende nicht gleiche Farbe bekommen 
+    → das führt nicht zwingend zu einer Cover-Partition.
+    """
+
+"""
+import networkx as nx
 import pulp
 from typing import List, Set, Optional
 
@@ -125,3 +225,6 @@ class ILPCliqueCover:
                     result.append(color_to_cliques[c][0])
 
         return result
+""" 
+
+
