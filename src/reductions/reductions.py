@@ -1,4 +1,4 @@
-from typing import Tuple, List, Union
+from typing import Tuple, List, Union, Any
 import time
 import logging
 import networkx as nx
@@ -20,107 +20,229 @@ def apply_isolated_vertex_reduction(G) -> Tuple[nx.Graph, bool, list]:
             changed = True
     return G, changed, removed
 
-def apply_degree_two_folding(G) -> Tuple[nx.Graph, bool, list]:
+
+def apply_degree_two_folding(G: nx.Graph) -> Tuple[nx.Graph, bool, List[Tuple[str, str, str]]]:
+    """
+    Applies degree-2 folding reduction to the graph G.
+    Returns:
+        - Reduced graph G
+        - Boolean flag indicating if any folding happened
+        - A list of folds: (v, u, w) tuples to help with solution reconstruction
+    """
     changed = False
-    folded = []
+    folds = []
     for v in list(G.nodes()):
         if G.degree(v) == 2:
             neighbors = list(G.neighbors(v))
-            if len(neighbors) < 2:
+            if len(neighbors) != 2:
                 continue
             u, w = neighbors
-            if not G.has_edge(u, w):
-                G.add_edge(u, w)
-            G.remove_node(v)
-            folded.append(v)
+            if G.has_edge(u, w):
+                continue  # Folding only applies if u and w are not connected
+
+            # Get external neighbors of u and w (excluding v)
+            u_neighbors = set(G.neighbors(u)) - {v}
+            w_neighbors = set(G.neighbors(w)) - {v}
+            new_neighbors = (u_neighbors | w_neighbors)
+
+            # Add new vertex x representing folded structure
+            x = f"fold_{v}"
+            G.add_node(x)
+            for n in new_neighbors:
+                G.add_edge(x, n)
+
+            # Remove v, u, w
+            G.remove_nodes_from([v, u, w])
+
+            folds.append((v, u, w))  # for reconstructing solution
             changed = True
-    return G, changed, folded
+            break  # fold one node at a time for safety
 
-def apply_twin_removal(G) -> Tuple[nx.Graph, bool, list]:
-    changed = False
-    removed_pairs = []
-    seen = set()
-    nodes = list(G.nodes())
-    for i in range(len(nodes)):
-        for j in range(i + 1, len(nodes)):
-            u, v = nodes[i], nodes[j]
-            if (u, v) in seen:
-                continue
-            if G.degree(u) == 3 and G.degree(v) == 3 and set(G.neighbors(u)) == set(G.neighbors(v)):
-                N_uv = set(G.neighbors(u))
-                if any(G.has_edge(x, y) for x in N_uv for y in N_uv if x != y):
-                    G.remove_node(u)
-                    G.remove_node(v)
-                    removed_pairs.append((u, v))
-                    changed = True
-                    seen.add((u, v))
-    return G, changed, removed_pairs
+    return G, changed, folds
 
-def apply_domination_reduction(G) -> Tuple[nx.Graph, bool, list]:
+
+def apply_twin_removal(G: nx.Graph) -> Tuple[nx.Graph, bool, List[Tuple[str, str, set]]]:
+    """
+    Applies the Twin Removal Reduction.
+    Returns:
+        - Modified graph (in-place)
+        - Whether any change was made
+        - List of removed twin pairs with their neighborhood
+    """
     changed = False
-    dominated = []
+    removed_info = []
+
     nodes = list(G.nodes())
     for i in range(len(nodes)):
         u = nodes[i]
-        for j in range(len(nodes)):
+        if G.degree(u) != 3:
+            continue
+        for j in range(i + 1, len(nodes)):
             v = nodes[j]
-            if u == v:
+            if G.degree(v) != 3:
                 continue
-            if set(G.neighbors(u)).issubset(set(G.neighbors(v))):
-                G.remove_node(v)
-                dominated.append((u, v))
-                changed = True
-                break
-    return G, changed, dominated
+            if G.has_edge(u, v):
+                continue  # They must be false twins (non-adjacent)
 
-def apply_twin_folding(G) -> Tuple[nx.Graph, bool, list]:
+            Nu = set(G.neighbors(u))
+            Nv = set(G.neighbors(v))
+            if Nu != Nv:
+                continue
+
+            # Check if any edge exists between neighbors
+            has_internal_edge = any(
+                G.has_edge(x, y) for x in Nu for y in Nu if x != y
+            )
+
+            if has_internal_edge:
+                # Remove u, v, and their neighbors (N[u,v])
+                to_remove = Nu | {u, v}
+                G.remove_nodes_from(to_remove)
+                removed_info.append((u, v, Nu))
+                changed = True
+                return G, changed, removed_info  # Apply one reduction per call
+
+    return G, changed, removed_info
+
+
+def apply_twin_folding(G: nx.Graph) -> Tuple[nx.Graph, bool, List[Tuple[str, str, str, List[str]]]]:
+    """
+    Applies the Twin Folding Reduction for foldable twins (false twins with independent neighborhood).
+    Returns:
+        - Modified graph
+        - Boolean indicating if any change occurred
+        - List of (u, v, new_node, neighbors) tuples for reconstruction
+    """
     changed = False
     folded_twins = []
-    seen = set()
     nodes = list(G.nodes())
+
     for i in range(len(nodes)):
+        u = nodes[i]
+        if G.degree(u) != 3:
+            continue
         for j in range(i + 1, len(nodes)):
-            u, v = nodes[i], nodes[j]
-            if (u, v) in seen:
+            v = nodes[j]
+            if G.degree(v) != 3:
                 continue
-            if G.degree(u) == 3 and G.degree(v) == 3 and set(G.neighbors(u)) == set(G.neighbors(v)):
-                N = list(G.neighbors(u))
-                if len(N) == 3:
-                    w, x, y = N
-                    new_node = f"{u}_{v}_folded"
-                    common_neighbors = list(set(G.neighbors(w)) & set(G.neighbors(x)) & set(G.neighbors(y)))
-                    G.add_node(new_node)
-                    for cn in common_neighbors:
-                        G.add_edge(new_node, cn)
-                    G.remove_node(u)
-                    G.remove_node(v)
-                    folded_twins.append((u, v, new_node))
-                    changed = True
-                    seen.add((u, v))
+            if G.has_edge(u, v):
+                continue  # must be false twins
+
+            neighbors_u = set(G.neighbors(u))
+            neighbors_v = set(G.neighbors(v))
+            if neighbors_u != neighbors_v:
+                continue
+
+            N = list(neighbors_u)
+            if any(G.has_edge(x, y) for i, x in enumerate(N) for y in N[i + 1:]):
+                continue  # neighbors are not independent
+
+            # Twin folding is safe
+            new_node = f"{u}_{v}_folded"
+            G.add_node(new_node)
+            for neighbor in N:
+                G.add_edge(new_node, neighbor)
+            G.remove_node(u)
+            G.remove_node(v)
+            folded_twins.append((u, v, new_node, N))
+            changed = True
+            return G, changed, folded_twins  # Only apply one per call for consistency
+
     return G, changed, folded_twins
 
-def apply_crown_reduction(G) -> Tuple[nx.Graph, bool, list]:
+
+def apply_domination_reduction(G: nx.Graph) -> Tuple[nx.Graph, bool, List[Tuple[str, str]]]:
+    """
+    Applies the Domination Reduction.
+    If v dominates u (i.e., N[v] ⊇ N[u]), then v can be safely removed.
+
+    Returns:
+        - Modified graph (in-place)
+        - Whether any change occurred
+        - List of (dominated, dominator) pairs removed
+    """
+    changed = False
+    dominated = []
+    nodes = list(G.nodes())
+
+    for i in range(len(nodes)):
+        u = nodes[i]
+        Nu_closed = set(G.neighbors(u)) | {u}
+        for j in range(len(nodes)):
+            if i == j:
+                continue
+            v = nodes[j]
+            Nv_closed = set(G.neighbors(v)) | {v}
+            if Nu_closed.issubset(Nv_closed):
+                # v dominates u, so remove v
+                G.remove_node(v)
+                dominated.append((u, v))  # v dominates u
+                changed = True
+                return G, changed, dominated  # Only one per call for safety
+
+    return G, changed, dominated
+
+
+def apply_crown_reduction(G: nx.Graph) -> Tuple[nx.Graph, bool, List[Any]]:
+    """
+    Applies the Crown Reduction rule to the graph for the Vertex Clique Cover problem.
+
+    Returns:
+        - Modified graph (in-place)
+        - Whether a reduction was applied
+        - List of tuples (I, H, M, unmatched_I)
+    """
     changed = False
     crown_sets = []
+
     try:
-        maximal_independent_sets = [set(nx.algorithms.approximation.maximum_independent_set(G)) for _ in range(3)]
+        # Try multiple independent sets heuristically
+        for _ in range(3):
+            I = set(nx.algorithms.approximation.maximum_independent_set(G))
+            if not I:
+                continue
+
+            H = set()
+            for i in I:
+                H.update(G.neighbors(i))
+
+            # Only keep neighbors of I (i.e., H)
+            H = H - I  # Just in case
+            if not H:
+                continue
+
+            # Build bipartite graph between H and I
+            B = nx.Graph()
+            B.add_nodes_from(H, bipartite=0)
+            B.add_nodes_from(I, bipartite=1)
+
+            for h in H:
+                for i in I:
+                    if G.has_edge(h, i):
+                        B.add_edge(h, i)
+
+            # Get maximum cardinality matching (from H to I)
+            M = list(nx.bipartite.maximum_matching(B, top_nodes=H).items())
+
+            # Filter the actual H→I edges only
+            M = [(u, v) for u, v in M if u in H and v in I]
+
+            if len(M) == len(H):
+                matched_I = {v for _, v in M}
+                unmatched_I = I - matched_I
+
+                # Remove crown nodes
+                G.remove_nodes_from(H)
+                G.remove_nodes_from(I)
+
+                crown_sets.append((list(I), list(H), M, list(unmatched_I)))
+                changed = True
+                break  # Only apply one crown reduction at a time
     except Exception as e:
-        logger.warning(f"Failed to compute maximal independent set: {e}")
-        return G, False, []
-    for I in maximal_independent_sets:
-        N_I = set()
-        for i in I:
-            N_I.update(G.neighbors(i))
-        H = G.subgraph(N_I).copy()
-        M = list(nx.algorithms.matching.max_weight_matching(H, maxcardinality=True))
-        if len(M) >= len(I):
-            unmatched = I - set(u for u, _ in M) - set(v for _, v in M)
-            G.remove_nodes_from(I)
-            G.remove_nodes_from(N_I)
-            crown_sets.append((list(I), list(N_I), list(M), list(unmatched)))
-            changed = True
-            break
+        print(f"[Warning] Crown reduction failed: {e}")
+
     return G, changed, crown_sets
+
 
 def apply_all_reductions(G, verbose: bool = True, timing: bool = True) -> Tuple[nx.Graph, List[Tuple[str, Union[list, str]]]]:
     reductions = [

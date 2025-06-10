@@ -24,6 +24,7 @@ class TestReductions(unittest.TestCase):
         G.add_edges_from([(1, 4), (2, 4), (3, 4)])
         G.add_edges_from([(1, 5), (2, 5), (3, 5)])
         G.add_edges_from([(1, 6), (2, 6), (3, 6)])
+        G.add_edges_from([(1, 2)])
         G_reduced, trace = apply_all_reductions(G.copy(), verbose=False, timing=False)
         self.assertLess(len(G_reduced.nodes), 6)
 
