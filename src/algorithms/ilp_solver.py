@@ -2,21 +2,12 @@
 Integer Linear Programming (ILP) formulation for the vertex clique coloring problem.
 """
 
-import networkx as nx
 import gurobipy as gp
 from gurobipy import GRB
 import sys
 import os
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src'))
-
-# ----------------------------------------------------------
-# Funktion zum Laden eines Graphen aus einer Pickle-Datei
-# ----------------------------------------------------------
-def load_graph(path):
-    if path.endswith(".g6"):
-        return nx.read_graph6(path)
-    else:
-        raise ValueError("Unsupported file format")
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+from utils import txt_to_networkx
 
 # ----------------------------------------------------------
 # Hauptfunktion: Löse Vertex Clique Coloring mit ILP
@@ -80,18 +71,17 @@ def solve_ilp_clique_cover(G):
 
 # ----------------------------------------------------------
 # Beispiel: Graph laden und ILP lösen
-# (erzeugt mit WP0-Simulator... Pickle)
 # ----------------------------------------------------------
 if __name__ == "__main__":
     if len(sys.argv) < 2:
         print("Usage: python test_chalupa.py <path_to_graph_file>")
-        print("Example: python test_chalupa.py test_cases/curated/graph_50593.g6")
+        print("Example: python test_chalupa.py test_cases/curated/graph_50593.txt")
         sys.exit()
 
     graph_path = sys.argv[1]
 
     try:
-        G = load_graph(graph_path)
+        G = txt_to_networkx(graph_path)
         result = solve_ilp_clique_cover(G)
 
         print("Anzahl Knoten:", result["n_nodes"])

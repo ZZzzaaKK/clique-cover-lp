@@ -3,8 +3,6 @@ Generate and save test cases for clique covering experiments.
 """
 
 import os
-import json
-import pickle
 import matplotlib.pyplot as plt
 import numpy as np
 import networkx as nx
@@ -99,26 +97,54 @@ def visualize_solution_comparison(G, ground_truth_cliques, algorithm_cliques, ti
     plt.suptitle(title)
     plt.tight_layout()
 
-def save_test_case(G_original, G_perturbed, communities, stats_original, stats_perturbed, case_name, output_dir="test_cases/generated"):
-    """Save a test case to disk."""
+def save_test_case_as_txt(G_original, G_perturbed, communities, stats_original, stats_perturbed, case_name, output_dir="test_cases/generated"):
+    """Save test cases in the same txt format as curated graphs."""
     os.makedirs(output_dir, exist_ok=True)
 
-    # Save graphs as pickle files
-    with open(f"{output_dir}/{case_name}_original.pkl", "wb") as f:
-        pickle.dump(G_original, f)
-    with open(f"{output_dir}/{case_name}_perturbed.pkl", "wb") as f:
-        pickle.dump(G_perturbed, f)
+    def write_graph_txt(G, communities, stats, filename):
+        """Write a single graph in txt format"""
+        with open(filename, 'w') as f:
+            # Write adjacency list (sorted by vertex number)
+            vertices = sorted(G.nodes())
+            for vertex in vertices:
+                neighbors = sorted(G.neighbors(vertex))
+                if neighbors:
+                    neighbors_str = ' '.join(map(str, neighbors))
+                    f.write(f"{vertex}: {neighbors_str}\n")
+                else:
+                    f.write(f"{vertex}:\n")
 
-    # Save metadata as JSON
-    metadata = {
-        "communities": {str(k): v for k, v in communities.items()},
-        "stats_original": stats_original,
-        "stats_perturbed": stats_perturbed
-    }
-    with open(f"{output_dir}/{case_name}_metadata.json", "w") as f:
-        json.dump(metadata, f, indent=2)
+            f.write("\n")  # Empty line between graph and attributes
 
-    print(f"Saved test case {case_name} to {output_dir}")
+            # Write graph attributes
+            f.write(f"Connected: {'Yes' if nx.is_connected(G) else 'No'}\n")
+            f.write(f"Number of Vertices: {G.number_of_nodes()}\n")
+            f.write(f"Number of Edges: {G.number_of_edges()}\n")
+            f.write(f"Average Degree: {2 * G.number_of_edges() / G.number_of_nodes():.3f}\n")
+            f.write(f"Density: {nx.density(G):.3f}\n")
+            f.write(f"Number of Components: {nx.number_connected_components(G)}\n")
+
+            # Add clique cover information
+            f.write(f"Ground Truth Clique Cover: {len(set(communities.values()))}\n")
+            f.write(f"Maximum Degree: {max(dict(G.degree()).values()) if G.nodes() else 0}\n")
+            f.write(f"Minimum Degree: {min(dict(G.degree()).values()) if G.nodes() else 0}\n")
+
+            # Add generation parameters
+            f.write("Generated: Yes\n")
+            f.write(f"Original Cliques: {stats.get('num_cliques', 'N/A')}\n")
+            f.write(f"Edge Removal Probability: {stats.get('edge_removal_prob', 'N/A')}\n")
+            f.write(f"Edge Addition Probability: {stats.get('edge_addition_prob', 'N/A')}\n")
+            f.write(f"Distribution Type: {stats.get('distribution_type', 'N/A')}\n")
+
+    # Save original graph
+    original_filename = f"{output_dir}/{case_name}_original.txt"
+    write_graph_txt(G_original, communities, stats_original, original_filename)
+
+    # Save perturbed graph
+    perturbed_filename = f"{output_dir}/{case_name}_perturbed.txt"
+    write_graph_txt(G_perturbed, communities, stats_perturbed, perturbed_filename)
+
+    print(f"Saved {case_name} as txt files to {output_dir}")
 
 def generate_test_suite():
     """Generate a comprehensive test suite with different parameters."""
@@ -138,7 +164,9 @@ def generate_test_suite():
                 G_original, G_perturbed, communities, stats_original, stats_perturbed = result
 
                 case_name = f"uniform_n{num_cliques}_s{size}_r{int(removal_prob*100)}"
-                save_test_case(G_original, G_perturbed, communities, stats_original, stats_perturbed, case_name)
+
+                # Save as txt files instead of pickle
+                save_test_case_as_txt(G_original, G_perturbed, communities, stats_original, stats_perturbed, case_name)
 
                 # Visualize the first few examples
                 if size <= 10 and num_cliques <= 5:
@@ -163,7 +191,9 @@ def generate_test_suite():
                     G_original, G_perturbed, communities, stats_original, stats_perturbed = result
 
                     case_name = f"skewed_n{num_cliques}_min{min_size}_max{max_size}_r{int(removal_prob*100)}"
-                    save_test_case(G_original, G_perturbed, communities, stats_original, stats_perturbed, case_name)
+
+                    # Save as txt files instead of pickle
+                    save_test_case_as_txt(G_original, G_perturbed, communities, stats_original, stats_perturbed, case_name)
 
                     visualize_graph(G_original, communities, "original", case_name)
                     visualize_graph(G_perturbed, communities, "perturbed", case_name)

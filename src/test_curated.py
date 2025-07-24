@@ -1,36 +1,13 @@
 from pathlib import Path
-import networkx as nx
-from algorithms.chalupa import ChalupaHeuristic
-from algorithms.ilp_solver import solve_ilp_clique_cover
-from loader import txt_to_networkx, get_ground_truth
+from utils import get_ground_truth
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from wrappers import chalupa_wrapper, ilp_wrapper
 
-class SimpleTestRunner:
+class TestRunner:
     def __init__(self, test_data_dir="data"):
         self.test_data_dir = Path(test_data_dir)
-
-    def chalupa_wrapper(self, txt_filepath):
-        """Wrapper for Chalupa algorithm"""
-        try:
-            G = txt_to_networkx(txt_filepath)
-            chalupa = ChalupaHeuristic(nx.complement(G))
-            result = chalupa.run()
-            return result['upper_bound']
-        except Exception as e:
-            print(f"Chalupa failed on {txt_filepath}: {e}")
-            return None
-
-    def ilp_wrapper(self, txt_filepath):
-        """Wrapper for ILP solver"""
-        try:
-            G = txt_to_networkx(txt_filepath)
-            result = solve_ilp_clique_cover(G)
-            if 'error' in result:
-                print(f"ILP failed on {txt_filepath}: {result['error']}")
-                return None
-            return result['chromatic_number']
-        except Exception as e:
-            print(f"ILP failed on {txt_filepath}: {e}")
-            return None
 
     def run_tests(self, algorithm_func, attribute_name="Chromatic Number"):
         """Run algorithm on all files and compare with ground truth"""
@@ -65,10 +42,10 @@ class SimpleTestRunner:
 
 # Usage:
 if __name__ == "__main__":
-    runner = SimpleTestRunner("test_cases/curated")
+    runner = TestRunner("test_cases/curated")
 
     print("Testing Chalupa Algorithm:")
-    chalupa_results = runner.run_tests(runner.chalupa_wrapper, "Chromatic Number")
+    chalupa_results = runner.run_tests(chalupa_wrapper, "Chromatic Number")
 
     print("\nTesting ILP Solver:")
-    ilp_results = runner.run_tests(runner.ilp_wrapper, "Chromatic Number")
+    ilp_results = runner.run_tests(ilp_wrapper, "Chromatic Number")
