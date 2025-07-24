@@ -85,7 +85,7 @@ def solve_ilp_clique_cover(G):
 if __name__ == "__main__":
     if len(sys.argv) < 2:
         print("Usage: python test_chalupa.py <path_to_graph_file>")
-        print("Example: python test_chalupa.py data/graph_53857.g6")
+        print("Example: python test_chalupa.py test_cases/curated/graph_50593.g6")
         sys.exit()
 
     graph_path = sys.argv[1]

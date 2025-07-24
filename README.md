@@ -9,13 +9,13 @@ Run `python src.wp0_generate_test_cases` to generate test cases of differing dis
 ## ILP
 
 ```
-python src/algorithms/ilp_solver.py data/curated_graph_26.g6
+python src/algorithms/ilp_solver.py test_cases/curated/graph_50593.g6
 ```
 
 ## Chalupa
 
 ```
-python -m experiments.wp1a_chalupa_heuristic data/curated/graph_26.g6
+python -m experiments.wp1a_chalupa_heuristic test_cases/curated/graph_50593.g6
 ```
 
 # Current State of Progress

@@ -100,7 +100,7 @@ class SimpleTestRunner:
 
 # Usage:
 if __name__ == "__main__":
-    runner = SimpleTestRunner("data/curated")
+    runner = SimpleTestRunner("test_cases/curated")
 
     print("Testing Chalupa Algorithm:")
     chalupa_results = runner.run_tests(runner.chalupa_wrapper, "Chromatic Number")

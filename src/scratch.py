@@ -1,6 +1,6 @@
 import pickle
 
-path = "data/uniform_n3_s5_r10_perturbed.pkl"
+path = "test_cases/generated/uniform_n3_s5_r10_perturbed.pkl"
 
 with open(path, "rb") as f:
     G = pickle.load(f)
