@@ -10,7 +10,7 @@ Run `python src/wp0_generate_test_cases` to generate test cases of differing dis
 
 ## Curation
 
-Curated test cases were found at (houseofgraphs.org)[houseofgraphs.org]. Each .txt file contains the graph structure as well as their invariants. Currently, only chromatic number is being extracted from the invariants to compare with the results of ILP and Chalupa. Feel free to add more test cases!
+Curated test cases were found at (houseofgraphs.org)[houseofgraphs.org]. Each .txt file contains the graph structure as well as their invariants. Currently, only chromatic number is being extracted from the invariants to compare with the results of ILP and Chalupa. Feel free to add more test cases (choose Invariant values as file format)!
 
 ## ILP
 
