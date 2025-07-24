@@ -2,9 +2,15 @@
 
 Install [uv](https://github.com/astral-sh/uv). Then add all the dependencies and activate the virtual environment with `source .venv/bin/activate`.
 
+# Test Cases
+
 ## Simulator
 
-Run `python src.wp0_generate_test_cases` to generate test cases of differing distributions.
+Run `python src.wp0_generate_test_cases` to generate test cases of differing distributions, saved to `test_cases/generated`.
+
+## Curation
+
+Curated test cases were found at (houseofgraphs.org)[houseofgraphs.org]. Each .txt file contains the graph structure as well as their invariants. Currently, only chromatic number is being extracted from the invariants to compare with the results of ILP and Chalupa. Feel free to add more!
 
 ## ILP
 
