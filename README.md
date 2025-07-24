@@ -6,6 +6,14 @@ Install [uv](https://github.com/astral-sh/uv). Then add all the dependencies and
 
 Run `python -m experiments.wp0_generate_test_cases` to generate test cases of differing distributions. You can visualize these by running e.g. `python -m experiments.visualize_results --case uniform_n10_s10_r10 --perturbed`. Can also show the original with `--original` instead of `--perturbed`.
 
+## ILP
+
+python src/algorithms/ilp_solver.py data/curated_graph_26.g6
+
+## Chalupa
+
+python -m experiments.wp1a_chalupa_heuristic data/curated/graph_26.g6
+
 # Current State of Progress
 
 - [ ] WP0 Simulator
@@ -14,7 +22,7 @@ Run `python -m experiments.wp0_generate_test_cases` to generate test cases of di
   - [x] Add script to visualize test cases
 - [ ] WP1 Exact vs Heuristic
   - [ ] Chalupa
-  - [ ] ILP
+  - [x] ILP
 - [ ] WP2 Kernelizations for vertex clique cover problem
 - [ ] WP3 Kernelizations for cluster editing problem
 - [ ] WP4 Comparison of vertex clique cover and cluster editing solutions

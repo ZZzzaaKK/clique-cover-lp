@@ -40,17 +40,21 @@ def run_chalupa_test(data_path: str, num_runs: int = 5):
     print(f"{'='*60}")
 
     # Load the graph
-    G = load_graph_from_pickle(data_path)
-    print(f"Graph loaded: {G.number_of_nodes()} nodes, {G.number_of_edges()} edges")
-
-    # Try to load ground truth if available
+    G = None
     ground_truth = None
-    metadata_path = data_path.replace('.pkl', '_metadata.json')
-    if os.path.exists(metadata_path):
-        with open(metadata_path, 'r') as f:
-            metadata = json.load(f)
-            ground_truth = {int(k): v for k, v in metadata.get('communities', {}).items()}
-            print(f"Ground truth loaded: {len(set(ground_truth.values()))} communities")
+    if data_path.endswith(".g6"):
+        G = nx.read_graph6(data_path)
+    else:
+        G = load_graph_from_pickle(data_path)
+        # Try to load ground truth if available
+        metadata_path = data_path.replace('.pkl', '_metadata.json')
+        if os.path.exists(metadata_path):
+            with open(metadata_path, 'r') as f:
+                metadata = json.load(f)
+                ground_truth = {int(k): v for k, v in metadata.get('communities', {}).items()}
+                print(f"Ground truth loaded: {len(set(ground_truth.values()))} communities")
+
+    print(f"Graph loaded: {G.number_of_nodes()} nodes, {G.number_of_edges()} edges")
 
     # Run the algorithm multiple times
     results = []
@@ -60,7 +64,7 @@ def run_chalupa_test(data_path: str, num_runs: int = 5):
         print(f"\n--- Run {run + 1}/{num_runs} ---")
 
         # Initialize and run the heuristic
-        chalupa = ChalupaHeuristic(data_path)
+        chalupa = ChalupaHeuristic(G)
 
         start_time = time.time()
         result = chalupa.run()
@@ -74,6 +78,7 @@ def run_chalupa_test(data_path: str, num_runs: int = 5):
         is_valid = verify_solution(G, clique_covering) if clique_covering else False
 
         print(f"  Lower bound: {result['lower_bound']}")
+        print(f"  Independent set: {result['independent_set']}")
         print(f"  Upper bound: {result['upper_bound']}")
         print(f"  Bounds interval: {result['bounds_interval']}")
         print(f"  Runtime: {runtime:.3f} seconds")
@@ -154,28 +159,7 @@ def run_chalupa_test(data_path: str, num_runs: int = 5):
         'total_time': total_time
     }
 
-def main():
-    """Main test function."""
-    print("Chalupa Heuristic Testing Suite")
-    print("=" * 60)
-
-    # Test on the specified dataset
-    data_path = "data/skewed_n10_min6_max22_r30_perturbed.pkl"
-
-    if not os.path.exists(data_path):
-        print(f"Error: Data file not found: {data_path}")
-        print("Available files in data directory:")
-        if os.path.exists("data"):
-            for f in os.listdir("data"):
-                if f.endswith('.pkl'):
-                    print(f"  {f}")
-        return
-
-    # Run comprehensive test
-    results = run_chalupa_test(data_path, num_runs=5)
-
-    # Save results to file
-    output_file = "results/chalupa_heuristic_results.json"
+def save_results_to_file(results, output_file):
     os.makedirs(os.path.dirname(output_file), exist_ok=True)
 
     # Convert sets to lists for JSON serialization
@@ -190,6 +174,34 @@ def main():
         json.dump(json_results, f, indent=2)
 
     print(f"\nResults saved to: {output_file}")
+
+def main():
+    """Main test function."""
+    print("Chalupa Heuristic Testing Suite")
+    print("=" * 60)
+
+    # Get data path from command line argument
+    if len(sys.argv) < 2:
+        print("Usage: python test_chalupa.py <path_to_graph_file>")
+        print("Example: python test_chalupa.py data/graph_53857.g6")
+        return
+
+    data_path = sys.argv[1]
+
+    if not os.path.exists(data_path):
+        print(f"Error: Data file not found: {data_path}")
+        print("Available files in data directory:")
+        if os.path.exists("data"):
+            for f in os.listdir("data"):
+                if f.endswith('.pkl'):
+                    print(f"  {f}")
+        return
+
+    # Run comprehensive test
+    results = run_chalupa_test(data_path, num_runs=5)
+
+    output_file = "results/chalupa_heuristic_results.json"
+    # save_results_to_file(results, output_file)
 
 if __name__ == "__main__":
     main()

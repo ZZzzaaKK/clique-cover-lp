@@ -14,15 +14,14 @@ References:
 import itertools
 import pickle
 import numpy as np
+import networkx as nx
 from .helpers import jump, random_permutation, uniformly_random
 
 class ChalupaHeuristic:
-    def __init__(self, path):
-        with open(path, "rb") as f:
-            G = pickle.load(f)
-            self.G = G
-            self.V = list(G.nodes())
-            self.E = list(G.edges())
+    def __init__(self, Input_Graph):
+            self.G = nx.complement(Input_Graph)
+            self.V = list(self.G.nodes())
+            self.E = list(self.G.edges())
             self.n = len(self.V)
             self.node_labels = np.zeros(self.n)
             self.upper_bound = None
@@ -171,9 +170,9 @@ class ChalupaHeuristic:
         best_cliques = None
         best_count = float('inf')
         iteration = 0
-        max_iterations = 1000
+        max_iterations = 10000
         no_improvement_count = 0
-        max_no_improvement = 100
+        max_no_improvement = 1000
 
         while iteration < max_iterations and no_improvement_count < max_no_improvement:
             cliques = self.find_greedy_clique_covering(permutation)
@@ -248,9 +247,9 @@ class ChalupaHeuristic:
         best_set = []
         best_permutation = permutation
         iteration = 0
-        max_iterations = 1000
+        max_iterations = 10000
         no_improvement_count = 0
-        max_no_improvement = 100
+        max_no_improvement = 1000
 
         while iteration < max_iterations and no_improvement_count < max_no_improvement:
             independent_set = self.greedy_independent_set(permutation)

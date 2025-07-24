@@ -6,13 +6,18 @@ import networkx as nx
 import gurobipy as gp
 from gurobipy import GRB
 import pickle
+import sys
+import os
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src'))
 
 # ----------------------------------------------------------
 # Funktion zum Laden eines Graphen aus einer Pickle-Datei
 # ----------------------------------------------------------
 def load_graph(path):
-    with open(path, "rb") as f:
-        return pickle.load(f)
+    if path.endswith(".g6"):
+        return nx.read_graph6(path)
+    else:
+        raise ValueError("Unsupported file format")
 
 # ----------------------------------------------------------
 # Hauptfunktion: Löse Vertex Clique Coloring mit ILP
@@ -79,7 +84,12 @@ def solve_ilp_clique_cover(G):
 # (erzeugt mit WP0-Simulator... Pickle)
 # ----------------------------------------------------------
 if __name__ == "__main__":
-    graph_path = "example_graph_wp0_original.pkl"  # Pfad anpassen!
+    if len(sys.argv) < 2:
+        print("Usage: python test_chalupa.py <path_to_graph_file>")
+        print("Example: python test_chalupa.py data/graph_53857.g6")
+        sys.exit()
+
+    graph_path = sys.argv[1]
 
     try:
         G = load_graph(graph_path)
