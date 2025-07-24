@@ -41,10 +41,10 @@ python -m experiments.wp1a_chalupa_heuristic test_cases/curated/graph_50593.g6
 - [ ] Bonus
 - [ ] WP5 Real Data
 
-# Open Questions
+# Next Steps
 
-- How will the test data be structured and where is it from? Will connections be sparse similar to social networks?
-- What kinds of graphs does the current chalupa heuristic perform well on and where does it struggle? Is that okay or is there a way to improve?
+- Test ILP individually (in test_curated.py)
+- Use ILP solutions as ground truth for chalupa in generated examples (in test_generated.py)
 
 # Work Program
 
