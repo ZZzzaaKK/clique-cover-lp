@@ -4,15 +4,19 @@ Install [uv](https://github.com/astral-sh/uv). Then add all the dependencies and
 
 ## Simulator
 
-Run `python -m experiments.wp0_generate_test_cases` to generate test cases of differing distributions. You can visualize these by running e.g. `python -m experiments.visualize_results --case uniform_n10_s10_r10 --perturbed`. Can also show the original with `--original` instead of `--perturbed`.
+Run `python src.wp0_generate_test_cases` to generate test cases of differing distributions.
 
 ## ILP
 
+```
 python src/algorithms/ilp_solver.py data/curated_graph_26.g6
+```
 
 ## Chalupa
 
+```
 python -m experiments.wp1a_chalupa_heuristic data/curated/graph_26.g6
+```
 
 # Current State of Progress
 
