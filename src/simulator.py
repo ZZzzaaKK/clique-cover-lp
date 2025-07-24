@@ -7,7 +7,7 @@ import numpy as np
 import random
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import List, Dict, Tuple, Optional
+from typing import Dict, Tuple
 
 @dataclass
 class GraphConfig:

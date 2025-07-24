@@ -18,13 +18,14 @@ def visualize_graph(G, communities, subdirectory, title):
     Args:
         G: NetworkX graph
         communities: Dictionary mapping node to its community (clique) id
+        subdirectory: Subdirectory to save the figure in
         title: Title for the plot
     """
     plt.figure(figsize=(10, 7))
 
     # Create a list of colors for each community
     unique_communities = set(communities.values())
-    color_map = plt.cm.rainbow(np.linspace(0, 1, len(unique_communities)))
+    color_map = plt.cm.get_cmap('rainbow')(np.linspace(0, 1, len(unique_communities)))
     community_colors = {comm: color_map[i] for i, comm in enumerate(unique_communities)}
 
     # Set node colors based on community
@@ -68,7 +69,7 @@ def visualize_solution_comparison(G, ground_truth_cliques, algorithm_cliques, ti
 
     # Draw ground truth
     unique_communities = set(gt_communities.values())
-    color_map = plt.cm.rainbow(np.linspace(0, 1, len(unique_communities)))
+    color_map = plt.cm.get_cmap('rainbow')(np.linspace(0, 1, len(unique_communities)))
     community_colors = {comm: color_map[i] for i, comm in enumerate(unique_communities)}
     node_colors = [community_colors[gt_communities[node]] for node in G.nodes()]
 
@@ -86,7 +87,7 @@ def visualize_solution_comparison(G, ground_truth_cliques, algorithm_cliques, ti
     # Draw algorithm solution
     plt.subplot(1, 2, 2)
     unique_communities = set(algo_communities.values())
-    color_map = plt.cm.rainbow(np.linspace(0, 1, len(unique_communities)))
+    color_map = plt.cm.get_cmap('rainbow')(np.linspace(0, 1, len(unique_communities)))
     community_colors = {comm: color_map[i] for i, comm in enumerate(unique_communities)}
     node_colors = [community_colors[algo_communities[node]] for node in G.nodes()]
 
