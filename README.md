@@ -29,10 +29,10 @@ python -m experiments.wp1a_chalupa_heuristic test_cases/curated/graph_50593.g6
 - [ ] WP0 Simulator
   - [ ] Generate test cases for different distributions
   - [x] Introduce perturbations
-  - [x] Add script to visualize test cases
 - [ ] WP1 Exact vs Heuristic
-  - [ ] Chalupa
+  - [x] Chalupa
   - [x] ILP
+  - [ ] Compare algorithms and write down answers
 - [ ] WP2 Kernelizations for vertex clique cover problem
 - [ ] WP3 Kernelizations for cluster editing problem
 - [ ] WP4 Comparison of vertex clique cover and cluster editing solutions
