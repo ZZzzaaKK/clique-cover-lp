@@ -12,14 +12,12 @@ References:
 """
 
 import itertools
-import pickle
 import numpy as np
-import networkx as nx
 from .helpers import jump, random_permutation, uniformly_random
 
 class ChalupaHeuristic:
     def __init__(self, Input_Graph):
-            self.G = nx.complement(Input_Graph)
+            self.G = Input_Graph
             self.V = list(self.G.nodes())
             self.E = list(self.G.edges())
             self.n = len(self.V)
@@ -48,7 +46,6 @@ class ChalupaHeuristic:
         print("Finding lower bound using Randomized Local Search...")
         self.lower_bound, self.best_independent_set = self.find_maximum_independent_set()
 
-        # Return results
         return {
             'lower_bound': self.lower_bound,
             'upper_bound': self.upper_bound,
@@ -143,7 +140,7 @@ class ChalupaHeuristic:
         # Initialize node labels to -1 (unassigned)
         self.node_labels = np.full(self.n, -1, dtype=int)
 
-        for i, current_vertex in enumerate(permutation):
+        for _, current_vertex in enumerate(permutation):
             # Find which clique this vertex should join
             label = self.find_equal(current_vertex, sizes)
 

@@ -90,8 +90,8 @@ problem from an exact solution of the other?
 ## WP5 Real data.
 
 Once everything is up and running, apply the workflows to
-a real data from shift-alignment predictions on Rfam RNA families. This
-data will by supplied a around May 1st by Maria Waldl.
+real data from shift-alignment predictions on Rfam RNA families. This
+data will by supplied around May 1st by Maria Waldl.
 
 ## References
 

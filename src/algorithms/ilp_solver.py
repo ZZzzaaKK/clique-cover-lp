@@ -5,7 +5,6 @@ Integer Linear Programming (ILP) formulation for the vertex clique coloring prob
 import networkx as nx
 import gurobipy as gp
 from gurobipy import GRB
-import pickle
 import sys
 import os
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src'))
