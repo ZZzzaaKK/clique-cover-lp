@@ -69,5 +69,5 @@ if __name__ == "__main__":
     print("\nTesting ILP Solver:")
     ilp_results = runner.run_tests(ilp_wrapper, "Chromatic Number")
 
-    save_summary(chalupa_results, f"{path}_chalupa")
-    save_summary(ilp_results, f"{path}_ilp")
+    save_summary(chalupa_results, f"{path.replace('/', '_')}_chalupa")
+    save_summary(ilp_results, f"{path.replace('/', '_')}_ilp")
