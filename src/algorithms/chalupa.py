@@ -177,7 +177,6 @@ class ChalupaHeuristic:
                 best_count = clique_count
                 best_cliques = cliques
                 no_improvement_count = 0
-                print(f"Iteration {iteration}: Found better solution with {clique_count} cliques")
             else:
                 no_improvement_count += 1
 
@@ -189,7 +188,6 @@ class ChalupaHeuristic:
 
             iteration += 1
 
-        print(f"Iterated Greedy completed after {iteration} iterations. Best: {best_count} cliques")
         return best_cliques
 
     def greedy_independent_set(self, permutation):
@@ -255,7 +253,6 @@ class ChalupaHeuristic:
                 best_set = independent_set
                 best_permutation = permutation
                 no_improvement_count = 0
-                print(f"RLS Iteration {iteration}: Found larger independent set of size {current_size}")
             else:
                 no_improvement_count += 1
 
@@ -269,5 +266,4 @@ class ChalupaHeuristic:
 
             iteration += 1
 
-        print(f"RLS completed after {iteration} iterations. Best independent set size: {best_size}")
         return best_size, best_set
