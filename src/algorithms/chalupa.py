@@ -38,12 +38,10 @@ class ChalupaHeuristic:
         - Best independent set found
         """
         # Step 1: Find upper bound using Iterated Greedy heuristic for clique covering
-        print("Finding upper bound using Iterated Greedy heuristic...")
         self.best_clique_covering = self.iterated_greedy_clique_covering()
         self.upper_bound = len(self.best_clique_covering) if self.best_clique_covering else float('inf')
 
         # Step 2: Find lower bound using Randomized Local Search for maximum independent set
-        print("Finding lower bound using Randomized Local Search...")
         self.lower_bound, self.best_independent_set = self.find_maximum_independent_set()
 
         return {
