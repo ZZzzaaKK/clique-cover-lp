@@ -99,7 +99,8 @@ def visualize_solution_comparison(G, ground_truth_cliques, algorithm_cliques, ti
 
 def save_test_case_as_txt(G_original, G_perturbed, communities, stats_original, stats_perturbed, case_name, output_dir="test_cases/generated"):
     """Save test cases in the same txt format as curated graphs."""
-    os.makedirs(output_dir, exist_ok=True)
+    os.makedirs(f"{output_dir}/perturbed", exist_ok=True)
+    os.makedirs(f"{output_dir}/original", exist_ok=True)
 
     def write_graph_txt(G, filename):
         """Write a single graph in txt format"""
