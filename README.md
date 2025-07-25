@@ -20,11 +20,18 @@ Get yourself an academic license for Gurobi. Then:
 python src/algorithms/ilp_solver.py test_cases/curated/graph_50593.txt
 ```
 
+You can also run
+```
+python src/write_ilp_calculated_ground_truths.py
+```
+to let the ILP solver calculate chromatic numbers for all test cases in `test_cases/generated` and append the results to the respective files.
+
 ## Chalupa
 
 ```
-python -m experiments.wp1a_chalupa_heuristic test_cases/curated/graph_50593.g6
+python src/test_chalupa.py
 ```
+to test chalupa on the generated graphs labeled in the previous ILP step.
 
 # Current State of Progress
 

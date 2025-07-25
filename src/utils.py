@@ -1,12 +1,12 @@
 import networkx as nx
 
-def get_ground_truth(txt_filepath, attribute_name="Chromatic Number"):
+def get_value(txt_filepath, attribute_name="Chromatic Number"):
     """Extract just the ground truth value from a txt file"""
     with open(txt_filepath, 'r') as f:
         for line in f:
             if line.startswith(f"{attribute_name}:"):
                 value_str = line.split(':', 1)[1].strip()
-                return int(value_str)
+                return value_str
     return None
 
 def txt_to_networkx(txt_filepath):

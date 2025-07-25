@@ -101,7 +101,7 @@ def save_test_case_as_txt(G_original, G_perturbed, communities, stats_original, 
     """Save test cases in the same txt format as curated graphs."""
     os.makedirs(output_dir, exist_ok=True)
 
-    def write_graph_txt(G, communities, stats, filename):
+    def write_graph_txt(G, filename):
         """Write a single graph in txt format"""
         with open(filename, 'w') as f:
             # Write adjacency list (sorted by vertex number)
@@ -125,74 +125,65 @@ def save_test_case_as_txt(G_original, G_perturbed, communities, stats_original, 
             f.write(f"Number of Components: {nx.number_connected_components(G)}\n")
 
             # Add clique cover information
-            f.write(f"Ground Truth Clique Cover: {len(set(communities.values()))}\n")
             f.write(f"Maximum Degree: {max(dict(G.degree()).values()) if G.nodes() else 0}\n")
             f.write(f"Minimum Degree: {min(dict(G.degree()).values()) if G.nodes() else 0}\n")
 
-            # Add generation parameters
-            f.write("Generated: Yes\n")
-            f.write(f"Original Cliques: {stats.get('num_cliques', 'N/A')}\n")
-            f.write(f"Edge Removal Probability: {stats.get('edge_removal_prob', 'N/A')}\n")
-            f.write(f"Edge Addition Probability: {stats.get('edge_addition_prob', 'N/A')}\n")
-            f.write(f"Distribution Type: {stats.get('distribution_type', 'N/A')}\n")
-
     # Save original graph
-    original_filename = f"{output_dir}/{case_name}_original.txt"
-    write_graph_txt(G_original, communities, stats_original, original_filename)
+    original_filename = f"{output_dir}/original/{case_name}.txt"
+    write_graph_txt(G_original, original_filename)
 
     # Save perturbed graph
-    perturbed_filename = f"{output_dir}/{case_name}_perturbed.txt"
-    write_graph_txt(G_perturbed, communities, stats_perturbed, perturbed_filename)
+    perturbed_filename = f"{output_dir}/perturbed/{case_name}.txt"
+    write_graph_txt(G_perturbed, perturbed_filename)
 
     print(f"Saved {case_name} as txt files to {output_dir}")
 
 def generate_test_suite():
     """Generate a comprehensive test suite with different parameters."""
     # Generate uniform distribution examples
-    for size in [5, 10, 20]:
-        for num_cliques in [3, 5, 10]:
-            for removal_prob in [0.1, 0.3]:
-                config = GraphConfig(
-                    num_cliques=num_cliques,
-                    distribution_type="uniform",
-                    uniform_size=size,
-                    edge_removal_prob=removal_prob,
-                    edge_addition_prob=removal_prob/4
-                )
+    for size in [2, 6, 12]:
+        for num_cliques in [3, 5]:
+            removal_prob = 0.3
+            config = GraphConfig(
+                num_cliques=num_cliques,
+                distribution_type="uniform",
+                uniform_size=size,
+                edge_removal_prob=removal_prob,
+                edge_addition_prob=removal_prob/4
+            )
 
-                result = GraphGenerator.generate_test_case(config)
-                G_original, G_perturbed, communities, stats_original, stats_perturbed = result
+            result = GraphGenerator.generate_test_case(config)
+            G_original, G_perturbed, communities, stats_original, stats_perturbed = result
 
-                case_name = f"uniform_n{num_cliques}_s{size}_r{int(removal_prob*100)}"
+            case_name = f"uniform_n{num_cliques}_s{size}_r{int(removal_prob*100)}"
 
-                # Save as txt files instead of pickle
-                save_test_case_as_txt(G_original, G_perturbed, communities, stats_original, stats_perturbed, case_name)
+            # Save as txt files instead of pickle
+            save_test_case_as_txt(G_original, G_perturbed, communities, stats_original, stats_perturbed, case_name)
 
-                # Visualize the first few examples
-                if size <= 10 and num_cliques <= 5:
-                    visualize_graph(G_original, communities, "original", case_name)
-                    visualize_graph(G_perturbed, communities, "perturbed", case_name)
+            # Visualize the first few examples
+            if size <= 10 and num_cliques <= 5:
+                visualize_graph(G_original, communities, "original", case_name)
+                visualize_graph(G_perturbed, communities, "perturbed", case_name)
 
     # Generate skewed distribution examples
-    for min_size in [2, 6, 10]:
-        for max_size in [14, 18, 22]:
-            for num_cliques in [3, 5, 10]:
-                for removal_prob in [0.1, 0.3]:
+    for min_size in [1, 5, 8]:
+        for max_size in [5, 11, 20]:
+            for num_cliques in [2, 3, 5]:
+                for perturbation_strength in [0.1, 0.3, 0.8]:
                     config = GraphConfig(
                         num_cliques=num_cliques,
                         distribution_type="skewed",
                         min_size=min_size,
                         max_size=max_size,
-                        edge_removal_prob=removal_prob,
-                        edge_addition_prob=removal_prob/4
+                        edge_removal_prob=perturbation_strength,
+                        edge_addition_prob=perturbation_strength/4
                     )
 
                     result = GraphGenerator.generate_test_case(config)
                     G_original, G_perturbed, communities, stats_original, stats_perturbed = result
 
-                    case_name = f"skewed_n{num_cliques}_min{min_size}_max{max_size}_r{int(removal_prob*100)}"
+                    case_name = f"skewed_cliques{num_cliques}_min{min_size}_max{max_size}_perturbation{int(perturbation_strength*100)}"
 
-                    # Save as txt files instead of pickle
                     save_test_case_as_txt(G_original, G_perturbed, communities, stats_original, stats_perturbed, case_name)
 
                     visualize_graph(G_original, communities, "original", case_name)
