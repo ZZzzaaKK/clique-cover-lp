@@ -6,6 +6,7 @@ from algorithms.ilp_solver import solve_ilp_clique_cover
 def chalupa_wrapper(txt_filepath):
     """Wrapper for Chalupa algorithm"""
     try:
+        print(f"{txt_filepath}")
         G = txt_to_networkx(txt_filepath)
         chalupa = ChalupaHeuristic(nx.complement(G))
         result = chalupa.run()
@@ -17,6 +18,7 @@ def chalupa_wrapper(txt_filepath):
 def ilp_wrapper(txt_filepath):
     """Wrapper for ILP solver"""
     try:
+        print(f"{txt_filepath}")
         G = txt_to_networkx(txt_filepath)
         result = solve_ilp_clique_cover(G)
         if 'error' in result:
