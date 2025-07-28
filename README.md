@@ -6,7 +6,7 @@ Install [uv](https://github.com/astral-sh/uv). Then add all the dependencies and
 
 ## Simulator
 
-Run `python src/wp0_generate_test_graphs` to generate test cases of differing distributions, saved to `test_graphs/generated`.
+Run `python src/wp0_generate_test_graphs` to generate test cases of differing distributions and save them to `test_graphs/generated`.
 
 ## Testing
 
@@ -14,7 +14,7 @@ For convenience, you can run the script `run_tests.sh`. It first calculates chro
 
 ## Curation
 
-Curated test cases were found at [houseofgraphs.org](houseofgraphs.org). Each `.txt` file contains the graph structure as well as their invariants. Currently, only chromatic number is being extracted from the invariants togenerated compare with the results of ILP and Chalupa. Feel free to add more test cases (choose Invariant values as file format)!
+Curated test cases were found at [houseofgraphs.org](houseofgraphs.org). Each `.txt` file contains the graph structure as well as their invariants. Feel free to add more test cases (choose Invariant values as file format)!
 
 # Current State of Progress
 
