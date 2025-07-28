@@ -8,36 +8,20 @@ Install [uv](https://github.com/astral-sh/uv). Then add all the dependencies and
 
 Run `python src/wp0_generate_test_graphs` to generate test cases of differing distributions, saved to `test_graphs/generated`.
 
+## Testing
+
+For convenience, you can run the script `run_tests.sh`. It first calculates chromatic numbers for all generated perturbed graphs via the `src/add_ground_truth.py` script, and then runs through the tests you specify in the script. Adding ground truths relies on the Gurobi solver, so you'll need a license for larger graphs. You can also deviate from default path by running with a positional argument like this: `run_tests.sh test_graphs/curated`.
+
 ## Curation
 
-Curated test cases were found at (houseofgraphs.org)[houseofgraphs.org]. Each .txt file contains the graph structure as well as their invariants. Currently, only chromatic number is being extracted from the invariants to compare with the results of ILP and Chalupa. Feel free to add more test cases (choose Invariant values as file format)!
-
-## ILP
-
-Get yourself an academic license for Gurobi. Then:
-
-```
-python src/algorithms/ilp_solver.py test_graphs/curated/graph_50593.txt
-```
-
-You can also run
-```
-python src/write_ilp_calculated_ground_truths.py
-```
-to let the ILP solver calculate chromatic numbers for all test cases in `test_graphs/generated` and append the results to the respective files.
-
-## Chalupa
-
-```
-python src/test_chalupa.py
-```
-to test chalupa on the generated graphs labeled in the previous ILP step.
+Curated test cases were found at [houseofgraphs.org](houseofgraphs.org). Each `.txt` file contains the graph structure as well as their invariants. Currently, only chromatic number is being extracted from the invariants togenerated compare with the results of ILP and Chalupa. Feel free to add more test cases (choose Invariant values as file format)!
 
 # Current State of Progress
 
 - [ ] WP0 Simulator
-  - [ ] Generate test cases for different distributions
+  - [x] Generate test cases for different distributions
   - [x] Introduce perturbations
+  - [ ] Choose reasonable parameters for task completions
 - [ ] WP1 Exact vs Heuristic
   - [x] Chalupa
   - [x] ILP
