@@ -11,7 +11,7 @@ wheels/
 .venv
 
 # Generated test cases and figures
-test_cases/generated
+test_graphs/generated
 
 figures/*
 results/*

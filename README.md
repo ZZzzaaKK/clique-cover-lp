@@ -6,7 +6,7 @@ Install [uv](https://github.com/astral-sh/uv). Then add all the dependencies and
 
 ## Simulator
 
-Run `python src/wp0_generate_test_cases` to generate test cases of differing distributions, saved to `test_cases/generated`.
+Run `python src/wp0_generate_test_graphs` to generate test cases of differing distributions, saved to `test_graphs/generated`.
 
 ## Curation
 
@@ -17,14 +17,14 @@ Curated test cases were found at (houseofgraphs.org)[houseofgraphs.org]. Each .t
 Get yourself an academic license for Gurobi. Then:
 
 ```
-python src/algorithms/ilp_solver.py test_cases/curated/graph_50593.txt
+python src/algorithms/ilp_solver.py test_graphs/curated/graph_50593.txt
 ```
 
 You can also run
 ```
 python src/write_ilp_calculated_ground_truths.py
 ```
-to let the ILP solver calculate chromatic numbers for all test cases in `test_cases/generated` and append the results to the respective files.
+to let the ILP solver calculate chromatic numbers for all test cases in `test_graphs/generated` and append the results to the respective files.
 
 ## Chalupa
 
