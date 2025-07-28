@@ -49,7 +49,7 @@ def save_summary(results, name):
             f.write(f"Time taken: {result['time_taken']}\n")
             f.write("-" * 30 + "\n")
 
-        f.write(f"\nSummary:\n")
+        f.write("\nSummary:\n")
         f.write(f"Correct: {correct}/{total}")
 
         if total > 0:

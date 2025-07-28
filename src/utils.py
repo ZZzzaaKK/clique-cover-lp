@@ -1,7 +1,7 @@
 import networkx as nx
 
 def get_value(txt_filepath, attribute_name="Chromatic Number"):
-    """Extract just the ground truth value from a txt file"""
+    """Extract a value from a txt file"""
     with open(txt_filepath, 'r') as f:
         for line in f:
             if line.startswith(f"{attribute_name}:"):
