@@ -1,7 +1,6 @@
 from wrappers import ilp_wrapper
 from pathlib import Path
-from utils import get_value, txt_to_networkx
-import time
+from utils import get_value
 import sys
 
 def add_ground_truth_if_missing(directory):
