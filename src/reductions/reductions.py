@@ -254,13 +254,12 @@ def apply_all_reductions(G, verbose: bool = True, timing: bool = True) -> Tuple[
         apply_crown_reduction
     ]
     trace = []
-    changed = True
     round_number = 1
-    while changed:
-        changed = False
-        if verbose:
-            logger.info(f"\n--- Reduction Round {round_number} ---")
-        for reduction in reductions:
+    for reduction in reductions:
+        changed = True
+        while changed:
+            if verbose:
+                logger.info(f"\n--- Reduction Round {round_number} ({reduction.__name__}) ---")
             start = time.time() if timing else None
             G, did_change, details = reduction(G)
             end = time.time() if timing else None
@@ -271,7 +270,6 @@ def apply_all_reductions(G, verbose: bool = True, timing: bool = True) -> Tuple[
                         if start is not None and end is not None:
                             logger.info(f"Time: {end - start:.4f}s")
                 trace.append((reduction.__name__, details))
-                changed = True
-                break
-        round_number += 1
+                round_number += 1
+            changed = did_change
     return G, trace

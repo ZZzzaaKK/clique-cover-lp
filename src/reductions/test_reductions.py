@@ -3,7 +3,7 @@ import sys
 import os
 import networkx as nx
 # import all necessary reduction functions from the reductions module
-from reductions.reductions import (
+from reductions import (
     apply_isolated_vertex_reduction,
     apply_degree_two_folding,
     apply_twin_removal,
