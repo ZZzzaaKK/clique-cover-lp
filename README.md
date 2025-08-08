@@ -6,7 +6,7 @@ Install [uv](https://github.com/astral-sh/uv). Then add all the dependencies and
 
 ## Simulator
 
-Run `python src/wp0_generate_test_graphs` to generate test cases of differing distributions and save them to `test_graphs/generated`.
+Run `python src/generate_test_graphs.py` to generate test cases of differing distributions and save them to `test_graphs/generated`.
 
 ## Testing
 
