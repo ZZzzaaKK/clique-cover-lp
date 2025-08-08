@@ -1,5 +1,5 @@
 """
-WP1c: Compare Chalupa heuristic to ILP solutions
+WP1c: Compare Chalupa heuristics to ILP solutions
 Analyzes how often the heuristic produces exact solutions and performance metrics
 """
 
@@ -149,7 +149,7 @@ class WP1Analyzer:
         return params
 
     def create_comparison_plots(self, data, stats):
-        """Create visualization plots for WP1c"""
+        """Create visualization plots for comparison"""
         fig, axes = plt.subplots(2, 3, figsize=(15, 10))
         fig.suptitle('WP1c: Chalupa Heuristic vs ILP Comparison', fontsize=16)
 
@@ -301,7 +301,7 @@ class WP1Analyzer:
 
 
 def main():
-    """Run WP1c analysis"""
+    """Run comparison analysis"""
     analyzer = WP1Analyzer()
 
     print("Loading results...")
@@ -310,7 +310,7 @@ def main():
     print("Analyzing accuracy...")
     stats = analyzer.analyze_accuracy(data)
 
-    print("\n=== WP1c Results ===")
+    print("\n=== Comparison Results ===")
     for method, stat in stats.items():
         print(f"\n{method.upper()}:")
         print(f"  Accuracy: {stat['accuracy']:.1f}%")
