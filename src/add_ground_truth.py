@@ -1,40 +1,16 @@
-from wrappers import ilp_wrapper
-from pathlib import Path
-from utils import get_value
-import sys
-
-def add_ground_truth_if_missing(directory):
-    """Add ground truth only to files that don't already have it"""
-    path = Path(graph_dir)
-
-    for txt_file in path.glob("**/*.txt"):
-        # Check if ground truth already exists
-        existing_ground_truth = get_value(txt_file, "Chromatic Number")
-
-        if existing_ground_truth is None:
-            print(f"Computing ground truth for {txt_file.name}...")
-            chromatic_number = ilp_wrapper(str(txt_file))
-
-            if chromatic_number is not None:
-                # Append to file
-                with open(txt_file, 'a') as f:
-                    f.write("# Calculated by ILP\n")
-                    f.write(f"Chromatic Number: {chromatic_number}\n")
-                print(f"  Added: Chromatic Number: {chromatic_number}")
-            else:
-                print(f"  Failed to compute for {txt_file.name}")
-        else:
-            print(f"Ground truth already exists for {txt_file.name}: {existing_ground_truth}")
-
-if __name__ == "__main__":
-    graph_dir = sys.argv[1] if len(sys.argv) > 1 else "test_graphs/generated/perturbed"
-    add_ground_truth_if_missing(graph_dir)
-
-
-"""
 '''
-EDIT suggestion: 
+EDIT suggestion:
 Add ground truth (Clique Cover Number θ(G)) to graph instance files.
+
+Berechne θ(G) per ILP auf dem Komplementgraphen Ḡ (kalt, ohne Warmstart) und schreibe eine
+standardisierte Ground‑Truth‑Zeile in eine Begleitdatei.
+
+Ausgabezeile (exakt):
+    "Clique Cover Number θ(G): K (Calculated by ILP on complement graph Ḡ)."
+
+Beispiel:
+    python -m add_ground_truth path/to/graph.txt --overwrite
+
 
 Why this matters:
 - We solve Clique Cover by coloring the **complement graph** (θ(G) = χ(Ḡ)).
@@ -44,42 +20,68 @@ Why this matters:
   making downstream evaluation (WP1/WP2) unambiguous and reproducible.
 '''
 from pathlib import Path
+from typing import Optional
 import sys
 
-from wrappers import ilp_wrapper
+# Wrapper & Utils
+from wrappersV2 import ilp_wrapper  # nutzt solve_ilp_clique_cover intern auf Ḡ; warmstart standardmäßig deaktiviert
 from utils import get_value
 
-def add_ground_truth_if_missing(directory):
-    '''Append exact Clique Cover Number θ(G) to each .txt graph file if missing.
+def _append_theta_line(txt_path: Path, theta: int) -> None:
+    #Append the standardized θ(G) line to the given .txt file.
+    with open(txt_path, 'a', encoding='utf-8') as f:
+        # Kommentarzeile als Kontext-Hinweis (bleibt in der Datei)
+        f.write("# Calculated by ILP on complement graph Ḡ\n")
+        # Exakt geforderte Ausgabezeile
+        f.write(f"Clique Cover Number θ(G): {theta} (Calculated by ILP on complement graph Ḡ).\n")
 
-    Notes
-    -----
-    - `ilp_wrapper` computes θ(G) by solving χ(Ḡ) (ILP on the complement graph).
-    - We check for the **new label** to avoid duplicate or legacy entries.
-    '''
+def add_ground_truth_if_missing(directory: str, verbose: bool = True) -> None:
+    """
+    Durchsuche `directory` rekursiv nach .txt-Dateien und füge die θ(G)-Zeile an,
+    falls sie fehlt.
+
+    Hinweise
+    --------
+    - `ilp_wrapper` berechnet θ(G) exakt via χ(Ḡ)-ILP (warmstart standardmäßig deaktiviert).
+    - Die Prüfung nutzt `get_value(..., attribute_name="Clique Cover Number θ(G)")`.
+    """
     path = Path(directory)
     if not path.exists():
         raise FileNotFoundError(f"Path not found: {directory}")
 
     for txt_file in path.glob("**/*.txt"):
-        existing_theta = get_value(txt_file, "Clique Cover Number θ(G)")
+        # Prüfe, ob die neue Ground-Truth-Zeile bereits existiert
+        existing_theta = get_value(str(txt_file), "Clique Cover Number θ(G)")
         if existing_theta is not None:
-            print(f"Ground truth already exists for {txt_file.name}: {existing_theta}")
+            if verbose:
+                print(f"✔ Ground truth already exists for {txt_file.name}: {existing_theta}")
             continue
 
-        print(f"Computing ground truth for {txt_file.name}…")
-        theta = ilp_wrapper(str(txt_file))
-        if theta is None:
-            print(f"  Failed to compute θ(G) for {txt_file.name}")
-            continue
+        if verbose:
+            print(f"→ Computing ground truth for {txt_file.name} …")
 
-        with open(txt_file, 'a', encoding='utf-8') as f:
-            f.write("# Calculated by ILP on complement graph\n")
-            f.write(f"Clique Cover Number θ(G): {theta}\n")
-        print(f"  Added: Clique Cover Number θ(G): {theta}")
+        # Kalter ILP-Lauf (use_warmstart=False) für faire Ground-Truth
+        res = ilp_wrapper(str(txt_file), use_warmstart=False, time_limit=600, mip_gap=0.0, verbose=False, return_assignment=False)
+        if isinstance(res, dict):
+            status = res.get('status')
+            theta = res.get('theta')
+            if status not in ("optimal", "time_limit", "suboptimal", "interrupted") or theta is None:
+                print(f"  ✖ Failed to compute θ(G) for {txt_file.name} (status={status})")
+                continue
+        else:
+            # Falls ilp_wrapper aus Kompatibilitätsgründen nur eine Zahl liefert
+            theta = int(res)
 
-if __name__ == "__main__":
+        _append_theta_line(txt_file, int(theta))
+        if verbose:
+            print(f"  + Added: Clique Cover Number θ(G): {theta}")
+
+
+def _cli() -> None:
+    """CLI-Einstieg: `python -m add_ground_truth_dir <dir>`"""
     target_dir = sys.argv[1] if len(sys.argv) > 1 else "test_graphs/generated/perturbed"
     add_ground_truth_if_missing(target_dir)
 
-"""
+
+if __name__ == "__main__":
+    _cli()
