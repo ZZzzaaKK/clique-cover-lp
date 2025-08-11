@@ -1,9 +1,6 @@
 """
 WP1.c Evaluation: Comprehensive comparison of Chalupa heuristic vs ILP solver
 Analyzes runtime, solution quality, and perturbation strength effects.
-
-Author: Evaluation Script for Clique Cover Project
-Date: 2024
 """
 
 import os
@@ -611,8 +608,8 @@ def main():
         print("No evaluation results. Exiting.")
         return
 
-    print(f"\n✓ Evaluated {len(df)} instances")
-    print(f"✓ Valid comparisons: {df['quality_ratio'].notna().sum()}")
+    print(f"\n Evaluated {len(df)} instances")
+    print(f" Valid comparisons: {df['quality_ratio'].notna().sum()}")
 
     # Generate plots
     print("\n2. Creating runtime analysis plots...")
