@@ -215,7 +215,9 @@ class WP1Analyzer:
                 if col in test_data.columns:
                     value = test_data[col].iloc[0] if not test_data[col].isna().all() else None
                     row[col] = value
-            
+            # Sammle pro Methode ggf. vorhandene 'actual'-Werte, um später eine robuste ground_truth zu bestimmen
+            method_actuals = {}
+
             # Extract results for each method
             for method in ['chalupa', 'ilp', 'reduced_ilp']:
                 method_data = test_data[test_data['method'] == method]
@@ -224,16 +226,49 @@ class WP1Analyzer:
                     row[f'{method}_theta'] = method_data['predicted'].iloc[0]
                     row[f'{method}_time'] = method_data['time_taken'].iloc[0] if 'time_taken' in method_data.columns else None
                     row[f'{method}_correct'] = method_data['correct'].iloc[0] if 'correct' in method_data.columns else None
-                    
+
+                    # Merke methodenspezifisches 'actual' (falls vorhanden) für die spätere Ground-Truth-Wahl
+                    if 'actual' in method_data.columns:
+                        method_actuals[method] = method_data['actual'].iloc[0]
+
                     if 'actual' in method_data.columns:
                         actual = method_data['actual'].iloc[0]
                         predicted = method_data['predicted'].iloc[0]
                         row[f'{method}_quality_ratio'] = predicted / actual if actual > 0 else None
                         row[f'{method}_absolute_gap'] = predicted - actual
-            
+
+                    # Robuste Wahl der Ground Truth: priorisiere ILP > Reduced ILP > Chalupa, sonst beliebigen 'actual'
+                    gt_candidates = [
+                        method_actuals.get('ilp', None),
+                        method_actuals.get('reduced_ilp', None),
+                        method_actuals.get('chalupa', None)
+                    ]
+                    gt = next(
+                        (v for v in gt_candidates if v is not None and not (isinstance(v, float) and np.isnan(v))),
+                        None)
+                    if gt is None and 'actual' in test_data.columns:
+                        # Fallback: irgendein 'actual' aus den Zeilen dieses Tests
+                        non_na_actuals = test_data['actual'].dropna()
+                        gt = non_na_actuals.iloc[0] if not non_na_actuals.empty else None
+                    if gt is not None:
+                        row['ground_truth'] = gt
+
+                        # Fülle fehlende Qualitätsmetriken pro Methode relativ zur Ground Truth, ohne vorhandene zu überschreiben
+                        if gt > 0:
+                            for method in ['chalupa', 'ilp', 'reduced_ilp']:
+                                theta_key = f'{method}_theta'
+                                ratio_key = f'{method}_quality_ratio'
+                                gap_key = f'{method}_absolute_gap'
+                                if theta_key in row and row[theta_key] is not None:
+                                    if ratio_key not in row or row[ratio_key] is None:
+                                        row[ratio_key] = row[theta_key] / gt
+                                    if gap_key not in row or row[gap_key] is None:
+                                        row[gap_key] = row[theta_key] - gt
+
             # Store ground truth
-            if 'actual' in test_data.columns:
-                row['ground_truth'] = test_data['actual'].iloc[0]
+            # -- entfällt bzw. wird durch den obigen robusteren Block ersetzt ---
+            #if 'actual' in test_data.columns:
+            #    row['ground_truth'] = test_data['actual'].iloc[0]
             
             comparison_data.append(row)
         
