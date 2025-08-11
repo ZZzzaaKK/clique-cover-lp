@@ -2,6 +2,10 @@
 __pycache__/
 *.py[oc]
 build/
+*.pyo
+*.pyd
+*.pkl
+*.pickle
 dist/
 wheels/
 *.egg-info
@@ -9,6 +13,12 @@ wheels/
 
 # Virtual environments
 .venv
+venv/
+env/
+
+#OSC/MISC
+.DS_Store
+Thumbs.ds
 
 # Generated test cases and figures
 test_graphs/generated
