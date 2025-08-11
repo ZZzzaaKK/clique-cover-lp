@@ -20,12 +20,22 @@ Why this matters:
   making downstream evaluation (WP1/WP2) unambiguous and reproducible.
 '''
 from pathlib import Path
-from typing import Optional
 import sys
+from typing import Optional
 
-# Wrapper & Utils
-from wrappersV2 import ilp_wrapper  # nutzt solve_ilp_clique_cover intern auf Ḡ; warmstart standardmäßig deaktiviert
-from utils import get_value
+# ----------------------
+# Import-Handling: funktioniert sowohl mit direktem Aufruf als auch als Modul
+# ----------------------
+try:
+    # Relativer Import, wenn als Modul gestartet
+    from .wrapperV2 import ilp_wrapper
+    from .utils import get_value
+except ImportError:
+    # Fallback: Projekt-Root zum sys.path hinzufügen und absolute Imports nutzen
+    import os
+    sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+    from src.wrapperV2 import ilp_wrapper
+    from src.utils import get_value
 
 def _append_theta_line(txt_path: Path, theta: int) -> None:
     #Append the standardized θ(G) line to the given .txt file.
@@ -70,7 +80,7 @@ def add_ground_truth_if_missing(directory: str, verbose: bool = True) -> None:
                 continue
         else:
             # Falls ilp_wrapper aus Kompatibilitätsgründen nur eine Zahl liefert
-            theta = int(res)
+        theta = int(res)
 
         _append_theta_line(txt_file, int(theta))
         if verbose:
