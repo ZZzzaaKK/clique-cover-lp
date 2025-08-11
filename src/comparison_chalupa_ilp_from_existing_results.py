@@ -1,10 +1,6 @@
-#!/usr/bin/env python3
 """
 WP1c: Compare Chalupa heuristics to ILP solutions for existing results
 Works with existing result files but provides comprehensive analysis like wp1c_evaluation.py
-
-Author: Analysis for Clique Cover Project
-Date: 2024
 """
 
 import pandas as pd
@@ -577,9 +573,9 @@ class WP1Analyzer:
                 print(f"  p-value: {p_value:.6f}")
                 
                 if p_value < 0.05:
-                    print("  ✗ Chalupa is statistically different from optimal (p < 0.05)")
+                    print("Chalupa is statistically different from optimal (p < 0.05)")
                 else:
-                    print("  ✓ No significant difference from optimal (p ≥ 0.05)")
+                    print("No significant difference from optimal (p ≥ 0.05)")
         
         # Paired t-test for runtimes
         if 'chalupa_time' in comparison_df.columns and 'ilp_time' in comparison_df.columns:
@@ -833,21 +829,21 @@ class WP1Analyzer:
             if 'chalupa_quality_ratio' in df.columns:
                 accuracy = (df['chalupa_quality_ratio'] == 1.0).mean() * 100
                 if accuracy >= 80:
-                    recommendations.append("✅ **Use Chalupa as primary solver** for large-scale instances where speed is critical")
+                    recommendations.append(" **Use Chalupa as primary solver** for large-scale instances where speed is critical")
                 elif accuracy >= 50:
-                    recommendations.append("⚡ **Use Chalupa for warm-starting** ILP solvers to improve convergence")
+                    recommendations.append(" **Use Chalupa for warm-starting** ILP solvers to improve convergence")
                 else:
-                    recommendations.append("🔧 **Use Chalupa for initial bounds** in branch-and-bound frameworks")
+                    recommendations.append(" **Use Chalupa for initial bounds** in branch-and-bound frameworks")
             
             if 'reduced_ilp_time' in df.columns and 'ilp_time' in df.columns:
                 valid = df.dropna(subset=['reduced_ilp_time', 'ilp_time'])
                 if not valid.empty:
                     reduction_speedup = (valid['ilp_time'] / valid['reduced_ilp_time']).mean()
                     if reduction_speedup > 1.5:
-                        recommendations.append(f"✅ **Always apply reductions** before ILP (average {reduction_speedup:.1f}x speedup)")
+                        recommendations.append(f" **Always apply reductions** before ILP (average {reduction_speedup:.1f}x speedup)")
             
-            recommendations.append("📊 **Monitor instance characteristics** to select appropriate algorithm")
-            recommendations.append("🔄 **Consider hybrid approaches** combining heuristics with exact methods")
+            recommendations.append(" **Monitor instance characteristics** to select appropriate algorithm")
+            recommendations.append(" **Consider hybrid approaches** combining heuristics with exact methods")
             
             for rec in recommendations:
                 f.write(f"- {rec}\n")
@@ -959,12 +955,12 @@ class WP1Analyzer:
         self.load_all_results()
         
         if self.df is None or self.df.empty:
-            print("❌ No results found. Please run tests first.")
+            print(" No results found. Please run tests first.")
             return
         
         # Create comparison dataframe
         comparison_df = self.create_comparison_dataframe()
-        print(f"✓ Created comparison dataframe with {len(comparison_df)} test instances")
+        print(f" Created comparison dataframe with {len(comparison_df)} test instances")
         
         # Generate visualizations
         print("\n2. Creating runtime analysis plots...")
@@ -985,7 +981,7 @@ class WP1Analyzer:
         self.generate_comprehensive_report(stats_results)
         
         print("\n" + "="*60)
-        print("✅ ANALYSIS COMPLETE!")
+        print(" ANALYSIS COMPLETE!")
         print(f"Results saved to: {self.output_dir}")
         print("="*60)
         
@@ -994,16 +990,16 @@ class WP1Analyzer:
     
     def print_quick_summary(self, df):
         """Print a quick summary of key findings"""
-        print("\n📊 QUICK SUMMARY")
+        print("\nQUICK SUMMARY")
         print("-"*40)
         
         if 'chalupa_quality_ratio' in df.columns:
             ratios = df['chalupa_quality_ratio'].dropna()
             if not ratios.empty:
                 print(f"Chalupa Performance:")
-                print(f"  • Average quality ratio: {ratios.mean():.3f}")
-                print(f"  • Finds optimal: {(ratios == 1.0).mean()*100:.1f}%")
-                print(f"  • Within 10% of optimal: {(ratios <= 1.10).mean()*100:.1f}%")
+                print(f"  Average quality ratio: {ratios.mean():.3f}")
+                print(f"  Finds optimal: {(ratios == 1.0).mean()*100:.1f}%")
+                print(f"  Within 10% of optimal: {(ratios <= 1.10).mean()*100:.1f}%")
         
         if 'chalupa_time' in df.columns and 'ilp_time' in df.columns:
             valid = df.dropna(subset=['chalupa_time', 'ilp_time'])
