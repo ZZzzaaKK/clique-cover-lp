@@ -54,7 +54,7 @@ def add_ground_truth_if_missing(directory: str, verbose: bool = True) -> None:
         existing_theta = get_value(str(txt_file), "Clique Cover Number θ(G)")
         if existing_theta is not None:
             if verbose:
-                print(f"✔ Ground truth already exists for {txt_file.name}: {existing_theta}")
+                print(f"Ground truth already exists for {txt_file.name}: {existing_theta}")
             continue
 
         if verbose:
@@ -66,7 +66,7 @@ def add_ground_truth_if_missing(directory: str, verbose: bool = True) -> None:
             status = res.get('status')
             theta = res.get('theta')
             if status not in ("optimal", "time_limit", "suboptimal", "interrupted") or theta is None:
-                print(f"  ✖ Failed to compute θ(G) for {txt_file.name} (status={status})")
+                print(f"Failed to compute θ(G) for {txt_file.name} (status={status})")
                 continue
         else:
             # Falls ilp_wrapper aus Kompatibilitätsgründen nur eine Zahl liefert
