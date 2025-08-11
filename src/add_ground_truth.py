@@ -79,7 +79,7 @@ def add_ground_truth_if_missing(directory: str, verbose: bool = True) -> None:
                 print(f"Failed to compute θ(G) for {txt_file.name} (status={status})")
                 continue
         else:
-            # Falls ilp_wrapper aus Kompatibilitätsgründen nur eine Zahl liefert
+                # Falls ilp_wrapper aus Kompatibilitätsgründen nur eine Zahl liefert
         theta = int(res)
 
         _append_theta_line(txt_file, int(theta))
