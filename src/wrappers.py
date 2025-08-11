@@ -4,6 +4,7 @@ from algorithms.chalupa import ChalupaHeuristic
 from algorithms.ilp_solver import solve_ilp_clique_cover
 from reductions.reductions import apply_all_reductions
 
+
 def reduced_ilp_wrapper(txt_filepath):
     """
     Wrapper for reduction followed by ILP
