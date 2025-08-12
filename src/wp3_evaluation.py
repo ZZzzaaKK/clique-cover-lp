@@ -9,6 +9,19 @@ this module provides:
 - implementation of WP3.a (tests algorithms)
 - implementation of WP3.b (quantifcation of improvements)
 - generation of reports and visualizations
+
+how to use:
+- complete evaluation: python src/wp3_evaluation.py
+- only effectiveness-tests (WP3.a): python src/wp3_evaluation.py --task effectiveness
+- only improvement-quantification (WP3.b): python src/wp3_evaluation.py --task improvements
+- quick-test with less instances: python src/wp3_evaluation.py --quick
+- with our testgraphs: python src/wp3_evaluation.py --test-dir test_graphs/generated
+
+output:
+- CSV-files with detailled results
+- visualizations
+- report as txt
+- saved in dir: results/wp3/
 """
 
 import os
