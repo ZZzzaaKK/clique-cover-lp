@@ -1,5 +1,4 @@
 """
-================================================
 Core implementation of cluster editing kernelization algorithms.
 
 This module provides:
