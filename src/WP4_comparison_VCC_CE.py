@@ -36,7 +36,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from collections import defaultdict
 from scipy import stats
-from sklearn.metrics import adjusted_rand_score, normalized_mutual_info_score
+from sklearn.metrics import adjusted_rand_score, normalized_mutual_info_score #needs to be updated in uv / requirements
 import warnings
 
 warnings.filterwarnings('ignore')
