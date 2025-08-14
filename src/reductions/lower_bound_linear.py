@@ -1,6 +1,19 @@
 import networkx as nx
 from typing import Set, List
 
+"""
+Die Funktion compute_lower_bound berechnet eine maximale unabhängige Menge in einem gegebenen Graphen G (vom Typ networkx.Graph). Diese Menge kann als untere Schranke für das Clique-Cover-Problem verwendet werden.
+Der Algorithmus arbeitet wie folgt:
+Er kopiert den Graphen und initialisiert eine leere Menge I sowie einen Stack S.
+Es gibt drei Reduktionsregeln:
+1. degree_one_reduction: Entfernt Knoten mit Grad 1.
+2. degree_two_path_reduction: Sucht Pfade aus Knoten mit Grad 2 und reduziert sie, abhängig davon, ob sie einen Zyklus bilden.
+3. inexact_reduction: Entfernt einen Knoten mit maximalem Grad, falls keine der anderen Regeln anwendbar ist.
+Diese Reduktionen werden wiederholt angewendet, bis der Graph leer ist.
+Anschließend wird aus dem Stack S die maximale unabhängige Menge konstruiert, indem Knoten hinzugefügt werden, deren Nachbarn noch nicht besucht wurden.
+Der Code nutzt Hilfsfunktionen, um Pfade und Zyklen zu erkennen und die Reduktionen effizient durchzuführen.
+"""
+
 def compute_lower_bound(G: nx.Graph) -> Set[int]:
     """
     Computes a maximal independent set in G using a linear-time reduction-based algorithm.

@@ -1,5 +1,5 @@
 import networkx as nx
-from reductions.reductions import apply_all_reductions
+from reductions import apply_all_reductions
 from lower_bound_linear import compute_lower_bound
 
 def branch_and_reduce(G: nx.Graph, depth=0, best=float('inf')):

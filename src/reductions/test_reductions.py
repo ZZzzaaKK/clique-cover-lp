@@ -25,6 +25,7 @@ class TestIsolatedVertexReduction(unittest.TestCase):
     def test_isolated_vertex_reduction(self):
         # Use the function from the current context
         G_reduced, changed, removed = apply_isolated_vertex_reduction(self.G.copy())
+        print("Reductions applied (isolated vertex):", removed)
 
         self.assertTrue(changed, "Graph should have changed due to isolated vertex removal.")
         self.assertIn(4, removed, "Isolated vertex 4 should have been removed.")
@@ -45,6 +46,7 @@ class TestDegreeTwoFolding(unittest.TestCase):
     def test_degree_two_folding(self):
         # Use the function from the current context
         G_folded, changed, folds = apply_degree_two_folding(self.G.copy())
+        print("Reductions applied (degree two folding):", folds)
 
         self.assertTrue(changed, "Graph should have changed due to folding.")
         self.assertEqual(len(folds), 1, "One fold should have occurred.")
@@ -69,7 +71,7 @@ class TestTwinRemoval(unittest.TestCase):
 
     def test_twin_removal(self):
         G_reduced, changed, removed = apply_twin_removal(self.G.copy())
-        print("Reductions applied (twin_removal):", removed)
+        print("Reductions applied (twin removal):", removed)
         self.assertTrue(changed, "Graph should have changed due to twin removal.")
         self.assertLess(len(G_reduced.nodes), 5, "Graph should have fewer than 6 nodes after twin removal.") # changed from 6 to 5
         self.assertNotIn(4, G_reduced.nodes, "Node 4 should have been removed as a twin.")
@@ -86,7 +88,7 @@ class TestTwinFolding(unittest.TestCase):
 
     def test_twin_folding(self):
         G_reduced, changed, folds = apply_twin_folding(self.G.copy())
-        print("Folded nodes:", [new_node for _, _, new_node, _ in folds])
+        print("Folded nodes (twin folding):", [new_node for _, _, new_node, _ in folds])
         self.assertTrue(changed, "Graph should have changed due to twin folding.")
         self.assertTrue(len(folds) > 0, "Twin folding should have been applied.")
 
@@ -108,7 +110,7 @@ class TestCrownReduction(unittest.TestCase):
     def setUp(self):
         # Create a graph for crown reduction
         self.G = nx.Graph()
-        self.G.add_edges_from([(1, 4), (2, 4), (3, 4), (1, 5), (2, 5), (3, 5)])
+        self.G.add_edges_from([(1, 4), (2, 4), (3, 4), (1, 5), (2, 5), (3, 5), (4, 5)])
 
     def test_crown_reduction(self):
         G_reduced, changed, removed = apply_crown_reduction(self.G.copy())

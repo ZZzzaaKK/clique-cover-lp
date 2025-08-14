@@ -183,6 +183,25 @@ def apply_domination_reduction(G: nx.Graph) -> Tuple[nx.Graph, bool, List[Tuple[
     return G, changed, dominated
 
 
+def maximal_independent_set_from_matching(G: nx.Graph) -> set:
+    # 1. Maximal Matching
+    M = nx.max_weight_matching(G, maxcardinality=True)
+    matched_nodes = {u for edge in M for u in edge}
+
+    # 2. Startmenge: alle ungematchten Knoten
+    I = set(G.nodes()) - matched_nodes
+
+    # 3. Greedy-Erweiterung zu maximaler unabhängiger Menge
+    remaining = set(G.nodes()) - I
+    while remaining:
+        v = remaining.pop()
+        if not any((nbr in I) for nbr in G.neighbors(v)):
+            I.add(v)
+            remaining -= set(G.neighbors(v))
+
+    return I
+
+
 def apply_crown_reduction(G: nx.Graph) -> Tuple[nx.Graph, bool, List[Any]]:
     """
     Applies the Crown Reduction rule to the graph for the Vertex Clique Cover problem.
@@ -196,48 +215,43 @@ def apply_crown_reduction(G: nx.Graph) -> Tuple[nx.Graph, bool, List[Any]]:
     crown_sets = []
 
     try:
-        # Try multiple independent sets heuristically
-        for _ in range(3):
-            I = set(nx.algorithms.approximation.maximum_independent_set(G))
-            if not I:
-                continue
+        I = maximal_independent_set_from_matching(G)
+        if not I:
+            return G, False, []
 
-            H = set()
+        H = set(G.neighbors(n) for n in I)
+        # Flatten neighbors
+        H = {h for nbrs in H for h in (nbrs if isinstance(nbrs, set) else [nbrs])}
+        H -= I  # Sicherheit
+
+        if not H:
+            return G, False, []
+
+        # Baue bipartiten Graph
+        B = nx.Graph()
+        B.add_nodes_from(H, bipartite=0)
+        B.add_nodes_from(I, bipartite=1)
+        for h in H:
             for i in I:
-                H.update(G.neighbors(i))
+                if G.has_edge(h, i):
+                    B.add_edge(h, i)
 
-            # Only keep neighbors of I (i.e., H)
-            H = H - I  # Just in case
-            if not H:
-                continue
+        # Maximales Matching zwischen H und I
+        M = nx.bipartite.maximum_matching(B, top_nodes=H)
+        matched_pairs = [(u, v) for u, v in M.items() if u in H and v in I]
 
-            # Build bipartite graph between H and I
-            B = nx.Graph()
-            B.add_nodes_from(H, bipartite=0)
-            B.add_nodes_from(I, bipartite=1)
+        # Check Perfektes Matching von H
+        if len(matched_pairs) == len(H):
+            matched_I = {v for _, v in matched_pairs}
+            unmatched_I = I - matched_I
 
-            for h in H:
-                for i in I:
-                    if G.has_edge(h, i):
-                        B.add_edge(h, i)
+            # Entferne Knoten
+            G.remove_nodes_from(H)
+            G.remove_nodes_from(I)
 
-            # Get maximum cardinality matching (from H to I)
-            M = list(nx.bipartite.maximum_matching(B, top_nodes=H).items())
+            crown_sets.append((list(I), list(H), matched_pairs, list(unmatched_I)))
+            changed = True
 
-            # Filter the actual H→I edges only
-            M = [(u, v) for u, v in M if u in H and v in I]
-
-            if len(M) == len(H):
-                matched_I = {v for _, v in M}
-                unmatched_I = I - matched_I
-
-                # Remove crown nodes
-                G.remove_nodes_from(H)
-                G.remove_nodes_from(I)
-
-                crown_sets.append((list(I), list(H), M, list(unmatched_I)))
-                changed = True
-                break  # Only apply one crown reduction at a time
     except Exception as e:
         print(f"[Warning] Crown reduction failed: {e}")
 
