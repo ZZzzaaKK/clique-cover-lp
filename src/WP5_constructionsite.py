@@ -1,16 +1,34 @@
 """
 WP5: Real Data Analysis on Rfam RNA Families
-============================================
+
 Applies the complete pipeline (WP0-4) to real RNA data with shift-alignment predictions.
 
-Main objectives:
-- Load and process Rfam RNA similarity data
-- Apply VCC and CE algorithms to identify RNA clusters
-- Analyze correlation between shift events and cluster boundaries
-- Generate biological insights about RNA evolution
+Functions:
+    1 data processing
+        load tsv data with RNA alignments
+        convert similarity-scores in graphs
+        two use methods: threshold-based and KNN-based
 
-Author: WP5 Implementation
-Date: 2024
+    2 integration with WP1-4:
+        uses VCC-solver from WP1/2 (Chalupa + ILP)
+        uses CE-solver from WP3 (with kernelization)
+        uses comparison frameworks from WP4
+
+    3 biological analysis:
+        Shift-Correlation: analysis, whether Shift-Events occur at Cluster-borders
+        Conservation Analysis: misst similarities within clusters
+        Interpretation: biological results
+
+    4 visualizations
+        6-Panel-visualization for each RNA-family
+        Original Graph with Shift-Highlighting
+        VCC and CE Clustering-results
+        statistical overview
+
+    5 reporting
+        detailed markdown report for each family
+        overview report for Batch-Processing
+        CSV-Export of the Metriken
 """
 
 import os
@@ -649,15 +667,15 @@ class WP5RfamAnalysis:
 
             # Shift correlation interpretation
             if vcc_shift.get('inter_cluster_ratio', 0) > 0.7 or ce_shift.get('inter_cluster_ratio', 0) > 0.7:
-                f.write("✓ **Strong correlation between shift events and cluster boundaries detected!**\n")
+                f.write(" **Strong correlation between shift events and cluster boundaries detected!**\n")
                 f.write("  - This suggests that shift events occur primarily between evolutionarily distinct RNA modules.\n")
                 f.write("  - The clustering successfully identifies RNA subfamilies with independent evolution.\n\n")
             elif vcc_shift.get('inter_cluster_ratio', 0) > 0.5 or ce_shift.get('inter_cluster_ratio', 0) > 0.5:
-                f.write("⚠ **Moderate correlation between shifts and clusters.**\n")
+                f.write(" **Moderate correlation between shifts and clusters.**\n")
                 f.write("  - Some association between evolutionary modules and shift events.\n")
                 f.write("  - Further analysis may be needed to refine clustering.\n\n")
             else:
-                f.write("✗ **Weak correlation between shifts and clusters.**\n")
+                f.write(" **Weak correlation between shifts and clusters.**\n")
                 f.write("  - Shift events appear randomly distributed.\n")
                 f.write("  - Alternative clustering approaches may be needed.\n\n")
 
