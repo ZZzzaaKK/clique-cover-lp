@@ -1,14 +1,16 @@
 """
 WP5: Real Data Analysis on Rfam RNA Families
-
+============================================
 Applies the complete pipeline (WP0-4) to real RNA data with shift-alignment predictions.
 
 Main objectives:
 - Load and process Rfam RNA similarity data
 - Apply VCC and CE algorithms to identify RNA clusters
 - Analyze correlation between shift events and cluster boundaries
-- Generate "biological insights" about RNA evolution
+- Generate biological insights about RNA evolution
 
+Author: WP5 Implementation
+Date: 2024
 """
 
 import os
@@ -120,8 +122,7 @@ class WP5RfamAnalysis:
                     edges_with_shifts += 1
 
         print(f"  Loaded {G.number_of_nodes()} RNAs with {G.number_of_edges()} pairwise alignments")
-        print(
-            f"  Shift events detected in {edges_with_shifts} pairs ({edges_with_shifts / G.number_of_edges() * 100:.1f}%)")
+        print(f"  Shift events detected in {edges_with_shifts} pairs ({edges_with_shifts/G.number_of_edges()*100:.1f}%)")
 
         return G
 
@@ -238,8 +239,9 @@ class WP5RfamAnalysis:
                 clusters = self._extract_clusters_from_coloring(G, result.get('assignment', {}))
                 theta = result.get('chromatic_number', len(clusters))
             else:
+                # Handle case where wrapper returns non-dict (e.g., just the number)
                 clusters = []
-                theta = 0
+                theta = result if result else 0
         else:
             raise ValueError(f"Unknown VCC method: {method}")
 
@@ -340,11 +342,11 @@ class WP5RfamAnalysis:
             'total_shifts': total_shifts,
             'inter_cluster_shifts': inter_cluster_shifts,
             'intra_cluster_shifts': intra_cluster_shifts,
-            'inter_cluster_ratio': inter_cluster_shifts / total_shifts if total_shifts > 0 else 0,
+            'inter_cluster_ratio': inter_cluster_shifts/total_shifts if total_shifts > 0 else 0,
             'inter_cluster_edges': inter_cluster_edges,
             'intra_cluster_edges': intra_cluster_edges,
-            'shift_density_inter': inter_cluster_shifts / inter_cluster_edges if inter_cluster_edges > 0 else 0,
-            'shift_density_intra': intra_cluster_shifts / intra_cluster_edges if intra_cluster_edges > 0 else 0
+            'shift_density_inter': inter_cluster_shifts/inter_cluster_edges if inter_cluster_edges > 0 else 0,
+            'shift_density_intra': intra_cluster_shifts/intra_cluster_edges if intra_cluster_edges > 0 else 0
         }
 
     def analyze_cluster_conservation(self, G_full: nx.Graph, clusters: List[Set]) -> Dict:
@@ -361,7 +363,7 @@ class WP5RfamAnalysis:
             similarities = []
             cluster_list = list(cluster)
             for i in range(len(cluster_list)):
-                for j in range(i + 1, len(cluster_list)):
+                for j in range(i+1, len(cluster_list)):
                     if G_full.has_edge(cluster_list[i], cluster_list[j]):
                         sim = G_full[cluster_list[i]][cluster_list[j]].get('similarity', 0)
                         similarities.append(sim)
@@ -377,7 +379,7 @@ class WP5RfamAnalysis:
         }
 
     def compare_methods(self, G_binary: nx.Graph, vcc_result: RNAClusteringResult,
-                        ce_result: RNAClusteringResult) -> Dict:
+                       ce_result: RNAClusteringResult) -> Dict:
         """
         Compare VCC and CE solutions using WP4 framework.
         """
@@ -413,8 +415,8 @@ class WP5RfamAnalysis:
         return np.array([label_dict.get(node, -1) for node in nodes])
 
     def visualize_results(self, G_full: nx.Graph, G_binary: nx.Graph,
-                          vcc_result: RNAClusteringResult, ce_result: RNAClusteringResult,
-                          family_name: str):
+                         vcc_result: RNAClusteringResult, ce_result: RNAClusteringResult,
+                         family_name: str):
         """
         Create comprehensive visualizations of clustering results.
         """
@@ -438,12 +440,12 @@ class WP5RfamAnalysis:
         # 3. VCC clustering
         ax3 = plt.subplot(2, 3, 3)
         self._plot_clustering(G_binary, pos, vcc_result.clusters, ax3,
-                              f"VCC Clustering (θ={vcc_result.num_clusters})")
+                            f"VCC Clustering (θ={vcc_result.num_clusters})")
 
         # 4. CE clustering
         ax4 = plt.subplot(2, 3, 4)
         self._plot_clustering(G_binary, pos, ce_result.clusters, ax4,
-                              f"CE Clustering (C={ce_result.num_clusters})")
+                            f"CE Clustering (C={ce_result.num_clusters})")
 
         # 5. Shift correlation heatmap
         ax5 = plt.subplot(2, 3, 5)
@@ -464,17 +466,17 @@ class WP5RfamAnalysis:
     def _plot_graph_with_shifts(self, G: nx.Graph, pos: Dict, ax, title: str):
         """Plot graph with shift events highlighted."""
         # Separate edges by shift status
-        shift_edges = [(u, v) for u, v, d in G.edges(data=True) if d.get('has_shift', False)]
-        normal_edges = [(u, v) for u, v, d in G.edges(data=True) if not d.get('has_shift', False)]
+        shift_edges = [(u,v) for u,v,d in G.edges(data=True) if d.get('has_shift', False)]
+        normal_edges = [(u,v) for u,v,d in G.edges(data=True) if not d.get('has_shift', False)]
 
         # Draw nodes
         nx.draw_networkx_nodes(G, pos, node_color='lightblue', node_size=500, ax=ax)
 
         # Draw edges
         nx.draw_networkx_edges(G, pos, edgelist=normal_edges, edge_color='gray',
-                               alpha=0.3, width=1, ax=ax)
+                              alpha=0.3, width=1, ax=ax)
         nx.draw_networkx_edges(G, pos, edgelist=shift_edges, edge_color='red',
-                               width=2, alpha=0.8, ax=ax)
+                              width=2, alpha=0.8, ax=ax)
 
         # Labels
         labels = {node: node.split('/')[0].split('.')[-1][:8] for node in G.nodes()}  # Shortened labels
@@ -504,7 +506,7 @@ class WP5RfamAnalysis:
 
         # Draw graph
         nx.draw_networkx_nodes(G, pos, node_color=colors, node_size=500,
-                               cmap='tab20', vmin=0, ax=ax)
+                              cmap='tab20', vmin=0, ax=ax)
         nx.draw_networkx_edges(G, pos, edge_color='gray', alpha=0.3, ax=ax)
 
         # Shortened labels
@@ -515,7 +517,7 @@ class WP5RfamAnalysis:
         ax.axis('off')
 
     def _plot_shift_correlation(self, vcc_result: RNAClusteringResult,
-                                ce_result: RNAClusteringResult, ax):
+                               ce_result: RNAClusteringResult, ax):
         """Plot shift correlation comparison."""
         methods = ['VCC', 'CE']
         inter_ratios = [
@@ -531,15 +533,15 @@ class WP5RfamAnalysis:
         # Add value labels on bars
         for bar, ratio in zip(bars, inter_ratios):
             height = bar.get_height()
-            ax.text(bar.get_x() + bar.get_width() / 2., height,
-                    f'{ratio:.2f}', ha='center', va='bottom')
+            ax.text(bar.get_x() + bar.get_width()/2., height,
+                   f'{ratio:.2f}', ha='center', va='bottom')
 
         # Add horizontal line at 0.5
         ax.axhline(y=0.5, color='gray', linestyle='--', alpha=0.5)
         ax.text(0.5, 0.52, 'Random expectation', ha='center', fontsize=9, alpha=0.7)
 
     def _plot_summary_stats(self, vcc_result: RNAClusteringResult,
-                            ce_result: RNAClusteringResult, ax):
+                           ce_result: RNAClusteringResult, ax):
         """Plot summary statistics table."""
         ax.axis('tight')
         ax.axis('off')
@@ -561,7 +563,7 @@ class WP5RfamAnalysis:
         ]
 
         table = ax.table(cellText=data, cellLoc='center', loc='center',
-                         colWidths=[0.4, 0.3, 0.3])
+                        colWidths=[0.4, 0.3, 0.3])
         table.auto_set_font_size(False)
         table.set_fontsize(10)
         table.scale(1, 1.5)
@@ -574,8 +576,8 @@ class WP5RfamAnalysis:
         ax.set_title('Summary Statistics', fontweight='bold', pad=20)
 
     def generate_report(self, family_name: str, G_full: nx.Graph,
-                        vcc_result: RNAClusteringResult, ce_result: RNAClusteringResult,
-                        comparison: Dict, bio_analysis: Dict):
+                       vcc_result: RNAClusteringResult, ce_result: RNAClusteringResult,
+                       comparison: Dict, bio_analysis: Dict):
         """
         Generate comprehensive markdown report for RNA family analysis.
         """
@@ -590,8 +592,7 @@ class WP5RfamAnalysis:
             f.write(f"- **RNA sequences:** {G_full.number_of_nodes()}\n")
             f.write(f"- **Pairwise alignments:** {G_full.number_of_edges()}\n")
             shift_edges = sum(1 for _, _, d in G_full.edges(data=True) if d.get('has_shift', False))
-            f.write(
-                f"- **Alignments with shifts:** {shift_edges} ({shift_edges / G_full.number_of_edges() * 100:.1f}%)\n\n")
+            f.write(f"- **Alignments with shifts:** {shift_edges} ({shift_edges/G_full.number_of_edges()*100:.1f}%)\n\n")
 
             # Clustering results
             f.write("## Clustering Results\n\n")
@@ -640,7 +641,244 @@ class WP5RfamAnalysis:
             f.write(f"- Std deviation: {vcc_cons.get('std_conservation', 0):.3f}\n\n")
 
             f.write(f"**CE Clusters:**\n")
-            f.write(f"- Mean conservation: {ce_cons.get('mean_conservation',
-                                                        
-                                                        
-############################## TBC #########################################
+            f.write(f"- Mean conservation: {ce_cons.get('mean_conservation', 0):.3f}\n")
+            f.write(f"- Std deviation: {ce_cons.get('std_conservation', 0):.3f}\n\n")
+
+            # Interpretation
+            f.write("## Interpretation\n\n")
+
+            # Shift correlation interpretation
+            if vcc_shift.get('inter_cluster_ratio', 0) > 0.7 or ce_shift.get('inter_cluster_ratio', 0) > 0.7:
+                f.write("✓ **Strong correlation between shift events and cluster boundaries detected!**\n")
+                f.write("  - This suggests that shift events occur primarily between evolutionarily distinct RNA modules.\n")
+                f.write("  - The clustering successfully identifies RNA subfamilies with independent evolution.\n\n")
+            elif vcc_shift.get('inter_cluster_ratio', 0) > 0.5 or ce_shift.get('inter_cluster_ratio', 0) > 0.5:
+                f.write("⚠ **Moderate correlation between shifts and clusters.**\n")
+                f.write("  - Some association between evolutionary modules and shift events.\n")
+                f.write("  - Further analysis may be needed to refine clustering.\n\n")
+            else:
+                f.write("✗ **Weak correlation between shifts and clusters.**\n")
+                f.write("  - Shift events appear randomly distributed.\n")
+                f.write("  - Alternative clustering approaches may be needed.\n\n")
+
+            # Method comparison interpretation
+            if comparison['ratio'] < 1.1:
+                f.write("- **VCC and CE produce very similar clusterings** (C/θ ≈ 1)\n")
+                f.write("  - Strong agreement suggests robust clustering structure.\n")
+            elif comparison['ratio'] < 1.5:
+                f.write("- **CE requires moderately more clusters than VCC**\n")
+                f.write("  - Enforcing disjoint clusters leads to finer partitioning.\n")
+            else:
+                f.write("- **Significant difference between VCC and CE**\n")
+                f.write("  - RNA relationships may not fit well with disjoint clustering.\n")
+
+            f.write("\n---\n")
+            f.write("*Report generated by WP5 RNA Analysis Pipeline*\n")
+
+        print(f"  Saved report to {report_path}")
+
+    def run_complete_pipeline(self, tsv_path: str, family_name: str = None):
+        """
+        Execute complete WP5 pipeline on RNA data.
+
+        Args:
+            tsv_path: Path to TSV file with RNA alignments
+            family_name: Name of RNA family (extracted from filename if not provided)
+
+        Returns:
+            Dictionary with all results
+        """
+        # Extract family name from filename if not provided
+        if family_name is None:
+            family_name = Path(tsv_path).stem
+
+        print(f"\n{'='*80}")
+        print(f"WP5: Analyzing Rfam family {family_name}")
+        print(f"{'='*80}\n")
+
+        # 1. Load data
+        print("1. Loading RNA similarity data...")
+        G_full = self.load_rfam_data(tsv_path)
+
+        # 2. Prepare for clustering
+        print("\n2. Preparing graph for clustering algorithms...")
+        G_binary = self.prepare_for_clustering(G_full, method='threshold')
+
+        # Alternative: try KNN approach
+        G_binary_knn = self.prepare_for_clustering(G_full, method='knn')
+
+        # 3. Save in WP0 format
+        self.save_as_txt(G_binary, self.data_dir / f"{family_name}.txt")
+
+        # 4. Apply VCC
+        print("\n3. Applying Vertex Clique Cover...")
+        vcc_result = self.apply_vcc(G_binary, method='heuristic')
+        print(f"  VCC found {vcc_result.num_clusters} clusters in {vcc_result.runtime:.3f}s")
+
+        # 5. Apply CE
+        print("\n4. Applying Cluster Editing...")
+        ce_result = self.apply_ce(G_binary, use_kernelization=True)
+        print(f"  CE found {ce_result.num_clusters} clusters in {ce_result.runtime:.3f}s")
+
+        # 6. Analyze shift correlations
+        print("\n5. Analyzing shift event correlations...")
+        vcc_result.shift_correlation = self.analyze_shift_correlation(G_full, vcc_result.clusters)
+        ce_result.shift_correlation = self.analyze_shift_correlation(G_full, ce_result.clusters)
+
+        print(f"  VCC: {vcc_result.shift_correlation['inter_cluster_ratio']:.2%} shifts are inter-cluster")
+        print(f"  CE:  {ce_result.shift_correlation['inter_cluster_ratio']:.2%} shifts are inter-cluster")
+
+        # 7. Compare methods
+        print("\n6. Comparing VCC and CE solutions...")
+        comparison = self.compare_methods(G_binary, vcc_result, ce_result)
+        print(f"  C/θ ratio: {comparison['ratio']:.3f}")
+        print(f"  Agreement (ARI): {comparison['adjusted_rand_index']:.3f}")
+
+        # 8. Biological analysis
+        print("\n7. Performing biological analysis...")
+        bio_analysis = {
+            'vcc_conservation': self.analyze_cluster_conservation(G_full, vcc_result.clusters),
+            'ce_conservation': self.analyze_cluster_conservation(G_full, ce_result.clusters)
+        }
+
+        # 9. Generate visualizations
+        print("\n8. Creating visualizations...")
+        self.visualize_results(G_full, G_binary, vcc_result, ce_result, family_name)
+
+        # 10. Generate report
+        print("\n9. Generating report...")
+        self.generate_report(family_name, G_full, vcc_result, ce_result, comparison, bio_analysis)
+
+        print(f"\n{'='*80}")
+        print(f"Analysis complete for {family_name}!")
+        print(f"{'='*80}\n")
+
+        return {
+            'graph_full': G_full,
+            'graph_binary': G_binary,
+            'vcc': vcc_result,
+            'ce': ce_result,
+            'comparison': comparison,
+            'biological': bio_analysis
+        }
+
+    def batch_process_families(self, data_dir: str = "data"):
+        """
+        Process all RNA families in a directory.
+
+        Args:
+            data_dir: Directory containing TSV files
+        """
+        data_path = Path(data_dir)
+        tsv_files = list(data_path.glob("RF*.tsv"))
+
+        if not tsv_files:
+            print(f"No RNA family files found in {data_dir}")
+            return
+
+        print(f"Found {len(tsv_files)} RNA families to process")
+
+        all_results = []
+        for tsv_file in tsv_files:
+            try:
+                results = self.run_complete_pipeline(str(tsv_file))
+                all_results.append(results)
+            except Exception as e:
+                print(f"Error processing {tsv_file}: {e}")
+                continue
+
+        # Generate summary report
+        if all_results:
+            self.generate_summary_report(all_results)
+
+        return all_results
+
+    def generate_summary_report(self, all_results: List[Dict]):
+        """
+        Generate summary report across all RNA families.
+        """
+        summary_path = self.output_dir / "summary_report.md"
+
+        with open(summary_path, 'w') as f:
+            f.write("# WP5 Summary Report: All RNA Families\n\n")
+            f.write(f"**Generated:** {pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
+            f.write(f"**Total families analyzed:** {len(all_results)}\n\n")
+
+            # Aggregate statistics
+            f.write("## Aggregate Statistics\n\n")
+
+            # Collect metrics
+            ratios = [r['comparison']['ratio'] for r in all_results]
+            ari_scores = [r['comparison']['adjusted_rand_index'] for r in all_results]
+            vcc_shift_ratios = [r['vcc'].shift_correlation['inter_cluster_ratio'] for r in all_results]
+            ce_shift_ratios = [r['ce'].shift_correlation['inter_cluster_ratio'] for r in all_results]
+
+            f.write("### Clustering Comparison (C/θ)\n")
+            f.write(f"- Mean ratio: {np.mean(ratios):.3f}\n")
+            f.write(f"- Std deviation: {np.std(ratios):.3f}\n")
+            f.write(f"- Range: [{np.min(ratios):.3f}, {np.max(ratios):.3f}]\n\n")
+
+            f.write("### Method Agreement (ARI)\n")
+            f.write(f"- Mean ARI: {np.mean(ari_scores):.3f}\n")
+            f.write(f"- Std deviation: {np.std(ari_scores):.3f}\n\n")
+
+            f.write("### Shift Event Correlation\n")
+            f.write(f"- VCC mean inter-cluster ratio: {np.mean(vcc_shift_ratios):.3f}\n")
+            f.write(f"- CE mean inter-cluster ratio: {np.mean(ce_shift_ratios):.3f}\n\n")
+
+            # Families with strong shift correlation
+            f.write("## Families with Strong Shift-Cluster Correlation\n\n")
+            strong_correlation = []
+            for r in all_results:
+                if r['vcc'].shift_correlation['inter_cluster_ratio'] > 0.7:
+                    family = Path(r.get('family_name', 'Unknown')).stem
+                    ratio = r['vcc'].shift_correlation['inter_cluster_ratio']
+                    strong_correlation.append((family, ratio))
+
+            if strong_correlation:
+                for family, ratio in sorted(strong_correlation, key=lambda x: x[1], reverse=True):
+                    f.write(f"- {family}: {ratio:.3f}\n")
+            else:
+                f.write("*No families with >0.7 inter-cluster shift ratio*\n")
+
+            f.write("\n---\n")
+            f.write("*Summary generated by WP5 RNA Analysis Pipeline*\n")
+
+        print(f"  Saved summary report to {summary_path}")
+
+
+def main():
+    """
+    Main entry point for WP5 RNA analysis.
+    """
+    import argparse
+
+    parser = argparse.ArgumentParser(description='WP5: RNA Shift-Alignment Analysis')
+    parser.add_argument('--input', type=str, default='data/RF02246.tsv',
+                       help='Input TSV file or directory with RNA data')
+    parser.add_argument('--output', type=str, default='results/wp5',
+                       help='Output directory for results')
+    parser.add_argument('--batch', action='store_true',
+                       help='Process all TSV files in input directory')
+    parser.add_argument('--method', type=str, default='heuristic',
+                       choices=['exact', 'heuristic', 'reduced'],
+                       help='VCC solving method')
+
+    args = parser.parse_args()
+
+    # Initialize analyzer
+    analyzer = WP5RfamAnalysis(output_dir=args.output)
+
+    if args.batch:
+        # Process all files in directory
+        analyzer.batch_process_families(args.input)
+    else:
+        # Process single file
+        analyzer.run_complete_pipeline(args.input)
+
+    print("\nWP5 analysis complete!")
+    print(f"Results saved to: {args.output}")
+
+
+if __name__ == "__main__":
+    main()
