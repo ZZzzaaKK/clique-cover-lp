@@ -82,6 +82,19 @@ except Exception:
     ChalupaHeuristic = None
 from reductions.reductions import apply_all_reductions
 
+
+def chalupa_wrapper(txt_filepath):
+    """Wrapper for Chalupa algorithm"""
+    try:
+        print(f"{txt_filepath}")
+        G = txt_to_networkx(txt_filepath)
+        chalupa = ChalupaHeuristic(nx.complement(G))
+        result = chalupa.run()
+        return result['upper_bound']
+    except Exception as e:
+        print(f"Chalupa failed on {txt_filepath}: {e}")
+        return None
+
 def _chalupa_warmstart(G: nx.Graph) -> Optional[Dict[Any, int]]:
     if ChalupaHeuristic is None:
         return None
