@@ -16,12 +16,18 @@ from typing import Dict, Optional
 import networkx as nx
 from datetime import datetime
 
-# Import project modules (adjust path as needed)
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 sys.path.append('src')
-from .wrapperV2 import ilp_wrapper, reduced_ilp_wrapper
-from .wrappers import chalupa_wrapper
-from .utils import txt_to_networkx, get_value
-from simulator import GraphGenerator, GraphConfig
+
+# Import project modules
+from src.wrapperV2 import ilp_wrapper, reduced_ilp_wrapper, chalupa_wrapper
+from src.utils import txt_to_networkx, get_value
+from src.simulator import GraphGenerator, GraphConfig
+from src.utils_metrics import (set_global_seeds, safe_ratio, rel_change,
+        clean_for_plot, nanmean, safe_idxmax, should_kernelize, estimate_loglog_slope)
+set_global_seeds(33)
 
 # Configure plotting style
 plt.style.use('seaborn-v0_8-darkgrid')
