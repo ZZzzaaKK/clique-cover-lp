@@ -1,0 +1,52 @@
+Test-Design (über alle WPs)
+    WP0/Parsing & Format
+        Fälle: leere Graphen, K_n, nicht zusammenhängend, isolierte Knoten, „löchrige“ Zeilen (Knoten ohne Nachbarn: v:).
+        Checks: Parser lädt alles korrekt; Knotenneunummerierung (0/1-Index) bleibt konsistent.
+
+    WP1 (θ(G) via ILP auf Ḡ, vs. Chalupa)
+        Gold-Instanzen mit exakter θ(G) (berechnet als χ(Ḡ) per exakter Backtracking-Coloring):
+            Empty n=1…6 → θ=n
+            Complete Kn,n=1…6 → θ=1
+            Disjunkte Cliquen (z. B. 3–4–2) → θ=3
+            Komplement von Ka,b(χ=2) → θ=2
+            Komplement ungerader Zyklen C5,C7,C9(χ=3) → θ=3
+            Pfade P4…P7 (χ(Ḡ) exakt berechnet)
+        Tests:
+            ILP-Gleichheit: θ_ilp == θ_gold (strikt).
+            Chalupa-Bounds: LB ≤ θ_gold ≤ UB. Optional: UB - θ_gold als Qualitätsmetrik.
+
+    WP2 (Reduktionen / Kernelization)
+        Mikro-Zeugen pro Regel: isolierte Knoten, universelle Knoten, echte/unechte Zwillinge, kleine Kronen-Muster, etc.
+        Tests:
+            Idempotenz/Terminierung: zwei Durchläufe = keine Änderungen.
+            Sicherheit: θ(G) == θ(reduziert + rekonstruiert). (Wenn Reconstruction noch nicht implementiert ist: auf Cluster-Graphen sollte „nichts kaputtgehen“, k=0 bleibt k=0.)
+        Trace-Coverage: Jede Regel hat mindestens einen Positiv- und Negativ-Fall.
+
+    WP3 (Heuristik-Verbesserungen/Optimierungen)
+        Gleiche Gold-Instanzen, außerdem kleine zufällige n≤10 mit exakter θ.
+        Tests:
+            Reproduzierbarkeit: fester Seed ⇒ identische Lösung.
+            Korrektheits-Guards: LB ≤ θ_gold ≤ UB.
+            Performance-Budget: Laufzeit-Vergleich alt vs. optimiert (kein Flake, nur grober Check).
+
+    WP4 (VCC ↔ CE-Vergleich)
+        Gadget-Instanzen für Cluster Editing mit garantiertem Optimum k* (siehe unten).
+            Dafür echte, voneinander unabhängige Edits konstruieren → Optimum ist einfach die Summe der Edits.
+        Tests:
+            CE-Optimum: Solver liefert Kosten k* (oder ≤ k* falls dein Solver nur obere Schranken liefert – dann separat markieren).
+            Konsistenz: Für perfekte Cluster-Graphen (disjunkte Cliquen) ist CE-Kosten = 0 und θ = Anzahl Cliquen.
+
+    Technische Edge-Cases
+        Sehr kleine Graphen (|V| ∈ {1,2}), gemischte Komponenten (Clique + Isolierte), unregelmäßige Gradverteilungen.
+        Dateien mit Attributzeilen nach der Adjazenzliste (Parser darf sich nicht verschlucken).
+
+    Zusätzlich sind CE-Gadgets enthalten, bei denen das Optimum k* garantiert ist (unabhängige Edits):
+        Cross-Only: disjunkte Cliquen + 3 Kreuzkanten ⇒ k* = 3 (alle 3 müssen gelöscht werden).
+        Missing-Intra-Only: eine Clique mit 3 fehlenden Kanten ⇒ k* = 3 (alle 3 müssen ergänzt werden).
+        Mixed: mehrere Cliquen, 3 Cross-Adds + 2 Intra-Removes ⇒ k* = 5.
+
+
+Einbindung der TestCases
+    .txt-Dateien z. B. in test_graphs/curated/ (oder in data/-Ordner) legen.
+    Parser (txt_to_networkx) sollte das Format checken. (unchecked)
+    Ground-Truth-Auslese: get_value(path, "Clique Cover Number θ(G)").
