@@ -35,10 +35,29 @@ import pandas as pd
 import numpy as np
 import networkx as nx
 import matplotlib.pyplot as plt
-import seaborn as sns
 
-# Add parent directory to path for imports
-sys.path.append(str(Path(__file__).parent.parent))
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+ #Utils/Heuristiken ganz zentral aus src.utils_metrics ziehen
+try:
+    from utils_metrics import (
+        set_global_seeds, safe_ratio, rel_change,
+        clean_for_plot, nanmean, safe_idxmax,
+        should_kernelize, estimate_loglog_slope
+    )
+except ImportError:
+    # Fallback: explizit über src-Paket
+    from src.utils_metrics import (
+        set_global_seeds, safe_ratio, rel_change,
+        clean_for_plot, nanmean, safe_idxmax,
+        should_kernelize, estimate_loglog_slope
+    )
+
+
+set_global_seeds(33)
 
 from algorithms.cluster_editing_kernelization import (
     ClusterEditingInstance,
@@ -689,9 +708,9 @@ class WP3Evaluator:
             f.write("5. Kernelization scales well up to graphs with 200+ nodes\n")
 
         print(f"\nReport saved to: {report_path}")
-
+    """
     def _estimate_complexity(self, df: pd.DataFrame) -> float:
-        """Estimate time complexity from scaling data."""
+        #Estimate time complexity from scaling data.
         # Simple log-log regression
         import scipy.stats
 
@@ -705,7 +724,10 @@ class WP3Evaluator:
 
         slope, _, _, _, _ = scipy.stats.linregress(log_n[mask], log_t[mask])
         return round(slope, 1)
+    """
 
+    def _estimate_complexity(self, df: pd.DataFrame) -> float:
+        return estimate_loglog_slope(df['size'].values, df['time'].values)
 
 def main():
     """Main execution function."""

@@ -41,25 +41,34 @@ import warnings
 
 warnings.filterwarnings('ignore')
 
-# Add parent directory to path for imports
-sys.path.append(str(Path(__file__).parent.parent))
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
-# Import VCC solver components
-from algorithms.ilp_solver import solve_ilp_clique_cover
-from algorithms.chalupa import ChalupaHeuristic
+# VCC (Clique Cover)
+from src.algorithms.ilp_solver import solve_ilp_clique_cover
+from src.algorithms.chalupa import ChalupaHeuristic
 
-# Import CE solver components
-from algorithms.cluster_editing_solver import ClusterEditingSolver
-from algorithms.cluster_editing_kernelization import (
+# CE (Cluster Editing)
+from src.algorithms.cluster_editing_solver import ClusterEditingSolver
+from src.algorithms.cluster_editing_kernelization import (
     ClusterEditingInstance,
     ClusterEditingKernelization,
-    OptimizedClusterEditingKernelization
+    OptimizedClusterEditingKernelization,
 )
 
-# Import utilities
-from utils import txt_to_networkx
-from simulator import GraphGenerator, GraphConfig
+# Utilities & Generators
+from src.utils import txt_to_networkx
+from src.simulator import GraphGenerator, GraphConfig
 
+# central helpers
+from src.utils_metrics import (
+    set_global_seeds, safe_ratio, rel_change,
+    clean_for_plot, nanmean, safe_idxmax,
+    should_kernelize, estimate_loglog_slope
+)
+
+set_global_seeds(33)
 
 # ==================== Data Structures ====================
 
