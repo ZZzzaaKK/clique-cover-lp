@@ -2,7 +2,7 @@
 EDIT suggestion:
 Add ground truth (Clique Cover Number θ(G)) to graph instance files.
 
-Berechne θ(G) per ILP auf dem Komplementgraphen Ḡ (kalt, ohne Warmstart) und schreibe eine
+Berechne θ(G) (θ(G) = χ(Ḡ)) per ILP auf dem Komplementgraphen Ḡ (kalt, ohne Warmstart) und schreibe eine
 standardisierte Ground‑Truth‑Zeile in eine Begleitdatei.
 
 Ausgabezeile (exakt):
@@ -80,7 +80,7 @@ def add_ground_truth_if_missing(directory: str, verbose: bool = True) -> None:
                 continue
         else:
                 # Falls ilp_wrapper aus Kompatibilitätsgründen nur eine Zahl liefert
-        theta = int(res)
+            theta = int(res)
 
         _append_theta_line(txt_file, int(theta))
         if verbose:
