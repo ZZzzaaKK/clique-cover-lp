@@ -12,7 +12,7 @@ def add_ground_truth_if_missing(directory):
         existing_ground_truth = get_value(txt_file, "Chromatic Number")
 
         # Tils Frage ist hier: wenn wir die Chromatic Number von G nehmen, dann ist das nicht die CLique Cover Number, da
-        #  Clique Cover Number = Chromatic Number des Komplementgraphen
+        #  Clique Cover Number = Chromatic Number des Komplementgraphen .Fragezeichen
 
         if existing_ground_truth is None:
             print(f"Computing ground truth for {txt_file.name}...")
