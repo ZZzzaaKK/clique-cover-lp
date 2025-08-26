@@ -71,7 +71,7 @@ def add_ground_truth_if_missing(directory: str, verbose: bool = True) -> None:
             print(f"→ Computing ground truth for {txt_file.name} …")
 
         # Kalter ILP-Lauf (use_warmstart=False) für faire Ground-Truth
-        res = ilp_wrapper(str(txt_file), use_warmstart=False, time_limit=600, mip_gap=0.0, verbose=False, return_assignment=False)
+        res = ilp_wrapper(str(txt_file), use_warmstart=False, time_limit=1000, mip_gap=0.0, verbose=False, return_assignment=False)
         if isinstance(res, dict):
             status = res.get('status')
             theta = res.get('theta')
