@@ -201,7 +201,7 @@ def reduced_ilp_wrapper(txt_filepath: str, use_warmstart: bool = False, **kwargs
     dict | int | None
         θ(G) auf der reduzierten Instanz bzw. Solver-Response.
 
-    ***WICHTIG*** Jede Reduktionsroutine (und später ILP-Solver) sieht jetzt nur Graphen mit Labels (0...n-1).
+    ****WICHTIG**** Jede Reduktionsroutine (und später ILP-Solver) sieht jetzt nur Graphen mit Labels (0...n-1).
         -> Behebung der OutofBounds-Zugriffe, auch wenn vorher Knoten mit hohen IDs weggefallen sind
     """
 
