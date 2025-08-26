@@ -70,6 +70,7 @@ Dependencies:
 import networkx as nx
 from typing import Optional, Dict, Any, List
 import os
+import time
 
 from utils import txt_to_networkx
 from algorithms.ilp_solver import solve_ilp_clique_cover
@@ -80,7 +81,7 @@ except Exception:
 from reductions.reductions import apply_all_reductions
 
 
-# --- NEU: Kompakt-Relabel, damit alle Knoten 0..n-1 sind (keine String-Labels etc.) ---
+# Kompakt-Relabelling, damit alle Knoten 0..n-1 sind (keine String-Labels etc.) ---
 def _compact_int_labels(G: nx.Graph) -> nx.Graph:
     """
     brings node labels safely to 0...n-1 (stable sorting)
@@ -146,39 +147,82 @@ def _chalupa_warmstart(G: nx.Graph) -> Optional[Dict[Any, int]]:
     except Exception:
         return None
 
+def _is_valid_clique_cover(G: nx.Graph, color_of: dict) -> bool:
+    """
+    Prüft, ob die FarbkKlassen in G Cliquen bilden (d.h. gültige Clique-Cover).
+    color_of: dict[node] -> color_id  (aus Chalupa auf Ḡ abgeleitet)
+    """
+    if not color_of:
+        return False
+    if set(color_of.keys()) != set(G.nodes()):
+        return False
+    by_color = {}
+    for v, c in color_of.items():
+        by_color.setdefault(c, []).append(v)
+    for nodes in by_color.values():
+        # Jede Farbe muss in G eine Clique sein
+        for i, u in enumerate(nodes):
+            for v in nodes[i+1:]:
+                if not G.has_edge(u, v):
+                    return False
+    return True
 
-def ilp_wrapper(txt_filepath: str, use_warmstart: bool = False, **kwargs) -> Dict[str, Any]:
-    """
-    Exakte θ(G) via ILP (Solver färbt intern Ḡ).
-    """
-    if not os.path.exists(txt_filepath):
-        raise FileNotFoundError(f'Input file not found: {txt_filepath}')
+
+def ilp_wrapper(txt_filepath: str, use_warmstart: bool = False, **kwargs):
     G = txt_to_networkx(txt_filepath)
-    # optional: auch hier kompakt relabeln, schadet nie
-    G = _compact_int_labels(G)
+    G = _compact_int_labels(G)  # <<< NEU: kompakte Labels 0..n-1
     warm = _chalupa_warmstart(G) if use_warmstart else None
-    return solve_ilp_clique_cover(G, warmstart=warm, **kwargs)
+    t0 = time.time()
+    res = solve_ilp_clique_cover(G, warmstart=warm, **kwargs)
+    if isinstance(res, dict) and ('time' not in res or res['time'] is None):
+        res['time'] = time.time() - t0
+    return res
+
 
 
 def reduced_ilp_wrapper(txt_filepath: str, use_warmstart: bool = False, **kwargs) -> Dict[str, Any]:
     """
-    Reduziere **auf G**, relabele kompakt, dann exakte θ(G) via ILP (intern χ(Ḡ)).
-    (Die frühere zweite, unreachable Implementierung ist entfernt.)
+    Apply reductions on the complement graph Ḡ, then solve χ(Ḡ_red) via ILP
+    to obtain θ(G) (since θ(G) = χ(Ḡ)).
+
+    Pipeline:
+      1) Einlesen G
+      2) Ḡ = complement(G)
+      3) Reduktionen auf Ḡ  →  Ḡ_red
+      4) G_red_back = complement(Ḡ_red)
+      5) ILP auf G_red_back (intern wird wieder Ḡ_red gefärbt)
+
+    Hinweis:
+      - Warmstart wird (falls aktiviert) aus G erzeugt (_chalupa_warmstart(G)).
+      - Rückgabewert entspricht dem von solve_ilp_clique_cover (meist dict).
+
+    Returns
+    -------
+    dict | int | None
+        θ(G) auf der reduzierten Instanz bzw. Solver-Response.
+
+    ***WICHTIG*** Jede Reduktionsroutine (und später ILP-Solver) sieht jetzt nur Graphen mit Labels (0...n-1).
+        -> Behebung der OutofBounds-Zugriffe, auch wenn vorher Knoten mit hohen IDs weggefallen sind
     """
-    if not os.path.exists(txt_filepath):
-        raise FileNotFoundError(f'Input file not found: {txt_filepath}')
-    G = txt_to_networkx(txt_filepath)
 
-    # Reduktionen auf G (nicht auf Ḡ!), weil der ILP G erwartet
-    G_red, _trace = apply_all_reductions(G, verbose=False, timing=False)
+        if not os.path.exists(txt_filepath):
+            raise FileNotFoundError(f'Input file not found: {txt_filepath}')
 
-    # Nach Reduktionen zwingend kompakt relabeln (Crash-Fix!)
-    G_red = _compact_int_labels(G_red)
+        G = txt_to_networkx(txt_filepath)
+        G = _compact_int_labels(G)
+        Gc = nx.complement(G)
+        Gc = _compact_int_labels(Gc)
 
-    # Warmstart auf genau diesem (reduzierten) G berechnen
-    warm = _chalupa_warmstart(G_red) if use_warmstart else None
+        Gc_red, _meta = apply_all_reductions(Gc, verbose=False, timing=False)
+        Gc_red = _compact_int_labels(Gc_red)  #(nach Reduktion sicherheitshalber)
 
-    return solve_ilp_clique_cover(G_red, warmstart=warm, **kwargs)
+        G_red_back = nx.complement(Gc_red)
+        G_red_back = _compact_int_labels(G_red_back)
+
+        # Warmstart MUSS zu G_red_back passen, sonst inkonsistente Keys
+        warm = _chalupa_warmstart(G_red_back) if use_warmstart else None
+        return solve_ilp_clique_cover(G_red_back, warmstart=warm, **kwargs)
+
 
 
 def interactive_reduced_ilp_wrapper(
