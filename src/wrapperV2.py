@@ -67,8 +67,181 @@ Dependencies:
 - algorithms.chalupa.ChalupaHeuristic (optional; only if use_warmstart=True)
 
 """
+import networkx as nx
+from typing import Optional, Dict, Any, List
+import os
+
+from utils import txt_to_networkx
+from algorithms.ilp_solver import solve_ilp_clique_cover
+try:
+    from algorithms.chalupa import ChalupaHeuristic
+except Exception:
+    ChalupaHeuristic = None
+from reductions.reductions import apply_all_reductions
 
 
+# --- NEU: Kompakt-Relabel, damit alle Knoten 0..n-1 sind (keine String-Labels etc.) ---
+def _compact_int_labels(G: nx.Graph) -> nx.Graph:
+    """
+    brings node labels safely to 0...n-1 (stable sorting)
+    important after all reductions/foldings in order to hold Array/ILP indizierung on a constant level
+    (sonst index out of bounds error, da Labels wie 29 Knoten erhalten bleiben, aber nur nach Reduktion nur noch viel weniger da sind und
+    faelschlicherweise altes Label abgegriffen wird und zusätzlich per Array neue Length -> crash)
+    """
+    return nx.convert_node_labels_to_integers(G, first_label=0, ordering='sorted')
+
+
+def chalupa_wrapper(txt_filepath: str) -> Optional[int]:
+    """Upper Bound für θ(G) per Chalupa auf Ḡ (Komplement)."""
+    try:
+        print(f"{txt_filepath}")
+        G = txt_to_networkx(txt_filepath)
+        Gc = nx.complement(G)
+        if ChalupaHeuristic is None:
+            return None
+        chalupa = ChalupaHeuristic(Gc)
+        # robust: unterschiedliche API-Namen unterstützen
+        if hasattr(chalupa, 'iterated_greedy_clique_covering'):
+            covering = chalupa.iterated_greedy_clique_covering()
+            return len(covering) if covering is not None else None
+        elif hasattr(chalupa, 'run'):
+            res = chalupa.run()
+            # viele Implementationen liefern upper_bound o. Ä.
+            return res.get('upper_bound') if isinstance(res, dict) else int(res)
+        else:
+            return None
+    except Exception as e:
+        print(f"Chalupa failed on {txt_filepath}: {e}")
+        return None
+
+
+def _chalupa_warmstart(G: nx.Graph) -> Optional[Dict[Any, int]]:
+    """
+    Liefert eine Knoten->Farbe-Zuordnung als Warmstart, berechnet über χ(Ḡ).
+    Wichtig: Hier **immer** auf dem Komplement desjenigen Graphen rechnen, den man dem ILP übergibt.
+    """
+    if ChalupaHeuristic is None:
+        return None
+    try:
+        Gc = nx.complement(G)
+        heuristic = ChalupaHeuristic(Gc)
+        if hasattr(heuristic, 'coloring'):
+            col = heuristic.coloring()  # Dict node->color
+        elif hasattr(heuristic, 'iterated_greedy_clique_covering'):
+            # evtl. Liste von Cliquen/Independent Sets -> in Farben umwandeln
+            cover = heuristic.iterated_greedy_clique_covering()
+            if cover is None:
+                return None
+            col = {}
+            for c_idx, bucket in enumerate(cover):
+                for v in bucket:
+                    col[v] = c_idx
+        elif hasattr(heuristic, 'run'):
+            res = heuristic.run()
+            col = res.get('coloring') if isinstance(res, dict) else None
+        else:
+            return None
+        # Nur Knoten behalten, die im (ggf. reduzierten) G existieren
+        return {v: int(c) for v, c in col.items() if v in G.nodes}
+    except Exception:
+        return None
+
+
+def ilp_wrapper(txt_filepath: str, use_warmstart: bool = False, **kwargs) -> Dict[str, Any]:
+    """
+    Exakte θ(G) via ILP (Solver färbt intern Ḡ).
+    """
+    if not os.path.exists(txt_filepath):
+        raise FileNotFoundError(f'Input file not found: {txt_filepath}')
+    G = txt_to_networkx(txt_filepath)
+    # optional: auch hier kompakt relabeln, schadet nie
+    G = _compact_int_labels(G)
+    warm = _chalupa_warmstart(G) if use_warmstart else None
+    return solve_ilp_clique_cover(G, warmstart=warm, **kwargs)
+
+
+def reduced_ilp_wrapper(txt_filepath: str, use_warmstart: bool = False, **kwargs) -> Dict[str, Any]:
+    """
+    Reduziere **auf G**, relabele kompakt, dann exakte θ(G) via ILP (intern χ(Ḡ)).
+    (Die frühere zweite, unreachable Implementierung ist entfernt.)
+    """
+    if not os.path.exists(txt_filepath):
+        raise FileNotFoundError(f'Input file not found: {txt_filepath}')
+    G = txt_to_networkx(txt_filepath)
+
+    # Reduktionen auf G (nicht auf Ḡ!), weil der ILP G erwartet
+    G_red, _trace = apply_all_reductions(G, verbose=False, timing=False)
+
+    # Nach Reduktionen zwingend kompakt relabeln (Crash-Fix!)
+    G_red = _compact_int_labels(G_red)
+
+    # Warmstart auf genau diesem (reduzierten) G berechnen
+    warm = _chalupa_warmstart(G_red) if use_warmstart else None
+
+    return solve_ilp_clique_cover(G_red, warmstart=warm, **kwargs)
+
+
+def interactive_reduced_ilp_wrapper(
+    txt_filepath: str,
+    use_warmstart: bool = False,
+    max_rounds: int = 10,
+    **kwargs
+) -> Dict[str, Any]:
+    """
+    Iteriere: UB per Chalupa auf Ḡ(G_curr) verbessern; Reduktionen auf **G_curr** anwenden;
+    stoppe, wenn UB nicht mehr sinkt; dann ILP auf finalem **G_curr**.
+    """
+    if not os.path.exists(txt_filepath):
+        raise FileNotFoundError(f'Input file not found: {txt_filepath}')
+    G_curr = txt_to_networkx(txt_filepath)
+
+    prev_ub = float('inf')
+    rounds = 0
+    while rounds < max_rounds:
+        # 1) UB auf Ḡ(G_curr) bestimmen
+        if ChalupaHeuristic is None:
+            break
+        Gc = nx.complement(G_curr)
+        chal = ChalupaHeuristic(Gc)
+        if hasattr(chal, 'iterated_greedy_clique_covering'):
+            cover = chal.iterated_greedy_clique_covering()
+            ub = len(cover) if cover is not None else float('inf')
+        elif hasattr(chal, 'run'):
+            res = chal.run()
+            ub = res.get('upper_bound', float('inf')) if isinstance(res, dict) else float('inf')
+        else:
+            ub = float('inf')
+
+        # 2) Abbruch, wenn keine Verbesserung
+        if ub >= prev_ub:
+            break
+        prev_ub = ub
+
+        # 3) Reduktionen auf **G_curr** (nicht auf Gc!), damit ILP-Eingabe konsistent bleibt
+        G_curr, _ = apply_all_reductions(G_curr, verbose=False, timing=False)
+        rounds += 1
+
+    # 4) Vor ILP kompakt relabeln (Crash-Fix)
+    G_curr = _compact_int_labels(G_curr)
+
+    # 5) Warmstart passend zu **G_curr**
+    warm = _chalupa_warmstart(G_curr) if use_warmstart else None
+
+    # 6) ILP auf **G_curr** (Solver macht intern χ(Ḡ(G_curr)))
+    return solve_ilp_clique_cover(G_curr, warmstart=warm, **kwargs)
+
+
+def batch_ilp(file_list: List[str], use_warmstart: bool = False, **kwargs) -> List[Dict[str, Any]]:
+    results = []
+    for path in file_list:
+        try:
+            res = ilp_wrapper(path, use_warmstart=use_warmstart, **kwargs)
+            results.append({'file': path, **res})
+        except Exception as e:
+            results.append({'file': path, 'error': str(e)})
+    return results
+
+""" old Version with conflicts
 from typing import Optional, Dict, Any, List
 import os
 import networkx as nx
@@ -82,9 +255,8 @@ except Exception:
     ChalupaHeuristic = None
 from reductions.reductions import apply_all_reductions
 
-
 def chalupa_wrapper(txt_filepath):
-    """Wrapper for Chalupa algorithm"""
+    #Wrapper for Chalupa algorithm
     try:
         print(f"{txt_filepath}")
         G = txt_to_networkx(txt_filepath)
@@ -118,18 +290,18 @@ def ilp_wrapper(txt_filepath: str, use_warmstart: bool = False, **kwargs) -> Dic
     G = txt_to_networkx(txt_filepath)
     warm = _chalupa_warmstart(G) if use_warmstart else None
     return solve_ilp_clique_cover(G, warmstart=warm, **kwargs)
-    """Compute θ(G) exactly by solving χ(Ḡ) with the ILP solver.
-
-        Parameters
-        ----------
-        txt_filepath : str
-            Path to a graph instance in the repo's text format.
-
-        Returns
-        -------
-        int or None
-            Clique cover number θ(G). None if ILP failed.
-        """
+    # Compute θ(G) exactly by solving χ(Ḡ) with the ILP solver.
+    #
+    #    Parameters
+    #    ----------
+    #    txt_filepath : str
+    #        Path to a graph instance in the repo's text format.
+    #   
+    #       Returns
+    #       -------
+    #       int or None
+    #           Clique cover number θ(G). None if ILP failed.
+    
 
 def reduced_ilp_wrapper(txt_filepath: str, use_warmstart: bool = False, **kwargs) -> Dict[str, Any]:
     if not os.path.exists(txt_filepath):
@@ -138,18 +310,18 @@ def reduced_ilp_wrapper(txt_filepath: str, use_warmstart: bool = False, **kwargs
     warm = _chalupa_warmstart(G) if use_warmstart else None
     G_reduced, _ = apply_all_reductions(G)
     return solve_ilp_clique_cover(G_reduced, warmstart=warm, **kwargs)
-    """Apply reductions on Ḡ and then solve χ(Ḡ_red) via ILP to get θ(G).
-
-    Note
-    ----
-    This function currently does **not** pass a UB into the ILP. If wanted for pruning, a constraint like `sum(y_c) ≤ UB`
-    (where y_c indicates color c is used) should be added.
-
-    Returns
-    -------
-    int or None
-        Clique cover number θ(G) on the reduced instance, or None on failure.
-    """
+    # Apply reductions on Ḡ and then solve χ(Ḡ_red) via ILP to get θ(G).
+    #
+    #Note
+    #----
+    #This function currently does **not** pass a UB into the ILP. If wanted for pruning, a constraint like `sum(y_c) ≤ UB`
+    #(where y_c indicates color c is used) should be added.
+    #
+    #Returns
+    #-------
+    #int or None
+    #    Clique cover number θ(G) on the reduced instance, or None on failure.
+    
     try:
         print(f"{txt_filepath}")
         G = txt_to_networkx(txt_filepath)
@@ -186,22 +358,6 @@ def interactive_reduced_ilp_wrapper(txt_filepath: str, use_warmstart: bool = Fal
         rounds += 1
     warm = _chalupa_warmstart(G) if use_warmstart else None
     return solve_ilp_clique_cover(Gc, warmstart=warm, **kwargs)
-    """Use UB (Chalupa on Ḡ) to guide reductions; stop when UB stops improving; ILP on reduced Ḡ.
-
-    This implements the original here we actively compute UB on Ḡ, apply reductions, and iterate while UB strictly decreases.
-
-    Parameters
-    ----------
-    txt_filepath : str
-        Path to graph instance file.
-    max_rounds : int
-        Safety cap on iterations.
-
-    Returns
-    -------
-    int or None
-        θ(G) from ILP on the final reduced Ḡ, or None.
-    """
 
 
 def batch_ilp(file_list: List[str], use_warmstart: bool = False, **kwargs) -> List[Dict[str, Any]]:
@@ -213,3 +369,4 @@ def batch_ilp(file_list: List[str], use_warmstart: bool = False, **kwargs) -> Li
         except Exception as e:
             results.append({'file': path, 'error': str(e)})
     return results
+"""
