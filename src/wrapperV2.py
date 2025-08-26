@@ -89,14 +89,8 @@ def _compact_int_labels(G: nx.Graph) -> nx.Graph:
     (sonst index out of bounds error, da Labels wie 29 Knoten erhalten bleiben, aber nur nach Reduktion nur noch viel weniger da sind und
     faelschlicherweise altes Label abgegriffen wird und zusätzlich per Array neue Length -> crash)
     """
-    try:
-        # Versuch: cast alle Labels auf int, wenn möglich
-        mapping = {node: int(node) if isinstance(node, str) and node.isdigit() else node
-                   for node in G.nodes()}
-        G = nx.relabel_nodes(G, mapping, copy=True)
-    except Exception:
-        pass
-    return nx.convert_node_labels_to_integers(G, first_label=0, ordering='sorted')
+    mapping = {old: i for i, old in enumerate(G.nodes())}
+    return nx.relabel_nodes(G, mapping, copy=True)
 
 
 def chalupa_wrapper(txt_filepath: str) -> Optional[int]:
@@ -104,7 +98,9 @@ def chalupa_wrapper(txt_filepath: str) -> Optional[int]:
     try:
         print(f"{txt_filepath}")
         G = txt_to_networkx(txt_filepath)
+        G = _compact_int_labels(G)
         Gc = nx.complement(G)
+        Gc = _compact_int_labels(Gc)
         if ChalupaHeuristic is None:
             return None
         chalupa = ChalupaHeuristic(Gc)
@@ -132,6 +128,7 @@ def _chalupa_warmstart(G: nx.Graph) -> Optional[Dict[Any, int]]:
         return None
     try:
         Gc = nx.complement(G)
+        Gc = _compact_int_labels(Gc)
         heuristic = ChalupaHeuristic(Gc)
         if hasattr(heuristic, 'coloring'):
             col = heuristic.coloring()  # Dict node->color
