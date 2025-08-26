@@ -27,9 +27,9 @@ from src.wrapperV2 import (
     reduced_ilp_wrapper,
     chalupa_wrapper,
     interactive_reduced_ilp_wrapper,
-    _chalupa_warmstart
+
 )
-from src.utils import txt_to_networkx, get_value
+from src.utils import txt_to_networkx
 from src.simulator import GraphGenerator, GraphConfig
 from src.utils_metrics import (set_global_seeds, safe_ratio, rel_change,
                                clean_for_plot, nanmean, safe_idxmax, should_kernelize, estimate_loglog_slope)
@@ -87,7 +87,7 @@ class WP1cEvaluator:
             chalupa_result = chalupa_wrapper(filepath)
             chalupa_time = time.time() - start
 
-            result['chalupa_theta'] = chalupa_result if chalupa_result else None
+            result['chalupa_theta'] = chalupa_result if chalupa_result is not None else None
             result['chalupa_time'] = chalupa_time
         except Exception as e:
             print(f"Chalupa failed on {filepath}: {e}")
@@ -123,7 +123,7 @@ class WP1cEvaluator:
             result['ilp_status'] = 'failed'
 
         # Calculate quality metrics
-        if result['chalupa_theta'] and result['ilp_theta']:
+        if (result.get('chalupa_theta') is not None) and (result.get('ilp_theta') is not None):
             result['quality_ratio'] = result['chalupa_theta'] / result['ilp_theta']
             result['absolute_gap'] = result['chalupa_theta'] - result['ilp_theta']
         else:
@@ -205,7 +205,7 @@ class WP1cEvaluator:
 
         fig, axes = plt.subplots(2, 2, figsize=(14, 10))
 
-        # 1. Runtime vs Problem Size (nodes)
+         # 1. Runtime vs Problem Size (nodes)
         ax = axes[0, 0]
         valid_data = self.df.dropna(subset=['chalupa_time', 'ilp_time', 'n_nodes'])
 
@@ -266,15 +266,38 @@ class WP1cEvaluator:
         plt.show()
 
     def create_quality_plots(self):
-        """Create solution quality comparison plots"""
-        if self.df.empty:
+        """Create solution quality comparison plots (robust gegen fehlende Spalten)"""
+        if not hasattr(self, 'df') or self.df is None or self.df.empty:
             print("No data available for plotting")
             return
 
-        fig, axes = plt.subplots(2, 2, figsize=(14, 10))
+        # Fehlende Spalten auffüllen (verhindert KeyError)
+        for col in ['quality_ratio', 'n_nodes', 'absolute_gap', 'density']:
+            if col not in self.df.columns:
+                self.df[col] = np.nan
 
-        # Filter for valid comparisons
+        # Fallback: wenn 'quality_ratio' komplett leer ist, aus chalupa_* rekonstruieren
+        if self.df['quality_ratio'].isna().all():
+            if {'chalupa_theta', 'ilp_theta'}.issubset(self.df.columns):
+                self.df['quality_ratio'] = np.where(
+                    self.df['ilp_theta'].notna() & (self.df['ilp_theta'] != 0) & self.df['chalupa_theta'].notna(),
+                    self.df['chalupa_theta'] / self.df['ilp_theta'],
+                    np.nan
+                )
+            if 'absolute_gap' not in self.df or self.df['absolute_gap'].isna().all():
+                if {'chalupa_theta', 'ilp_theta'}.issubset(self.df.columns):
+                    self.df['absolute_gap'] = np.where(
+                        self.df['chalupa_theta'].notna() & self.df['ilp_theta'].notna(),
+                        self.df['chalupa_theta'] - self.df['ilp_theta'],
+                        np.nan
+                    )
+
         valid_data = self.df.dropna(subset=['quality_ratio', 'n_nodes'])
+        if valid_data.empty:
+            print("Not enough valid data for quality plots")
+            return
+
+        fig, axes = plt.subplots(2, 2, figsize=(14, 10))
 
         # 1. Quality Ratio Distribution
         ax = axes[0, 0]
@@ -284,8 +307,8 @@ class WP1cEvaluator:
         ax.set_ylabel('Frequency')
         ax.set_title('Solution Quality Distribution')
         mean_ratio = valid_data['quality_ratio'].mean()
-        ax.axvline(x=mean_ratio, color='red', linestyle=':', linewidth=2,
-                   label=f'Mean = {mean_ratio:.3f}')
+        if pd.notna(mean_ratio):
+            ax.axvline(x=mean_ratio, color='red', linestyle=':', linewidth=2, label=f'Mean = {mean_ratio:.3f}')
         ax.legend()
         ax.grid(True, alpha=0.3)
 
@@ -302,40 +325,33 @@ class WP1cEvaluator:
 
         # 3. Absolute Gap Distribution
         ax = axes[1, 0]
-        absolute_gaps = valid_data['absolute_gap']
+        absolute_gaps = valid_data['absolute_gap'].dropna()
         ax.hist(absolute_gaps, bins=30, edgecolor='black', alpha=0.7, color='coral')
         ax.set_xlabel('Absolute Gap (Chalupa θ - ILP θ)')
         ax.set_ylabel('Frequency')
         ax.set_title('Absolute Gap Distribution')
         ax.axvline(x=0, color='green', linestyle='--', linewidth=2, label='Optimal (gap=0)')
-        mean_gap = absolute_gaps.mean()
-        ax.axvline(x=mean_gap, color='red', linestyle=':', linewidth=2,
-                   label=f'Mean = {mean_gap:.2f}')
+        if not absolute_gaps.empty:
+            mean_gap = absolute_gaps.mean()
+            ax.axvline(x=mean_gap, color='red', linestyle=':', linewidth=2, label=f'Mean = {mean_gap:.2f}')
         ax.legend()
         ax.grid(True, alpha=0.3)
 
         # 4. Success Rate Analysis
         ax = axes[1, 1]
-
-        # Calculate success rates for different thresholds
         thresholds = [1.0, 1.05, 1.1, 1.15, 1.2, 1.25, 1.3]
         success_rates = []
-
         for threshold in thresholds:
             success_rate = (valid_data['quality_ratio'] <= threshold).mean() * 100
             success_rates.append(success_rate)
-
         ax.plot(thresholds, success_rates, marker='o', linewidth=2, markersize=8)
         ax.set_xlabel('Quality Threshold')
         ax.set_ylabel('Success Rate (%)')
         ax.set_title('Chalupa Success Rate at Different Quality Thresholds')
         ax.grid(True, alpha=0.3)
-
-        # Add annotations
         for i, (t, s) in enumerate(zip(thresholds, success_rates)):
-            if i % 2 == 0:  # Annotate every other point to avoid clutter
-                ax.annotate(f'{s:.1f}%', xy=(t, s), xytext=(5, 5),
-                            textcoords='offset points', fontsize=9)
+            if i % 2 == 0:
+                ax.annotate(f'{s:.1f}%', xy=(t, s), xytext=(5, 5), textcoords='offset points', fontsize=9)
 
         plt.suptitle('Solution Quality Analysis: Chalupa vs ILP', fontsize=16, y=1.02)
         plt.tight_layout()
@@ -626,98 +642,91 @@ class ExtendedWP1cEvaluator(WP1cEvaluator):
             result['n_edges'] = G.number_of_edges()
             result['density'] = nx.density(G)
 
-            # Extract perturbation level from filename if available
             import re
             match = re.search(r'r(\d+)', Path(filepath).stem)
-            if match:
-                result['perturbation'] = int(match.group(1)) / 100
-            else:
-                result['perturbation'] = None
+            result['perturbation'] = int(match.group(1)) / 100 if match else None
 
         except Exception as e:
             print(f"Error loading {filepath}: {e}")
             return None
 
         # 1. Run Chalupa heuristic (provides upper bound for θ(G))
-        # Chalupa is a greedy heuristic that iteratively finds cliques to cover the graph
+        # Chalupa as greedy heuristic that iteratively finds cliques to cover the graph...
         try:
-            start = time.time()
+            t0 = time.time()
             chalupa_result = chalupa_wrapper(filepath)
-            chalupa_time = time.time() - start
-
-            result['chalupa_theta'] = chalupa_result if chalupa_result else None
-            result['chalupa_time'] = chalupa_time
+            result['chalupa_time'] = time.time() - t0
+            result['chalupa_theta'] = chalupa_result if chalupa_result is not None else None
         except Exception as e:
             print(f"Chalupa failed on {filepath}: {e}")
-            result['chalupa_theta'] = None
             result['chalupa_time'] = None
+            result['chalupa_theta'] = None
 
-        # 2. Run standard ILP solver (exact solution without any enhancements)
-        # This solves the clique cover problem by coloring the complement graph
+        # 2. Run standard ILP solver (exact solution without any enhancements, no warmstart)
+        # solves the clique cover problem by coloring the complement graph
         try:
-            start = time.time()
+            t0 = time.time()
             ilp_res = ilp_wrapper(
                 filepath,
-                use_warmstart=False,  # No warmstart for fair baseline
+                use_warmstart=False,
                 time_limit=timeout,
                 mip_gap=0.01,
                 verbose=False,
                 return_assignment=False
             )
-            ilp_time = time.time() - start
+            result['ilp_time'] = time.time() - t0
 
             if isinstance(ilp_res, dict):
                 result['ilp_theta'] = ilp_res.get('theta')
-                result['ilp_time'] = ilp_time
                 result['ilp_status'] = ilp_res.get('status', 'unknown')
                 result['ilp_gap'] = ilp_res.get('gap', None)
             else:
                 result['ilp_theta'] = ilp_res
-                result['ilp_time'] = ilp_time
                 result['ilp_status'] = 'solved'
                 result['ilp_gap'] = 0.0
-
         except Exception as e:
             print(f"ILP failed on {filepath}: {e}")
             result['ilp_theta'] = None
             result['ilp_time'] = None
             result['ilp_status'] = 'failed'
+            result['ilp_gap'] = None
 
         # 3. Run ILP with Chalupa warmstart (uses heuristic solution to initialize ILP)
-        # Warmstart provides an initial feasible solution to speed up ILP convergence
+        # Warmstart provides initial feasible solution in order to speed up ILP convergence..
         try:
-            start = time.time()
+            t0 = time.time()
             ilp_warm_res = ilp_wrapper(
                 filepath,
-                use_warmstart=True,  # Enable Chalupa-based warmstart
+                use_warmstart=True,
                 time_limit=timeout,
                 mip_gap=0.01,
                 verbose=False,
                 return_assignment=False
             )
-            ilp_warm_time = time.time() - start
+            result['ilp_warmstart_time'] = time.time() - t0
 
             if isinstance(ilp_warm_res, dict):
                 result['ilp_warmstart_theta'] = ilp_warm_res.get('theta')
-                result['ilp_warmstart_time'] = ilp_warm_time
                 result['ilp_warmstart_status'] = ilp_warm_res.get('status', 'unknown')
                 result['ilp_warmstart_gap'] = ilp_warm_res.get('gap', None)
+                result['ilp_warmstart_used'] = bool(ilp_warm_res.get('used_warmstart'))
+                result['ilp_warmstart_start_objective'] = ilp_warm_res.get('start_objective')
+                result['ilp_warmstart_improvement_over_start'] = ilp_warm_res.get('improvement_over_start')
             else:
                 result['ilp_warmstart_theta'] = ilp_warm_res
-                result['ilp_warmstart_time'] = ilp_warm_time
                 result['ilp_warmstart_status'] = 'solved'
                 result['ilp_warmstart_gap'] = 0.0
-
         except Exception as e:
             print(f"ILP with warmstart failed on {filepath}: {e}")
             result['ilp_warmstart_theta'] = None
             result['ilp_warmstart_time'] = None
             result['ilp_warmstart_status'] = 'failed'
+            result['ilp_warmstart_gap'] = None
 
-        # 4. Run Reduced ILP (applies graph reductions before solving)
+        # 4. Run Reduced ILP (applies graph reductions before solving process starts)
         # Graph reductions simplify the problem by removing/merging nodes while preserving θ(G)
         try:
-            start = time.time()
+            t0 = time.time()
             reduced_res = reduced_ilp_wrapper(
                 filepath,
                 use_warmstart=False,
@@ -726,270 +735,77 @@ class ExtendedWP1cEvaluator(WP1cEvaluator):
                 verbose=False,
                 return_assignment=False
             )
-            reduced_time = time.time() - start
+            result['reduced_ilp_time'] = time.time() - t0
 
             if isinstance(reduced_res, dict):
                 result['reduced_ilp_theta'] = reduced_res.get('theta')
-                result['reduced_ilp_time'] = reduced_time
                 result['reduced_ilp_status'] = reduced_res.get('status', 'unknown')
                 result['reduced_ilp_gap'] = reduced_res.get('gap', None)
             else:
                 result['reduced_ilp_theta'] = reduced_res
-                result['reduced_ilp_time'] = reduced_time
                 result['reduced_ilp_status'] = 'solved'
                 result['reduced_ilp_gap'] = 0.0
-
         except Exception as e:
             print(f"Reduced ILP failed on {filepath}: {e}")
             result['reduced_ilp_theta'] = None
             result['reduced_ilp_time'] = None
             result['reduced_ilp_status'] = 'failed'
+            result['reduced_ilp_gap'] = None
 
         # 5. Run Interactive Reduced ILP (iterative reduction guided by heuristic upper bounds)
         # This method alternates between computing heuristic bounds and applying reductions
-        # until no further improvement is possible, then solves the final reduced problem
+        # until no further improvement is possible, then solves the final reduced problem by using ILP
         try:
-            start = time.time()
+            t0 = time.time()
             interactive_res = interactive_reduced_ilp_wrapper(
                 filepath,
                 use_warmstart=False,
-                max_rounds=10,  # Maximum iterations of reduction-heuristic cycle
+                max_rounds=10,
                 time_limit=timeout,
                 mip_gap=0.01,
                 verbose=False,
                 return_assignment=False
             )
-            interactive_time = time.time() - start
+            result['interactive_ilp_time'] = time.time() - t0
 
             if isinstance(interactive_res, dict):
                 result['interactive_ilp_theta'] = interactive_res.get('theta')
-                result['interactive_ilp_time'] = interactive_time
                 result['interactive_ilp_status'] = interactive_res.get('status', 'unknown')
                 result['interactive_ilp_gap'] = interactive_res.get('gap', None)
             else:
                 result['interactive_ilp_theta'] = interactive_res
-                result['interactive_ilp_time'] = interactive_time
                 result['interactive_ilp_status'] = 'solved'
                 result['interactive_ilp_gap'] = 0.0
-
         except Exception as e:
             print(f"Interactive reduced ILP failed on {filepath}: {e}")
             result['interactive_ilp_theta'] = None
             result['interactive_ilp_time'] = None
             result['interactive_ilp_status'] = 'failed'
+            result['interactive_ilp_gap'] = None
 
-        # Calculate quality metrics (using standard ILP as baseline for exact solution)
-        if result['ilp_theta']:
-            baseline = result['ilp_theta']
-
-            # Quality ratios for all methods
+        # Calculate quality metrics (using standard ILP without warmstart as baseline for exact solution)
+        baseline = result.get('ilp_theta')
+        if baseline is not None and baseline != 0:
             for method in ['chalupa', 'ilp_warmstart', 'reduced_ilp', 'interactive_ilp']:
                 theta_key = f'{method}_theta'
-                if result.get(theta_key):
-                    result[f'{method}_quality_ratio'] = result[theta_key] / baseline
-                    result[f'{method}_absolute_gap'] = result[theta_key] - baseline
+                t = result.get(theta_key)
+                if t is not None:
+                    result[f'{method}_quality_ratio'] = t / baseline
+                    result[f'{method}_absolute_gap'] = t - baseline
                 else:
                     result[f'{method}_quality_ratio'] = None
                     result[f'{method}_absolute_gap'] = None
+        else:
+            for method in ['chalupa', 'ilp_warmstart', 'reduced_ilp', 'interactive_ilp']:
+                result[f'{method}_quality_ratio'] = None
+                result[f'{method}_absolute_gap'] = None
+
+        # --- Backwards-Compat für Original-Plots ---
+        # Original erwartet 'quality_ratio' & 'absolute_gap' (Chalupa vs. ILP)
+        result['quality_ratio'] = result.get('chalupa_quality_ratio')
+        result['absolute_gap'] = result.get('chalupa_absolute_gap')
 
         return result
-
-    def analyze_warmstart_effectiveness(self):
-        """Detailed analysis of _chalupa_warmstart effectiveness"""
-        if self.df.empty:
-            print("No data available for warmstart analysis")
-            return
-
-        fig, axes = plt.subplots(2, 3, figsize=(16, 10))
-
-        # 1. Warmstart impact on different problem sizes
-        ax = axes[0, 0]
-        if 'n_nodes' in self.df.columns:
-            size_bins = pd.cut(self.df['n_nodes'], bins=5)
-            warmstart_improvements = []
-            bin_centers = []
-
-            for bin_val in size_bins.cat.categories:
-                mask = size_bins == bin_val
-                if 'ilp_time' in self.df.columns and 'ilp_warmstart_time' in self.df.columns:
-                    valid = mask & self.df[['ilp_time', 'ilp_warmstart_time']].notna().all(axis=1)
-                    if valid.any():
-                        improvement = ((self.df.loc[valid, 'ilp_time'] -
-                                        self.df.loc[valid, 'ilp_warmstart_time']) /
-                                       self.df.loc[valid, 'ilp_time'] * 100).mean()
-                        warmstart_improvements.append(improvement)
-                        bin_centers.append(bin_val.mid)
-
-            if warmstart_improvements:
-                bars = ax.bar(range(len(warmstart_improvements)), warmstart_improvements,
-                              color='green', alpha=0.7, edgecolor='black')
-                ax.set_xticks(range(len(warmstart_improvements)))
-                ax.set_xticklabels([f'{int(c)}' for c in bin_centers], rotation=45)
-                ax.axhline(y=0, color='red', linestyle='--', alpha=0.5)
-                ax.set_xlabel('Number of Nodes')
-                ax.set_ylabel('Runtime Improvement (%)')
-                ax.set_title('Warmstart Effectiveness by Problem Size')
-
-                # Add value labels
-                for bar in bars:
-                    height = bar.get_height()
-                    ax.text(bar.get_x() + bar.get_width() / 2., height,
-                            f'{height:.1f}%', ha='center', va='bottom' if height > 0 else 'top')
-        ax.grid(True, alpha=0.3)
-
-        # 2. Warmstart quality analysis
-        ax = axes[0, 1]
-        # Compare how close Chalupa initial solution is to final ILP solution
-        if 'chalupa_theta' in self.df.columns and 'ilp_theta' in self.df.columns:
-            valid = self.df[['chalupa_theta', 'ilp_theta']].notna().all(axis=1)
-            if valid.any():
-                # Initial solution quality (Chalupa)
-                initial_quality = self.df.loc[valid, 'chalupa_theta']
-                optimal = self.df.loc[valid, 'ilp_theta']
-                gap = ((initial_quality - optimal) / optimal * 100)
-
-                ax.hist(gap, bins=20, color='orange', alpha=0.7, edgecolor='black')
-                ax.axvline(x=0, color='green', linestyle='--', linewidth=2,
-                           label='Perfect initial solution')
-                ax.set_xlabel('Initial Solution Gap (%)')
-                ax.set_ylabel('Frequency')
-                ax.set_title('Quality of Chalupa Warmstart Solution')
-                mean_gap = gap.mean()
-                ax.axvline(x=mean_gap, color='red', linestyle=':', linewidth=2,
-                           label=f'Mean gap: {mean_gap:.1f}%')
-                ax.legend()
-        ax.grid(True, alpha=0.3)
-
-        # 3. Correlation between initial quality and speedup
-        ax = axes[0, 2]
-        if all(col in self.df.columns for col in ['chalupa_theta', 'ilp_theta',
-                                                  'ilp_time', 'ilp_warmstart_time']):
-            valid = self.df[['chalupa_theta', 'ilp_theta',
-                             'ilp_time', 'ilp_warmstart_time']].notna().all(axis=1)
-            if valid.any():
-                initial_gap = ((self.df.loc[valid, 'chalupa_theta'] -
-                                self.df.loc[valid, 'ilp_theta']) /
-                               self.df.loc[valid, 'ilp_theta'] * 100)
-                speedup = self.df.loc[valid, 'ilp_time'] / self.df.loc[valid, 'ilp_warmstart_time']
-
-                scatter = ax.scatter(initial_gap, speedup, alpha=0.6, s=50,
-                                     c=self.df.loc[valid, 'n_nodes'], cmap='viridis')
-                ax.set_xlabel('Initial Solution Gap (%)')
-                ax.set_ylabel('Speedup Factor')
-                ax.set_title('Initial Quality vs Speedup')
-                ax.axhline(y=1, color='red', linestyle='--', alpha=0.5, label='No speedup')
-                ax.axvline(x=0, color='green', linestyle='--', alpha=0.5, label='Perfect initial')
-                plt.colorbar(scatter, ax=ax, label='Number of Nodes')
-                ax.legend()
-        ax.grid(True, alpha=0.3)
-
-        # 4. Warmstart vs problem density
-        ax = axes[1, 0]
-        if 'density' in self.df.columns:
-            density_bins = pd.cut(self.df['density'], bins=5)
-            density_speedups = []
-            density_centers = []
-
-            for bin_val in density_bins.cat.categories:
-                mask = density_bins == bin_val
-                if 'ilp_time' in self.df.columns and 'ilp_warmstart_time' in self.df.columns:
-                    valid = mask & self.df[['ilp_time', 'ilp_warmstart_time']].notna().all(axis=1)
-                    if valid.any():
-                        speedup = (self.df.loc[valid, 'ilp_time'] /
-                                   self.df.loc[valid, 'ilp_warmstart_time']).mean()
-                        density_speedups.append(speedup)
-                        density_centers.append(bin_val.mid)
-
-            if density_speedups:
-                ax.plot(density_centers, density_speedups, marker='o',
-                        linewidth=2, markersize=10, color='purple')
-                ax.fill_between(density_centers, 1, density_speedups,
-                                alpha=0.3, color='purple')
-                ax.axhline(y=1, color='red', linestyle='--', alpha=0.5, label='No speedup')
-                ax.set_xlabel('Graph Density')
-                ax.set_ylabel('Average Speedup Factor')
-                ax.set_title('Warmstart Effectiveness vs Graph Density')
-                ax.legend()
-        ax.grid(True, alpha=0.3)
-
-        # 5. Success rate comparison
-        ax = axes[1, 1]
-        success_data = {}
-
-        if 'ilp_status' in self.df.columns:
-            success_data['Standard ILP'] = (self.df['ilp_status'] == 'optimal').mean() * 100
-        if 'ilp_warmstart_status' in self.df.columns:
-            success_data['ILP + Warmstart'] = (self.df['ilp_warmstart_status'] == 'optimal').mean() * 100
-
-        if success_data:
-            bars = ax.bar(range(len(success_data)), list(success_data.values()),
-                          color=['red', 'green'], alpha=0.7, edgecolor='black')
-            ax.set_xticks(range(len(success_data)))
-            ax.set_xticklabels(list(success_data.keys()))
-            ax.set_ylabel('Success Rate (%)')
-            ax.set_title('Optimal Solution Success Rate')
-            ax.set_ylim(0, 105)
-
-            # Add value labels
-            for bar, value in zip(bars, success_data.values()):
-                height = bar.get_height()
-                ax.text(bar.get_x() + bar.get_width() / 2., height + 1,
-                        f'{value:.1f}%', ha='center', va='bottom')
-        ax.grid(True, alpha=0.3)
-
-        # 6. Detailed statistics table
-        ax = axes[1, 2]
-        ax.axis('off')
-
-        # Calculate warmstart statistics
-        stats_text = "_chalupa_warmstart Analysis\n" + "=" * 35 + "\n\n"
-
-        if 'ilp_time' in self.df.columns and 'ilp_warmstart_time' in self.df.columns:
-            valid = self.df[['ilp_time', 'ilp_warmstart_time']].notna().all(axis=1)
-            if valid.any():
-                avg_speedup = (self.df.loc[valid, 'ilp_time'] /
-                               self.df.loc[valid, 'ilp_warmstart_time']).mean()
-                median_speedup = (self.df.loc[valid, 'ilp_time'] /
-                                  self.df.loc[valid, 'ilp_warmstart_time']).median()
-                improvement_cases = (self.df.loc[valid, 'ilp_warmstart_time'] <
-                                     self.df.loc[valid, 'ilp_time']).mean() * 100
-
-                stats_text += "Performance Metrics:\n"
-                stats_text += f"• Average speedup: {avg_speedup:.2f}x\n"
-                stats_text += f"• Median speedup: {median_speedup:.2f}x\n"
-                stats_text += f"• Improvement rate: {improvement_cases:.1f}%\n\n"
-
-        if 'chalupa_theta' in self.df.columns and 'ilp_theta' in self.df.columns:
-            valid = self.df[['chalupa_theta', 'ilp_theta']].notna().all(axis=1)
-            if valid.any():
-                perfect_initial = (self.df.loc[valid, 'chalupa_theta'] ==
-                                   self.df.loc[valid, 'ilp_theta']).mean() * 100
-                avg_gap = ((self.df.loc[valid, 'chalupa_theta'] -
-                            self.df.loc[valid, 'ilp_theta']) /
-                           self.df.loc[valid, 'ilp_theta']).mean() * 100
-
-                stats_text += "Initial Solution Quality:\n"
-                stats_text += f"• Perfect initial: {perfect_initial:.1f}%\n"
-                stats_text += f"• Average gap: {avg_gap:.1f}%\n\n"
-
-        stats_text += "How _chalupa_warmstart works:\n"
-        stats_text += "1. Runs Chalupa on complement graph\n"
-        stats_text += "2. Extracts color assignment\n"
-        stats_text += "3. Provides to ILP as initial solution\n"
-        stats_text += "4. ILP refines to optimal (if possible)"
-
-        ax.text(0.05, 0.95, stats_text, transform=ax.transAxes,
-                fontsize=10, verticalalignment='top',
-                fontfamily='monospace',
-                bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
-
-        plt.suptitle('_chalupa_warmstart Effectiveness Analysis', fontsize=16, y=1.02)
-        plt.tight_layout()
-
-        output_path = self.output_dir / f"warmstart_analysis_{self.timestamp}.png"
-        plt.savefig(output_path, dpi=300, bbox_inches='tight')
-        print(f"Saved warmstart analysis to {output_path}")
-        plt.show()
 
     def create_reduction_effectiveness_plot(self):
         """Analyze the effectiveness of graph reductions"""
@@ -1135,94 +951,6 @@ class ExtendedWP1cEvaluator(WP1cEvaluator):
         plt.savefig(output_path, dpi=300, bbox_inches='tight')
         print(f"Saved reduction effectiveness plots to {output_path}")
         plt.show()
-
-    def generate_extended_summary_report(self):
-        """Generate a comprehensive summary report including all solver variants"""
-        if not hasattr(self, 'df') or self.df.empty:
-            print("No data available for summary")
-            return
-
-        report_path = self.output_dir / f"extended_summary_report_{self.timestamp}.txt"
-
-        with open(report_path, 'w') as f:
-            f.write("=" * 80 + "\n")
-            f.write("EXTENDED WP1.c EVALUATION SUMMARY REPORT\n")
-            f.write(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
-            f.write("=" * 80 + "\n\n")
-
-            # Overall statistics
-            f.write("OVERALL STATISTICS\n")
-            f.write("-" * 40 + "\n")
-            f.write(f"Total instances evaluated: {len(self.df)}\n\n")
-
-            # Runtime statistics for all methods
-            f.write("RUNTIME PERFORMANCE (ALL METHODS)\n")
-            f.write("-" * 40 + "\n")
-
-            methods = ['chalupa', 'ilp', 'ilp_warmstart', 'reduced_ilp', 'interactive_ilp']
-            method_names = {
-                'chalupa': 'Chalupa Heuristic',
-                'ilp': 'Standard ILP',
-                'ilp_warmstart': 'ILP with Warmstart',
-                'reduced_ilp': 'Reduced ILP',
-                'interactive_ilp': 'Interactive Reduced ILP'
-            }
-
-            for method in methods:
-                time_col = f'{method}_time'
-                if time_col in self.df.columns:
-                    times = self.df[time_col].dropna()
-                    if not times.empty:
-                        f.write(f"\n{method_names[method]}:\n")
-                        f.write(f"  Mean: {times.mean():.3f}s\n")
-                        f.write(f"  Median: {times.median():.3f}s\n")
-                        f.write(f"  Min: {times.min():.3f}s\n")
-                        f.write(f"  Max: {times.max():.3f}s\n")
-                        f.write(f"  Std Dev: {times.std():.3f}s\n")
-
-            # Speedup analysis
-            f.write("\n\nSPEEDUP ANALYSIS (vs Standard ILP)\n")
-            f.write("-" * 40 + "\n")
-
-            for method in ['chalupa', 'ilp_warmstart', 'reduced_ilp', 'interactive_ilp']:
-                time_col = f'{method}_time'
-                if time_col in self.df.columns and 'ilp_time' in self.df.columns:
-                    valid = self.df[[time_col, 'ilp_time']].notna().all(axis=1)
-                    if valid.any():
-                        speedups = self.df.loc[valid, 'ilp_time'] / self.df.loc[valid, time_col]
-                        f.write(f"\n{method_names[method]}:\n")
-                        f.write(f"  Mean Speedup: {speedups.mean():.2f}x\n")
-                        f.write(f"  Median Speedup: {speedups.median():.2f}x\n")
-                        f.write(f"  Max Speedup: {speedups.max():.2f}x\n")
-
-            # Solution quality statistics
-            f.write("\n\nSOLUTION QUALITY (vs Standard ILP)\n")
-            f.write("-" * 40 + "\n")
-
-            for method in ['chalupa', 'ilp_warmstart', 'reduced_ilp', 'interactive_ilp']:
-                quality_col = f'{method}_quality_ratio'
-                if quality_col in self.df.columns:
-                    quality = self.df[quality_col].dropna()
-                    if not quality.empty:
-                        f.write(f"\n{method_names[method]}:\n")
-                        f.write(f"  Mean Ratio: {quality.mean():.4f}\n")
-                        f.write(f"  Median Ratio: {quality.median():.4f}\n")
-                        f.write(f"  Min Ratio: {quality.min():.4f}\n")
-                        f.write(f"  Max Ratio: {quality.max():.4f}\n")
-                        f.write(f"  Std Dev: {quality.std():.4f}\n")
-
-                        # Success rates
-                        optimal = (quality == 1.0).mean() * 100
-                        within_5 = (quality <= 1.05).mean() * 100
-                        within_10 = (quality <= 1.10).mean() * 100
-
-                        f.write(f"  Optimal solutions: {optimal:.1f}%\n")
-                        f.write(f"  Within 5% of optimal: {within_5:.1f}%\n")
-                        f.write(f"  Within 10% of optimal: {within_10:.1f}%\n")
-
-            f.write("\n" + "=" * 80 + "\n")
-            f.write("END OF EXTENDED REPORT\n")
-            f.write("=" * 80 + "\n")
 
     def create_method_comparison_plots(self):
         """compares runtimes of all variantes in 1 plot"""
@@ -1454,151 +1182,6 @@ class ExtendedWP1cEvaluator(WP1cEvaluator):
         print(f"Saved warmstart analysis to {output_path}")
         plt.show()
 
-    def create_reduction_effectiveness_plot(self):
-        """Analyze the effectiveness of graph reductions"""
-        if self.df.empty:
-            print("No data available for plotting")
-            return
-
-        fig, axes = plt.subplots(2, 2, figsize=(14, 10))
-
-        # 1. Compare reduced vs interactive reduced
-        ax = axes[0, 0]
-        if 'reduced_ilp_time' in self.df.columns and 'interactive_ilp_time' in self.df.columns:
-            valid_idx = self.df[['reduced_ilp_time', 'interactive_ilp_time']].notna().all(axis=1)
-            if valid_idx.any():
-                ax.scatter(self.df.loc[valid_idx, 'reduced_ilp_time'],
-                           self.df.loc[valid_idx, 'interactive_ilp_time'],
-                           alpha=0.6, s=50, c=self.df.loc[valid_idx, 'n_nodes'],
-                           cmap='viridis')
-                max_time = max(self.df.loc[valid_idx, 'reduced_ilp_time'].max(),
-                               self.df.loc[valid_idx, 'interactive_ilp_time'].max())
-                ax.plot([0, max_time], [0, max_time], 'r--', alpha=0.5,
-                        label='Equal runtime')
-                ax.fill_between([0, max_time], [0, max_time], 0,
-                                alpha=0.1, color='green',
-                                label='Interactive faster')
-                plt.colorbar(ax.collections[0], ax=ax, label='Number of Nodes')
-        ax.set_xlabel('Reduced ILP Time (s)')
-        ax.set_ylabel('Interactive Reduced ILP Time (s)')
-        ax.set_title('Single vs Interactive Reduction')
-        ax.set_xscale('log')
-        ax.set_yscale('log')
-        ax.legend()
-        ax.grid(True, alpha=0.3)
-
-        # 2. Reduction effectiveness by graph density
-        ax = axes[0, 1]
-        if 'density' in self.df.columns:
-            density_bins = pd.cut(self.df['density'], bins=5)
-            reduction_speedup = []
-            bin_centers = []
-
-            for bin_val in density_bins.cat.categories:
-                mask = density_bins == bin_val
-                if 'ilp_time' in self.df.columns and 'reduced_ilp_time' in self.df.columns:
-                    valid = mask & self.df[['ilp_time', 'reduced_ilp_time']].notna().all(axis=1)
-                    if valid.any():
-                        speedup = (self.df.loc[valid, 'ilp_time'] /
-                                   self.df.loc[valid, 'reduced_ilp_time']).mean()
-                        reduction_speedup.append(speedup)
-                        bin_centers.append(bin_val.mid)
-
-            if reduction_speedup:
-                ax.bar(range(len(reduction_speedup)), reduction_speedup,
-                       color='orange', alpha=0.7, edgecolor='black')
-                ax.set_xticks(range(len(reduction_speedup)))
-                ax.set_xticklabels([f'{c:.2f}' for c in bin_centers], rotation=45)
-                ax.axhline(y=1.0, color='red', linestyle='--', alpha=0.5,
-                           label='No speedup')
-                ax.set_xlabel('Graph Density')
-                ax.set_ylabel('Average Speedup Factor')
-                ax.set_title('Reduction Effectiveness by Density')
-                ax.legend()
-        ax.grid(True, alpha=0.3)
-
-        # 3. Cumulative runtime distribution
-        ax = axes[1, 0]
-        methods_to_plot = ['ilp', 'ilp_warmstart', 'reduced_ilp', 'interactive_ilp']
-        colors = ['red', 'green', 'orange', 'purple']
-
-        for method, color in zip(methods_to_plot, colors):
-            time_col = f'{method}_time'
-            if time_col in self.df.columns:
-                times = self.df[time_col].dropna().sort_values()
-                if not times.empty:
-                    cumulative = np.arange(1, len(times) + 1) / len(times) * 100
-                    label = method.replace('_', ' ').title()
-                    ax.plot(times, cumulative, label=label, color=color, linewidth=2)
-
-        ax.set_xlabel('Runtime (seconds)')
-        ax.set_ylabel('Cumulative Percentage (%)')
-        ax.set_title('Cumulative Runtime Distribution')
-        ax.set_xscale('log')
-        ax.legend()
-        ax.grid(True, alpha=0.3)
-
-        # 4. Performance gain summary
-        ax = axes[1, 1]
-        ax.axis('off')
-
-        # Calculate performance metrics
-        summary_text = "Performance Gains Summary\n" + "=" * 30 + "\n\n"
-
-        # Warmstart improvement
-        if 'ilp_time' in self.df.columns and 'ilp_warmstart_time' in self.df.columns:
-            valid = self.df[['ilp_time', 'ilp_warmstart_time']].notna().all(axis=1)
-            if valid.any():
-                warmstart_speedup = (self.df.loc[valid, 'ilp_time'] /
-                                     self.df.loc[valid, 'ilp_warmstart_time']).mean()
-                summary_text += f"Warmstart Speedup: {warmstart_speedup:.2f}x\n"
-
-        # Reduction improvement
-        if 'ilp_time' in self.df.columns and 'reduced_ilp_time' in self.df.columns:
-            valid = self.df[['ilp_time', 'reduced_ilp_time']].notna().all(axis=1)
-            if valid.any():
-                reduction_speedup = (self.df.loc[valid, 'ilp_time'] /
-                                     self.df.loc[valid, 'reduced_ilp_time']).mean()
-                summary_text += f"Reduction Speedup: {reduction_speedup:.2f}x\n"
-
-        # Interactive reduction improvement
-        if 'ilp_time' in self.df.columns and 'interactive_ilp_time' in self.df.columns:
-            valid = self.df[['ilp_time', 'interactive_ilp_time']].notna().all(axis=1)
-            if valid.any():
-                interactive_speedup = (self.df.loc[valid, 'ilp_time'] /
-                                       self.df.loc[valid, 'interactive_ilp_time']).mean()
-                summary_text += f"Interactive Speedup: {interactive_speedup:.2f}x\n"
-
-        # Chalupa speedup
-        if 'ilp_time' in self.df.columns and 'chalupa_time' in self.df.columns:
-            valid = self.df[['ilp_time', 'chalupa_time']].notna().all(axis=1)
-            if valid.any():
-                chalupa_speedup = (self.df.loc[valid, 'ilp_time'] /
-                                   self.df.loc[valid, 'chalupa_time']).mean()
-                summary_text += f"\nChalupa vs ILP: {chalupa_speedup:.1f}x faster\n"
-
-        # Quality comparison
-        summary_text += "\n" + "-" * 30 + "\nSolution Quality\n" + "-" * 30 + "\n"
-
-        for method in ['chalupa', 'ilp_warmstart', 'reduced_ilp', 'interactive_ilp']:
-            quality_col = f'{method}_quality_ratio'
-            if quality_col in self.df.columns:
-                avg_quality = self.df[quality_col].dropna().mean()
-                method_name = method.replace('_', ' ').title()
-                summary_text += f"{method_name}: {avg_quality:.3f}\n"
-
-        ax.text(0.1, 0.5, summary_text, transform=ax.transAxes,
-                fontsize=11, verticalalignment='center',
-                fontfamily='monospace')
-
-        plt.suptitle('Reduction Effectiveness Analysis', fontsize=16, y=1.02)
-        plt.tight_layout()
-
-        output_path = self.output_dir / f"reduction_effectiveness_{self.timestamp}.png"
-        plt.savefig(output_path, dpi=300, bbox_inches='tight')
-        print(f"Saved reduction effectiveness plots to {output_path}")
-        plt.show()
-
     def generate_extended_summary_report(self):
         """Generate a comprehensive summary report including all solver variants"""
         if not hasattr(self, 'df') or self.df.empty:
@@ -1687,6 +1270,36 @@ class ExtendedWP1cEvaluator(WP1cEvaluator):
             f.write("END OF EXTENDED REPORT\n")
             f.write("=" * 80 + "\n")
 
+def _compat_add_quality_columns(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    wichtig zur Behebung interner Versionskonflikte..
+    Stellt sicher, dass 'quality_ratio' und 'absolute_gap' vorhanden sind,
+    kompatibel zu den alten Plot-Funktionen. Nutzt bevorzugt vorhandene
+    'chalupa_*' Spalten, sonst wird aus Theta-Werten berechnet.
+    """
+    if 'quality_ratio' not in df.columns:
+        if 'chalupa_quality_ratio' in df.columns:
+            df['quality_ratio'] = df['chalupa_quality_ratio']
+        elif {'chalupa_theta', 'ilp_theta'}.issubset(df.columns):
+            df['quality_ratio'] = np.where(
+                df['ilp_theta'].notna() & (df['ilp_theta'] != 0) & df['chalupa_theta'].notna(),
+                df['chalupa_theta'] / df['ilp_theta'],
+                np.nan
+            )
+        else:
+            df['quality_ratio'] = np.nan
+
+    if 'absolute_gap' not in df.columns:
+        if {'chalupa_theta', 'ilp_theta'}.issubset(df.columns):
+            df['absolute_gap'] = np.where(
+                df['chalupa_theta'].notna() & df['ilp_theta'].notna(),
+                df['chalupa_theta'] - df['ilp_theta'],
+                np.nan
+            )
+        else:
+            df['absolute_gap'] = np.nan
+    return df
+
 
 def main():
     """Extended main evaluation pipeline with all solver variants"""
@@ -1714,6 +1327,9 @@ def main():
     print("   - Interactive reduced ILP")
 
     df = evaluator.run_evaluation_suite(test_dir)
+    # Backwards-Compat: Spalten für Original-Plots ergänzen
+    df = _compat_add_quality_columns(df)
+    evaluator.df = df  # sicher stellen, dass Evaluator denselben DF hält
 
     if df.empty:
         print("No evaluation results. Exiting.")
