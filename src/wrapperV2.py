@@ -65,7 +65,6 @@ Dependencies:
 - utils.txt_to_networkx (reads graph from .txt)
 - algorithms.ilp_solver.solve_ilp_clique_cover
 - algorithms.chalupa.ChalupaHeuristic (optional; only if use_warmstart=True)
-
 """
 import networkx as nx
 from typing import Optional, Dict, Any, List
@@ -74,6 +73,7 @@ import time
 
 from utils import txt_to_networkx
 from algorithms.ilp_solver import solve_ilp_clique_cover
+
 try:
     from algorithms.chalupa import ChalupaHeuristic
 except Exception:
@@ -81,7 +81,6 @@ except Exception:
 from reductions.reductions import apply_all_reductions
 
 
-# Kompakt-Relabelling, damit alle Knoten 0..n-1 sind (keine String-Labels etc.) ---
 def _compact_int_labels(G: nx.Graph) -> nx.Graph:
     """
     brings node labels safely to 0...n-1 (stable sorting)
@@ -94,23 +93,22 @@ def _compact_int_labels(G: nx.Graph) -> nx.Graph:
 
 
 def chalupa_wrapper(txt_filepath: str) -> Optional[int]:
-    """Upper Bound für θ(G) per Chalupa auf Ḡ (Komplement)."""
+    """Upper bound for θ(G) via Chalupa on Ḡ (Komplement)."""
     try:
         print(f"{txt_filepath}")
         G = txt_to_networkx(txt_filepath)
-        G = _compact_int_labels(G)
         Gc = nx.complement(G)
         Gc = _compact_int_labels(Gc)
+
         if ChalupaHeuristic is None:
             return None
+
         chalupa = ChalupaHeuristic(Gc)
-        # robust: unterschiedliche API-Namen unterstützen
         if hasattr(chalupa, 'iterated_greedy_clique_covering'):
             covering = chalupa.iterated_greedy_clique_covering()
             return len(covering) if covering is not None else None
         elif hasattr(chalupa, 'run'):
             res = chalupa.run()
-            # viele Implementationen liefern upper_bound o. Ä.
             return res.get('upper_bound') if isinstance(res, dict) else int(res)
         else:
             return None
@@ -121,8 +119,9 @@ def chalupa_wrapper(txt_filepath: str) -> Optional[int]:
 
 def _chalupa_warmstart(G: nx.Graph) -> Optional[Dict[Any, int]]:
     """
-    Liefert eine Knoten->Farbe-Zuordnung als Warmstart, berechnet über χ(Ḡ).
-    Wichtig: Hier **immer** auf dem Komplement desjenigen Graphen rechnen, den man dem ILP übergibt.
+    Generate warmstart for the given graph G.
+    IMPORTANT: Assumes G is the graph we want to color.
+    If G is original, we compute complement internally.
     """
     if ChalupaHeuristic is None:
         return None
@@ -130,10 +129,10 @@ def _chalupa_warmstart(G: nx.Graph) -> Optional[Dict[Any, int]]:
         Gc = nx.complement(G)
         Gc = _compact_int_labels(Gc)
         heuristic = ChalupaHeuristic(Gc)
+
         if hasattr(heuristic, 'coloring'):
-            col = heuristic.coloring()  # Dict node->color
+            col = heuristic.coloring()
         elif hasattr(heuristic, 'iterated_greedy_clique_covering'):
-            # evtl. Liste von Cliquen/Independent Sets -> in Farben umwandeln
             cover = heuristic.iterated_greedy_clique_covering()
             if cover is None:
                 return None
@@ -146,8 +145,39 @@ def _chalupa_warmstart(G: nx.Graph) -> Optional[Dict[Any, int]]:
             col = res.get('coloring') if isinstance(res, dict) else None
         else:
             return None
-        # Nur Knoten behalten, die im (ggf. reduzierten) G existieren
+
         return {v: int(c) for v, c in col.items() if v in G.nodes}
+    except Exception:
+        return None
+
+
+def _chalupa_warmstart_for_complement(Gc: nx.Graph) -> Optional[Dict[Any, int]]:
+    """
+    Generate warmstart for an already complemented graph Gc.
+    NO additional complement is computed.
+    """
+    if ChalupaHeuristic is None:
+        return None
+    try:
+        heuristic = ChalupaHeuristic(Gc)  # Use Gc directly!
+
+        if hasattr(heuristic, 'coloring'):
+            col = heuristic.coloring()
+        elif hasattr(heuristic, 'iterated_greedy_clique_covering'):
+            cover = heuristic.iterated_greedy_clique_covering()
+            if cover is None:
+                return None
+            col = {}
+            for c_idx, bucket in enumerate(cover):
+                for v in bucket:
+                    col[v] = c_idx
+        elif hasattr(heuristic, 'run'):
+            res = heuristic.run()
+            col = res.get('coloring') if isinstance(res, dict) else None
+        else:
+            return None
+
+        return {v: int(c) for v, c in col.items() if v in Gc.nodes}
     except Exception:
         return None
 
@@ -171,17 +201,21 @@ def _is_valid_clique_cover(G: nx.Graph, color_of: dict) -> bool:
                     return False
     return True
 
-
 def ilp_wrapper(txt_filepath: str, use_warmstart: bool = False, **kwargs):
+    """
+    Standard ILP wrapper.
+    Computes θ(G) by solving χ(Ḡ) with the ILP solver.
+    """
     G = txt_to_networkx(txt_filepath)
-    G = _compact_int_labels(G)  # <<< NEU: kompakte Labels 0..n-1
+    G = _compact_int_labels(G)
+
     warm = _chalupa_warmstart(G) if use_warmstart else None
+
     t0 = time.time()
-    res = solve_ilp_clique_cover(G, warmstart=warm, **kwargs)
+    res = solve_ilp_clique_cover(G, is_already_complement=False, warmstart=warm, **kwargs)
     if isinstance(res, dict) and ('time' not in res or res['time'] is None):
         res['time'] = time.time() - t0
     return res
-
 
 
 def reduced_ilp_wrapper(txt_filepath: str, use_warmstart: bool = False, **kwargs) -> Dict[str, Any]:
@@ -208,77 +242,82 @@ def reduced_ilp_wrapper(txt_filepath: str, use_warmstart: bool = False, **kwargs
     ****WICHTIG**** Jede Reduktionsroutine (und später ILP-Solver) sieht jetzt nur Graphen mit Labels (0...n-1).
         -> Behebung der OutofBounds-Zugriffe, auch wenn vorher Knoten mit hohen IDs weggefallen sind
     """
-
     if not os.path.exists(txt_filepath):
-            raise FileNotFoundError(f'Input file not found: {txt_filepath}')
+        raise FileNotFoundError(f'Input file not found: {txt_filepath}')
 
     G = txt_to_networkx(txt_filepath)
     G = _compact_int_labels(G)
+
+    # Build complement for reductions
     Gc = nx.complement(G)
     Gc = _compact_int_labels(Gc)
 
+    # Apply reductions on Gc
     Gc_red, _meta = apply_all_reductions(Gc, verbose=False, timing=False)
-    Gc_red = _compact_int_labels(Gc_red)  #(nach Reduktion sicherheitshalber)
+    Gc_red = _compact_int_labels(Gc_red)
 
-    G_red_back = nx.complement(Gc_red)
-    G_red_back = _compact_int_labels(G_red_back)
+    # Generate warmstart for Gc_red
+    warm = _chalupa_warmstart_for_complement(Gc_red) if use_warmstart else None
 
-    # Warmstart MUSS zu G_red_back passen, sonst inkonsistente Keys
-    warm = _chalupa_warmstart(G_red_back) if use_warmstart else None
-    return solve_ilp_clique_cover(G_red_back, warmstart=warm, **kwargs)
+    # Pass Gc_red DIRECTLY to ILP with is_already_complement=True
+    return solve_ilp_clique_cover(Gc_red, is_already_complement=True, warmstart=warm, **kwargs)
+
 
 def interactive_reduced_ilp_wrapper(
-            txt_filepath: str,
-            use_warmstart: bool = False,
-            max_rounds: int = 10,
-            **kwargs
-    ) -> Dict[str, Any]:
-        if not os.path.exists(txt_filepath):
-            raise FileNotFoundError(f'Input file not found: {txt_filepath}')
-        """
-        Iteriere: UB per Chalupa auf Ḡ(G_curr) verbessern; Reduktionen auf **G_curr** anwenden;
-        stoppe, wenn UB nicht mehr sinkt; dann ILP auf finalem **G_curr**.
-        - vor UB-Berechnung: Chalupa bekommt sauber beschriftetes Komplement
-        - nach Reduktion sofort neues Labelling 0...n-1
-        - vor ILP: nochmal Sicherheitscheck, damit Arraylaengen mit Knotenzahl übereinstimmen
-        """
-        G_curr = txt_to_networkx(txt_filepath)
-        G_curr = _compact_int_labels(G_curr)  # Früh kompaktes Labeling
+        txt_filepath: str,
+        use_warmstart: bool = False,
+        max_rounds: int = 10,
+        **kwargs
+) -> Dict[str, Any]:
+    """
+    Interactive reduction: iteratively improve upper bound and apply reductions.
+    """
+    if not os.path.exists(txt_filepath):
+        raise FileNotFoundError(f'Input file not found: {txt_filepath}')
 
-        prev_ub = float('inf')
-        rounds = 0
-        while rounds < max_rounds:
-            # 1) UB per Chalupa auf Komplement von G_curr
-            if ChalupaHeuristic is None:
-                break
-            Gc = nx.complement(G_curr)
-            Gc = _compact_int_labels(Gc)  # <-- hier ebenfalls kompakten!
-            chal = ChalupaHeuristic(Gc)
-            if hasattr(chal, 'iterated_greedy_clique_covering'):
-                cover = chal.iterated_greedy_clique_covering()
-                ub = len(cover) if cover is not None else float('inf')
-            elif hasattr(chal, 'run'):
-                res = chal.run()
-                ub = res.get('upper_bound', float('inf')) if isinstance(res, dict) else float('inf')
-            else:
-                ub = float('inf')
+    G = txt_to_networkx(txt_filepath)
+    G = _compact_int_labels(G)
 
-            if ub >= prev_ub:
-                break
-            prev_ub = ub
+    # Work with complement throughout
+    Gc_curr = nx.complement(G)
+    Gc_curr = _compact_int_labels(Gc_curr)
 
-            # 2) Reduktionen auf G_curr
-            G_curr, _ = apply_all_reductions(G_curr, verbose=False, timing=False)
-            G_curr = _compact_int_labels(G_curr)  # <-- hier sofort relabeln
-            rounds += 1
+    prev_ub = float('inf')
+    rounds = 0
 
-        # Final: kompaktes Labeling vor ILP
-        G_curr = _compact_int_labels(G_curr)
+    while rounds < max_rounds:
+        # 1) Compute UB via Chalupa on Gc_curr
+        if ChalupaHeuristic is None:
+            break
 
-        warm = _chalupa_warmstart(G_curr) if use_warmstart else None
-        return solve_ilp_clique_cover(G_curr, warmstart=warm, **kwargs)
+        chal = ChalupaHeuristic(Gc_curr)
+        if hasattr(chal, 'iterated_greedy_clique_covering'):
+            cover = chal.iterated_greedy_clique_covering()
+            ub = len(cover) if cover is not None else float('inf')
+        elif hasattr(chal, 'run'):
+            res = chal.run()
+            ub = res.get('upper_bound', float('inf')) if isinstance(res, dict) else float('inf')
+        else:
+            ub = float('inf')
+
+        if ub >= prev_ub:
+            break
+        prev_ub = ub
+
+        # 2) Apply reductions on Gc_curr (NOT on G!)
+        Gc_curr, _ = apply_all_reductions(Gc_curr, verbose=False, timing=False)
+        Gc_curr = _compact_int_labels(Gc_curr)
+        rounds += 1
+
+    # Final: Generate warmstart for Gc_curr
+    warm = _chalupa_warmstart_for_complement(Gc_curr) if use_warmstart else None
+
+    # Pass Gc_curr directly to ILP with is_already_complement=True
+    return solve_ilp_clique_cover(Gc_curr, is_already_complement=True, warmstart=warm, **kwargs)
+
 
 def batch_ilp(file_list: List[str], use_warmstart: bool = False, **kwargs) -> List[Dict[str, Any]]:
+    """Batch processing of multiple graph files."""
     results = []
     for path in file_list:
         try:
@@ -287,6 +326,7 @@ def batch_ilp(file_list: List[str], use_warmstart: bool = False, **kwargs) -> Li
         except Exception as e:
             results.append({'file': path, 'error': str(e)})
     return results
+
 
 """ old Version with conflicts
 from typing import Optional, Dict, Any, List
@@ -348,7 +388,7 @@ def ilp_wrapper(txt_filepath: str, use_warmstart: bool = False, **kwargs) -> Dic
     #       -------
     #       int or None
     #           Clique cover number θ(G). None if ILP failed.
-    
+
 
 def reduced_ilp_wrapper(txt_filepath: str, use_warmstart: bool = False, **kwargs) -> Dict[str, Any]:
     if not os.path.exists(txt_filepath):
@@ -368,7 +408,7 @@ def reduced_ilp_wrapper(txt_filepath: str, use_warmstart: bool = False, **kwargs
     #-------
     #int or None
     #    Clique cover number θ(G) on the reduced instance, or None on failure.
-    
+
     try:
         print(f"{txt_filepath}")
         G = txt_to_networkx(txt_filepath)
