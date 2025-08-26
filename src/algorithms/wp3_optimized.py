@@ -758,32 +758,46 @@ def create_benchmark_instance(instance_type: str = 'mixed', n: int = 100) -> nx.
     import math
 
     graph = nx.Graph()
+    # 0) Immer n Knoten anlegen – verhindert leere Range-Probleme
+    graph.add_nodes_from(range(n))
 
     if instance_type == 'mixed':
-        # Create cliques of varying sizes
-        vertex_id = 0
-        clique_sizes = [5, 10, 15, 20] * (n // 50)
+        # 1) Dynamische Cliquen für kleine n
+        if n < 50:
+            remaining = n
+            clique_sizes = []
+            # Größen aus einem kleinen Pool, aber nie <2 (sonst trivial)
+            pool = [4, 5, 6, 7, 8, 10]
+            while remaining > 0:
+                size = min(random.choice(pool), remaining)
+                if size == 1 and remaining >= 2:
+                    size = 2
+                clique_sizes.append(size)
+                remaining -= size
+        else:
+            clique_sizes = [5, 10, 15, 20] * max(1, n // 50)
 
+        # 2) Cliquen setzen (auf bestehenden Knoten 0..n-1)
+        vertex_id = 0
         for size in clique_sizes:
-            if vertex_id >= n:
-                break
             actual_size = min(size, n - vertex_id)
             clique = list(range(vertex_id, vertex_id + actual_size))
             for i, u in enumerate(clique):
                 for v in clique[i + 1:]:
                     graph.add_edge(u, v)
             vertex_id += actual_size
+            if vertex_id >= n:
+                break
 
-        # Add noise
-        noise_edges = int(0.1 * n * (n - 1) / 2)
+        # 3) Rauschen: ausschließlich aus 0..n-1 sampeln
+        noise_edges = max(1, int(0.1 * n * (n - 1) / 2))
         for _ in range(noise_edges):
-            u, v = random.randint(0, vertex_id - 1), random.randint(0, vertex_id - 1)
+            u, v = random.randint(0, n - 1), random.randint(0, n - 1)
             if u != v:
                 if graph.has_edge(u, v):
                     graph.remove_edge(u, v)
                 else:
                     graph.add_edge(u, v)
-
     elif instance_type == 'uniform':
         # Uniform clique sizes
         clique_size = int(math.sqrt(n))
