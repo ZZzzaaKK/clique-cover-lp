@@ -303,15 +303,13 @@ class ClusterEditingKernelization:
         return applied
 
     def apply_rule_3_heavy_edge_both(self) -> bool:
-        """
-        Rule 3: Heavy edge rule (both ends).
-        Merge vertices u, v if s(uv) >= sum s(uw) for w in N(u)\{v} + sum s(vw) for w in N(v)\{u}.
-
-        Returns:
-            True if any reduction was applied
-        """
         applied = False
         merges = []
+
+        #Rule 3: Heavy edge rule (both ends).
+        #Merge vertices u, v if s(uv) >= sum s(uw) for w in N(u)\{v} + sum s(vw) for w in N(v)\{u}
+        #Returns:
+        #True if any reduction was applied
 
         for edge in list(self.instance.graph.edges()):
             u, v = edge

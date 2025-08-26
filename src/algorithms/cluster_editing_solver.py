@@ -13,7 +13,7 @@ import numpy as np
 from typing import Dict, List, Set, Optional, Any, Tuple
 import time
 
-from .cluster_editing_kernelization import (
+from cluster_editing_kernelization import (
     ClusterEditingInstance,
     ClusterEditingKernelization,
     OptimizedClusterEditingKernelization
