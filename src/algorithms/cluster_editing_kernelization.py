@@ -152,9 +152,8 @@ class ClusterEditingInstance:
 class CriticalClique:
     """
     Manages critical cliques in a graph.
-
     A critical clique is a maximal clique where all vertices
-    have identical closed neighborhoods.
+    have identical (closed) neighborhoods.
     """
 
     def __init__(self, graph: nx.Graph):
@@ -176,7 +175,7 @@ class CriticalClique:
             closed_nbh = self._get_closed_neighborhood(v)
             neighborhood_groups[closed_nbh].add(v)
 
-        # Verify each group forms a clique and store
+        # Verify tht each group forms a clique and store
         clique_id = 0
         for vertices in neighborhood_groups.values():
             if len(vertices) > 0 and self._is_clique(vertices):
