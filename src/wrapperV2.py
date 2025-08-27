@@ -35,7 +35,7 @@ we are certain it is optimal.
 
  why important?
     - Cliquen in G ↔ unabhängige Mengen im Komplementgraphen Ḡ
-    - Eine Clique in G ist eine independent set in Ḡ.
+    - Eine Clique in G ist ein independent set in Ḡ.
     - Eine independent set in G ist eine Clique in Ḡ.
     - im OG Code ist, so wie ich das verstanden habe, folgendes passiert: ILP hat χ(G) berechnet (Färbung von G) → und das war somit nicht die gesuchte Zahl für Clique Cover.
     - Bsp:
