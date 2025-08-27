@@ -22,11 +22,10 @@ if str(PROJECT_ROOT) not in sys.path:
 sys.path.append('src')
 
 # Import project modules
-from src.wrapperV2 import ilp_wrapper, reduced_ilp_wrapper, chalupa_wrapper, _chalupa_warmstart
-from src.utils import txt_to_networkx, get_value
+from src.wrapperV3 import ilp_wrapper, chalupa_wrapper
+from src.utils import txt_to_networkx
 from src.simulator import GraphGenerator, GraphConfig
-from src.utils_metrics import (set_global_seeds, safe_ratio, rel_change,
-        clean_for_plot, nanmean, safe_idxmax, should_kernelize, estimate_loglog_slope)
+from src.utils_metrics import (set_global_seeds)
 set_global_seeds(33)
 
 # Configure plotting style

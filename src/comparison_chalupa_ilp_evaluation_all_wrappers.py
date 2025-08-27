@@ -1,5 +1,5 @@
 """
-WP1.c Evaluation: Comprehensive comparison of all solver variants
+WP1.c Evaluation ++WP2: Comprehensive comparison of all solver variants
 Extends the original comparison to include reduced and interactive reduced ILP methods
 """
 
@@ -27,7 +27,7 @@ from src.wrapperV2 import (
     reduced_ilp_wrapper,
     chalupa_wrapper,
     interactive_reduced_ilp_wrapper,
-
+    debug_clique_cover
 )
 from src.utils import txt_to_networkx
 from src.simulator import GraphGenerator, GraphConfig
@@ -872,7 +872,7 @@ class ExtendedWP1cEvaluator(WP1cEvaluator):
 
         # 3. Cumulative runtime distribution
         ax = axes[1, 0]
-        methods_to_plot = ['ilp', 'ilp_warmstart', 'reduced_ilp', 'interactive_ilp']
+        methods_to_plot = ['ilp', 'ilp_warmstart', 'reduced_ilp', 'interactive_ilp', 'chalupa']
         colors = ['red', 'green', 'orange', 'purple']
 
         for method, color in zip(methods_to_plot, colors):
@@ -983,6 +983,143 @@ class ExtendedWP1cEvaluator(WP1cEvaluator):
         out = self.output_dir / f"method_comparison_{self.timestamp}.png"
         plt.savefig(out, dpi=300, bbox_inches='tight')
         print(f"Saved method comparison plots to {out}")
+        plt.show()
+
+    def create_runtime_comparison_plots(self):
+        """runtime comparison across all methods"""
+        if not hasattr(self, 'df') or self.df is None or self.df.empty:
+            print("No data available for runtime comparison")
+            return
+
+        # Methoden & Labels (nur plotten, was wirklich vorhanden ist)
+        method_labels = [
+            ("chalupa", "Chalupa"),
+            ("ilp", "Standard ILP"),
+            ("ilp_warmstart", "ILP + Warmstart"),
+            ("reduced_ilp", "Reduced ILP"),
+            ("interactive_ilp", "Interactive Reduced ILP"),
+        ]
+
+        times = {}
+        for key, label in method_labels:
+            col = f"{key}_time"
+            if col in self.df.columns:
+                arr = self.df[col].dropna().values
+                if arr.size:
+                    times[label] = arr
+
+        if not times:
+            print("No runtime columns found to plot.")
+            return
+
+        fig, axes = plt.subplots(2, 2, figsize=(14, 10))
+
+        # === (1) ECDF (log-x) ===
+        ax = axes[0, 0]
+        for label, arr in times.items():
+            x = np.sort(arr)
+            y = np.arange(1, len(x) + 1) / len(x) * 100.0
+            ax.step(x, y, where="post", label=label, linewidth=2)
+        ax.set_xscale("log")
+        ax.set_xlabel("Runtime (s)")
+        ax.set_ylabel("Cumulative (%)")
+        ax.set_title("ECDF of Runtimes (log scale)")
+        ax.grid(True, which="both", alpha=0.3)
+        ax.legend()
+
+        # === (2) Boxplots (log-y) ===
+        ax = axes[0, 1]
+        data = [times[label] for label in times.keys()]
+        ax.boxplot(data, showfliers=False)
+        ax.set_xticklabels(list(times.keys()), rotation=15)
+        ax.set_yscale("log")
+        ax.set_ylabel("Runtime (s)")
+        ax.set_title("Runtime Distribution by Method")
+        ax.grid(True, alpha=0.3)
+
+        # === (3) Speedup vs. Standard-ILP (log-y) ===
+        ax = axes[1, 0]
+        if "Standard ILP" in times:
+            base = self.df["ilp_time"].dropna()
+            speedup_data = []
+            speedup_labels = []
+            for key, label in method_labels:
+                if label == "Standard ILP":
+                    continue
+                col = f"{key}_time"
+                if col in self.df.columns:
+                    sub = self.df[[col, "ilp_time"]].dropna()
+                    if not sub.empty:
+                        sp = sub["ilp_time"].values / sub[col].values
+                        # nur positive Werte
+                        sp = sp[sp > 0]
+                        if sp.size:
+                            speedup_data.append(sp)
+                            speedup_labels.append(label)
+            if speedup_data:
+                ax.boxplot(speedup_data, showfliers=False)
+                ax.set_xticklabels(speedup_labels, rotation=15)
+                ax.axhline(1.0, color="red", linestyle="--", label="No speedup")
+                ax.set_yscale("log")
+                ax.set_ylabel("Speedup factor (ILP time / method time)")
+                ax.set_title("Speedup vs. Standard ILP")
+                ax.grid(True, alpha=0.3)
+                ax.legend()
+            else:
+                ax.text(0.5, 0.5, "No speedup data available", ha="center", va="center")
+                ax.axis("off")
+        else:
+            ax.text(0.5, 0.5, "Standard ILP runtimes missing", ha="center", va="center")
+            ax.axis("off")
+
+        # === (4) Statistik-Panel ===
+        ax = axes[1, 1]
+        ax.axis("off")
+
+        def stats(arr):
+            arr = np.asarray(arr)
+            return dict(
+                mean=np.mean(arr),
+                median=np.median(arr),
+                p95=np.percentile(arr, 95),
+                min=np.min(arr),
+                max=np.max(arr),
+                n=len(arr),
+            )
+
+        # Optional: Timeouts, falls 'ilp_status' existiert
+        timeout_info = ""
+        if "ilp_status" in self.df.columns:
+            to_rate = (self.df["ilp_status"] == "timeout").mean() * 100 if "timeout" in self.df["ilp_status"].astype(
+                str).unique() else 0.0
+            timeout_info = f"\nTimeouts (ILP): {to_rate:.1f}%"
+
+        lines = ["Runtime statistics\n" + "=" * 30 + "\n"]
+        for label, arr in times.items():
+            s = stats(arr)
+            lines.append(
+                f"{label}:\n"
+                f"  Mean   : {s['mean']:.3f}s\n"
+                f"  Median : {s['median']:.3f}s\n"
+                f"  95th % : {s['p95']:.3f}s\n"
+                f"  Min/Max: {s['min']:.3f}s / {s['max']:.3f}s\n"
+                f"  N      : {s['n']}\n"
+            )
+        lines.append(timeout_info)
+
+        ax.text(
+            0.02, 0.98, "\n".join(lines),
+            va="top", ha="left", fontsize=10,
+            family="monospace",
+            bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.35)
+        )
+
+        plt.suptitle("Runtime comparison", fontsize=16, y=1.02)
+        plt.tight_layout()
+
+        out = self.output_dir / f"runtime_comparison_{self.timestamp}.png"
+        plt.savefig(out, dpi=300, bbox_inches="tight")
+        print(f"Saved runtime comparison to {out}")
         plt.show()
 
     def analyze_warmstart_effectiveness(self):
@@ -1301,6 +1438,12 @@ def _compat_add_quality_columns(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+#def evaluate_single_instance(self, filepath: str, timeout: int = 300, debug: bool = False):
+#    if debug:
+#        # Nutze debug_clique_cover für detaillierte Analyse
+#        return debug_clique_cover(filepath, verbose=True)
+
+
 def main():
     """Extended main evaluation pipeline with all solver variants"""
     print("=" * 60)
@@ -1376,9 +1519,13 @@ def main():
     print("\n8. Generating extended summary report...")
     evaluator.generate_extended_summary_report()
 
-    # Also generate original report for backward compatibility
+    # Generate OG report for backward compatibility
     print("\n9. Generating original summary report...")
     original_evaluator.generate_summary_report()
+
+    # Generate rumtime comparison plots
+    print("\n10. Generating runtime comparison (ECDF, boxplots, speedup) plots")
+    evaluator.create_runtime_comparison_plots()
 
     print("\n" + "=" * 60)
     print("EXTENDED EVALUATION COMPLETE!")
