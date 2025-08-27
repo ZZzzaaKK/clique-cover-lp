@@ -1,4 +1,5 @@
 """
+comparison_chalupa_ilp_evaluation_all_wrappers.py
 WP1.c Evaluation ++WP2: Comprehensive comparison of all solver variants
 Extends the original comparison to include reduced and interactive reduced ILP methods
 """
@@ -256,6 +257,26 @@ class WP1cEvaluator:
         ax.set_title('Runtime Distribution Comparison')
         ax.set_yscale('log')
         ax.grid(True, alpha=0.3)
+
+        speed_lines = ["Paired speedups vs Standard ILP", "=" * 34, ""]
+        for key, label in [
+            ("ilp_warmstart_time", "ILP + Warmstart"),
+            ("reduced_ilp_time", "Reduced ILP"),
+            ("interactive_ilp_time", "Interactive Reduced ILP"),
+        ]:
+            if key in self.df.columns and 'ilp_time' in self.df.columns:
+                st = _paired_speedup_stats(self.df, method_time_col=key, baseline_col='ilp_time', trim=0.10)
+                if st['n_pairs'] > 0:
+                    speed_lines.append(
+                        f"{label:22s}: mean={st['mean']:.2f}x | "
+                        f"median={st['median']:.2f}x | geo={st['geomean']:.2f}x | "
+                        f"trim10={st['trimmed_mean']:.2f}x (n={st['n_pairs']})"
+                    )
+        ax.text(
+            0.02, 0.45, "\n".join(speed_lines),
+            va="top", ha="left", fontsize=9, family="monospace",
+            transform=ax.transAxes
+        )
 
         plt.suptitle('Runtime Analysis: Chalupa vs ILP', fontsize=16, y=1.02)
         plt.tight_layout()
@@ -525,7 +546,7 @@ class WP1cEvaluator:
 
             # Overall statistics
             f.write("OVERALL STATISTICS\n")
-            f.write("-" * 40 + "\n")
+            f.write("-" * 60 + "\n")
             f.write(f"Total instances evaluated: {len(self.df)}\n")
 
             valid_comparisons = self.df.dropna(subset=['quality_ratio'])
@@ -533,7 +554,7 @@ class WP1cEvaluator:
 
             # Runtime statistics
             f.write("RUNTIME PERFORMANCE\n")
-            f.write("-" * 40 + "\n")
+            f.write("-" * 60 + "\n")
 
             chalupa_times = self.df['chalupa_time'].dropna()
             ilp_times = self.df['ilp_time'].dropna()
@@ -559,7 +580,7 @@ class WP1cEvaluator:
 
             # Solution quality statistics
             f.write("SOLUTION QUALITY\n")
-            f.write("-" * 40 + "\n")
+            f.write("-" * 60 + "\n")
 
             if not valid_comparisons.empty:
                 quality_ratios = valid_comparisons['quality_ratio']
@@ -592,7 +613,7 @@ class WP1cEvaluator:
 
             # Problem size analysis
             f.write("PROBLEM SIZE ANALYSIS\n")
-            f.write("-" * 40 + "\n")
+            f.write("-" * 60 + "\n")
 
             size_bins = pd.cut(self.df['n_nodes'], bins=[0, 20, 50, 100, 200, float('inf')],
                                labels=['<20', '20-50', '50-100', '100-200', '>200'])
@@ -806,6 +827,38 @@ class ExtendedWP1cEvaluator(WP1cEvaluator):
         result['absolute_gap'] = result.get('chalupa_absolute_gap')
 
         return result
+
+    def _paired_speedup_stats(df: pd.DataFrame, method_time_col: str,
+                              baseline_col: str = 'ilp_time',
+                              trim: float = 0.10) -> dict:
+        """
+        Bildet speedup = baseline / method (hier: ilp_time / method_time)
+        und aggregiert zu robusten Kennzahlen.
+        Berücksichtigt nur Zeilen, in denen beide Zeiten vorhanden sind.
+        """
+        sub = df[[baseline_col, method_time_col]].dropna()
+        if sub.empty:
+            return dict(mean=np.nan, median=np.nan, geomean=np.nan,
+                        trimmed_mean=np.nan, n_pairs=0)
+        sp = sub[baseline_col].to_numpy(dtype=float) / sub[method_time_col].to_numpy(dtype=float)
+        sp = sp[np.isfinite(sp) & (sp > 0)]
+        if sp.size == 0:
+            return dict(mean=np.nan, median=np.nan, geomean=np.nan,
+                        trimmed_mean=np.nan, n_pairs=0)
+
+        # getrimmtes Mittel (z.B. 10%) gegen Ausreißer
+        s = np.sort(sp)
+        k = int(np.floor(trim * len(s)))
+        trimmed = s[k:len(s) - k] if len(s) - 2 * k > 0 else s
+        geomean = float(np.exp(np.mean(np.log(s)))) if (s > 0).all() else np.nan
+
+        return dict(
+            mean=float(np.mean(s)),
+            median=float(np.median(s)),
+            geomean=geomean,
+            trimmed_mean=float(np.mean(trimmed)),
+            n_pairs=int(len(s))
+        )
 
     def create_reduction_effectiveness_plot(self):
         """Analyze the effectiveness of graph reductions"""
@@ -1381,12 +1434,12 @@ class ExtendedWP1cEvaluator(WP1cEvaluator):
 
             # Overall statistics
             f.write("OVERALL STATISTICS\n")
-            f.write("-" * 40 + "\n")
-            f.write(f"Total instances evaluated: {len(self.df)}\n\n")
+            f.write("-" * 60 + "\n")
+            f.write(f"Total number of instances evaluated properly: {len(self.df)}\n\n")
 
             # Runtime statistics for all methods
             f.write("RUNTIME PERFORMANCE (ALL METHODS)\n")
-            f.write("-" * 40 + "\n")
+            f.write("-" * 60 + "\n")
 
             methods = ['chalupa', 'ilp', 'ilp_warmstart', 'reduced_ilp', 'interactive_ilp']
             method_names = {
@@ -1411,18 +1464,21 @@ class ExtendedWP1cEvaluator(WP1cEvaluator):
 
             # Speedup analysis
             f.write("\n\nSPEEDUP ANALYSIS (vs Standard ILP)\n")
-            f.write("-" * 40 + "\n")
+            f.write("-" * 60 + "\n")
+            f.write("calculated by: speedup(method) = ilp_time / method_time")
+            f.write("-" * 60 + "\n")
 
             for method in ['chalupa', 'ilp_warmstart', 'reduced_ilp', 'interactive_ilp']:
                 time_col = f'{method}_time'
                 if time_col in self.df.columns and 'ilp_time' in self.df.columns:
-                    valid = self.df[[time_col, 'ilp_time']].notna().all(axis=1)
-                    if valid.any():
-                        speedups = self.df.loc[valid, 'ilp_time'] / self.df.loc[valid, time_col]
-                        f.write(f"\n{method_names[method]}:\n")
-                        f.write(f"  Mean Speedup: {speedups.mean():.2f}x\n")
-                        f.write(f"  Median Speedup: {speedups.median():.2f}x\n")
-                        f.write(f"  Max Speedup: {speedups.max():.2f}x\n")
+                    stats = _paired_speedup_stats(self.df, method_time_col=time_col, baseline_col='ilp_time', trim=0.10)
+                    if stats['n_pairs'] > 0:
+                        f.write(f"\n{method.replace('_', ' ').title()}:\n")
+                        f.write(f"  Mean speedup        : {stats['mean']:.2f}x\n")
+                        f.write(f"  Median speedup      : {stats['median']:.2f}x\n")
+                        f.write(f"  Geometric mean      : {stats['geomean']:.2f}x\n")
+                        f.write(f"  Trimmed mean (10%)  : {stats['trimmed_mean']:.2f}x\n")
+                        f.write(f"  Paired instances    : {stats['n_pairs']}\n")
 
             # Solution quality statistics
             f.write("\n\nSOLUTION QUALITY (vs Standard ILP)\n")
@@ -1455,9 +1511,9 @@ class ExtendedWP1cEvaluator(WP1cEvaluator):
 
 def _compat_add_quality_columns(df: pd.DataFrame) -> pd.DataFrame:
     """
-    wichtig zur Behebung interner Versionskonflikte..
+    wichtig zur Behebung interner Versionskonflikte in diesem Projekt
     Stellt sicher, dass 'quality_ratio' und 'absolute_gap' vorhanden sind,
-    kompatibel zu den alten Plot-Funktionen. Nutzt bevorzugt vorhandene
+    nutzt bevorzugt vorhandene
     'chalupa_*' Spalten, sonst wird aus Theta-Werten berechnet.
     """
     if 'quality_ratio' not in df.columns:
@@ -1487,7 +1543,7 @@ def _compat_add_quality_columns(df: pd.DataFrame) -> pd.DataFrame:
 #def evaluate_single_instance(self, filepath: str, timeout: int = 300, debug: bool = False):
 #    if debug:
 #        # Nutze debug_clique_cover für detaillierte Analyse
-#        return debug_clique_cover(filepath, verbose=True)
+#  ->      return debug_clique_cover(filepath, verbose=True)
 
 
 def main():
@@ -1528,7 +1584,7 @@ def main():
 
     # Print quick comparison
     print("\nQUICK METHOD COMPARISON:")
-    print("-" * 40)
+    print("-" * 60)
 
     methods = ['chalupa', 'ilp', 'ilp_warmstart', 'reduced_ilp', 'interactive_ilp']
     for method in methods:
@@ -1538,17 +1594,16 @@ def main():
             print(f"{method:20s}: {avg_time:8.3f}s avg runtime")
 
     # Generate all plots
-    print("\n2. Creating extended method comparison plots...")
+    print("\n2. Working on extended method comparison plots...")
     evaluator.create_method_comparison_plots()
 
-    print("\n3. Creating reduction effectiveness analysis...")
+    print("\n3. Handcrafting reduction effectiveness analysis...")
     evaluator.create_reduction_effectiveness_plot()
 
-    print("\n4. Analyzing _chalupa_warmstart effectiveness...")
+    print("\n4. Working on analyzing _chalupa_warmstart effectiveness...")
     evaluator.analyze_warmstart_effectiveness()
 
     print("\n5. Creating original runtime analysis plots...")
-    # Create instance of original evaluator for backward compatibility
     original_evaluator = WP1cEvaluator(output_dir=evaluator.output_dir)
     original_evaluator.df = df  # Share the dataframe
     original_evaluator.results = evaluator.results
@@ -1562,7 +1617,7 @@ def main():
     original_evaluator.create_perturbation_analysis()
 
     # Generate comprehensive summary report
-    print("\n8. Generating extended summary report...")
+    print("\n8. Generating a very extended summary report...")
     evaluator.generate_extended_summary_report()
 
     # Generate OG report for backward compatibility
@@ -1580,7 +1635,7 @@ def main():
 
     # Print extended summary
     print("\nEXTENDED SUMMARY:")
-    print("-" * 40)
+    print("-" * 60)
 
     # Best method by speed
     avg_times = {}
@@ -1612,28 +1667,23 @@ def main():
             print(f"  Within 10% of optimal: {(chalupa_quality <= 1.10).mean() * 100:.1f}%")
 
     # Enhancement effectiveness
-    print("\nEnhancement effectiveness:")
-
-    if 'ilp_time' in df.columns and 'ilp_warmstart_time' in df.columns:
-        valid = df[['ilp_time', 'ilp_warmstart_time']].notna().all(axis=1)
-        if valid.any():
-            warmstart_speedup = (df.loc[valid, 'ilp_time'] /
-                                 df.loc[valid, 'ilp_warmstart_time']).mean()
-            print(f"  Warmstart speedup: {warmstart_speedup:.2f}x")
-
-    if 'ilp_time' in df.columns and 'reduced_ilp_time' in df.columns:
-        valid = df[['ilp_time', 'reduced_ilp_time']].notna().all(axis=1)
-        if valid.any():
-            reduction_speedup = (df.loc[valid, 'ilp_time'] /
-                                 df.loc[valid, 'reduced_ilp_time']).mean()
-            print(f"  Reduction speedup: {reduction_speedup:.2f}x")
-
-    if 'ilp_time' in df.columns and 'interactive_ilp_time' in df.columns:
-        valid = df[['ilp_time', 'interactive_ilp_time']].notna().all(axis=1)
-        if valid.any():
-            interactive_speedup = (df.loc[valid, 'ilp_time'] /
-                                   df.loc[valid, 'interactive_ilp_time']).mean()
-            print(f"  Interactive speedup: {interactive_speedup:.2f}x")
+    print("\nEnhancement effectiveness (vs. Standard ILP):")
+    for label, col in [
+        ("Warmstart", "ilp_warmstart_time"),
+        ("Reduction", "reduced_ilp_time"),
+        ("Interactive", "interactive_ilp_time"),
+    ]:
+        if col in df.columns and 'ilp_time' in df.columns:
+            stats = _paired_speedup_stats(df, method_time_col=col, baseline_col='ilp_time', trim=0.10)
+            if stats['n_pairs'] > 0:
+                print(f"  {label:12s}: "
+                      f"mean={stats['mean']:.2f}x, "
+                      f"median={stats['median']:.2f}x, "
+                      f"geomean={stats['geomean']:.2f}x, "
+                      f"trim-mean(10%)={stats['trimmed_mean']:.2f}x "
+                      f"(n={stats['n_pairs']})")
+            else:
+                print(f"  {label:12s}: n=0")
 
 
 if __name__ == "__main__":
