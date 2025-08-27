@@ -986,12 +986,16 @@ class ExtendedWP1cEvaluator(WP1cEvaluator):
         plt.show()
 
     def create_runtime_comparison_plots(self):
-        """runtime comparison across all methods"""
+        """Unified runtime comparison across all methods (Heavy-tail aware) + CSV-Export."""
         if not hasattr(self, 'df') or self.df is None or self.df.empty:
             print("No data available for runtime comparison")
             return
 
-        # Methoden & Labels (nur plotten, was wirklich vorhanden ist)
+        import numpy as np
+        import pandas as pd
+        import matplotlib.pyplot as plt
+
+        # --- Methoden & Labels (nur plotten, was wirklich vorhanden ist) ---
         method_labels = [
             ("chalupa", "Chalupa"),
             ("ilp", "Standard ILP"),
@@ -1001,20 +1005,25 @@ class ExtendedWP1cEvaluator(WP1cEvaluator):
         ]
 
         times = {}
+        cols_present = []
         for key, label in method_labels:
             col = f"{key}_time"
             if col in self.df.columns:
                 arr = self.df[col].dropna().values
                 if arr.size:
                     times[label] = arr
+                    cols_present.append((key, label, col))
 
         if not times:
             print("No runtime columns found to plot.")
             return
 
+        # =========================
+        # (A) PLOTS
+        # =========================
         fig, axes = plt.subplots(2, 2, figsize=(14, 10))
 
-        # === (1) ECDF (log-x) ===
+        # (1) ECDF (log-x)
         ax = axes[0, 0]
         for label, arr in times.items():
             x = np.sort(arr)
@@ -1027,7 +1036,7 @@ class ExtendedWP1cEvaluator(WP1cEvaluator):
         ax.grid(True, which="both", alpha=0.3)
         ax.legend()
 
-        # === (2) Boxplots (log-y) ===
+        # (2) Boxplots (log-y)
         ax = axes[0, 1]
         data = [times[label] for label in times.keys()]
         ax.boxplot(data, showfliers=False)
@@ -1037,25 +1046,20 @@ class ExtendedWP1cEvaluator(WP1cEvaluator):
         ax.set_title("Runtime Distribution by Method")
         ax.grid(True, alpha=0.3)
 
-        # === (3) Speedup vs. Standard-ILP (log-y) ===
+        # (3) Speedup vs. Standard-ILP (log-y)
         ax = axes[1, 0]
-        if "Standard ILP" in times:
-            base = self.df["ilp_time"].dropna()
-            speedup_data = []
-            speedup_labels = []
-            for key, label in method_labels:
+        if "Standard ILP" in times and "ilp_time" in self.df.columns:
+            speedup_data, speedup_labels = [], []
+            for key, label, col in cols_present:
                 if label == "Standard ILP":
                     continue
-                col = f"{key}_time"
-                if col in self.df.columns:
-                    sub = self.df[[col, "ilp_time"]].dropna()
-                    if not sub.empty:
-                        sp = sub["ilp_time"].values / sub[col].values
-                        # nur positive Werte
-                        sp = sp[sp > 0]
-                        if sp.size:
-                            speedup_data.append(sp)
-                            speedup_labels.append(label)
+                sub = self.df[[col, "ilp_time"]].dropna()
+                if not sub.empty:
+                    sp = sub["ilp_time"].values / sub[col].values
+                    sp = sp[sp > 0]
+                    if sp.size:
+                        speedup_data.append(sp)
+                        speedup_labels.append(label)
             if speedup_data:
                 ax.boxplot(speedup_data, showfliers=False)
                 ax.set_xticklabels(speedup_labels, rotation=15)
@@ -1072,55 +1076,97 @@ class ExtendedWP1cEvaluator(WP1cEvaluator):
             ax.text(0.5, 0.5, "Standard ILP runtimes missing", ha="center", va="center")
             ax.axis("off")
 
-        # === (4) Statistik-Panel ===
+        # (4) Statistik-Panel
         ax = axes[1, 1]
         ax.axis("off")
 
-        def stats(arr):
-            arr = np.asarray(arr)
-            return dict(
-                mean=np.mean(arr),
-                median=np.median(arr),
-                p95=np.percentile(arr, 95),
-                min=np.min(arr),
-                max=np.max(arr),
-                n=len(arr),
-            )
+        def _trimmed_mean(a, trim=0.10):
+            a = np.sort(np.asarray(a))
+            n = len(a)
+            k = int(np.floor(trim * n))
+            if n - 2 * k <= 0:
+                return float(np.mean(a))  # Fallback
+            return float(np.mean(a[k:n - k]))
 
-        # Optional: Timeouts, falls 'ilp_status' existiert
-        timeout_info = ""
+        def _geo_mean_pos(a):
+            a = np.asarray(a)
+            a = a[a > 0]
+            if a.size == 0:
+                return np.nan
+            return float(np.exp(np.mean(np.log(a))))
+
+        # Timeout-Infos (optional, wenn Spalte vorhanden)
+        timeout_rate = None
+        timeout_count = None
         if "ilp_status" in self.df.columns:
-            to_rate = (self.df["ilp_status"] == "timeout").mean() * 100 if "timeout" in self.df["ilp_status"].astype(
-                str).unique() else 0.0
-            timeout_info = f"\nTimeouts (ILP): {to_rate:.1f}%"
+            timeout_mask = self.df["ilp_status"].astype(str).str.lower().eq("timeout")
+            timeout_count = int(timeout_mask.sum())
+            timeout_rate = 100.0 * timeout_mask.mean()
 
-        lines = ["Runtime statistics\n" + "=" * 30 + "\n"]
+        # Textpanel
+        lines = ["Runtime statistics", "=" * 30, ""]
         for label, arr in times.items():
-            s = stats(arr)
-            lines.append(
+            arr = np.asarray(arr)
+            line = (
                 f"{label}:\n"
-                f"  Mean   : {s['mean']:.3f}s\n"
-                f"  Median : {s['median']:.3f}s\n"
-                f"  95th % : {s['p95']:.3f}s\n"
-                f"  Min/Max: {s['min']:.3f}s / {s['max']:.3f}s\n"
-                f"  N      : {s['n']}\n"
+                f"  Mean            : {np.mean(arr):.3f}s\n"
+                f"  Median          : {np.median(arr):.3f}s\n"
+                f"  Std             : {np.std(arr, ddof=1):.3f}s\n"
+                f"  90th / 95th / 99th: "
+                f"{np.percentile(arr, 90):.3f}s / {np.percentile(arr, 95):.3f}s / {np.percentile(arr, 99):.3f}s\n"
+                f"  Min / Max       : {np.min(arr):.3f}s / {np.max(arr):.3f}s\n"
+                f"  Trimmed mean 10%: {_trimmed_mean(arr, 0.10):.3f}s\n"
+                f"  Geometric mean  : {_geo_mean_pos(arr):.3f}s\n"
+                f"  N               : {len(arr)}\n"
             )
-        lines.append(timeout_info)
+            lines.append(line)
+        if timeout_rate is not None:
+            lines.append(f"Timeouts (ILP): {timeout_count} → {timeout_rate:.1f}%")
 
         ax.text(
             0.02, 0.98, "\n".join(lines),
-            va="top", ha="left", fontsize=10,
-            family="monospace",
+            va="top", ha="left", fontsize=10, family="monospace",
             bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.35)
         )
 
         plt.suptitle("Runtime comparison", fontsize=16, y=1.02)
         plt.tight_layout()
 
-        out = self.output_dir / f"runtime_comparison_{self.timestamp}.png"
-        plt.savefig(out, dpi=300, bbox_inches="tight")
-        print(f"Saved runtime comparison to {out}")
+        out_png = self.output_dir / f"runtime_comparison_{self.timestamp}.png"
+        plt.savefig(out_png, dpi=300, bbox_inches="tight")
+        print(f"Saved runtime comparison to {out_png}")
         plt.show()
+
+        # =========================
+        # (B) CSV-EXPORT DER STATS
+        # =========================
+        rows = []
+        for label, arr in times.items():
+            arr = np.asarray(arr)
+            rows.append({
+                "method": label,
+                "n": int(len(arr)),
+                "mean": float(np.mean(arr)),
+                "median": float(np.median(arr)),
+                "std": float(np.std(arr, ddof=1)),
+                "p90": float(np.percentile(arr, 90)),
+                "p95": float(np.percentile(arr, 95)),
+                "p99": float(np.percentile(arr, 99)),
+                "min": float(np.min(arr)),
+                "max": float(np.max(arr)),
+                "trimmed_mean_10": float(_trimmed_mean(arr, 0.10)),
+                "geometric_mean": float(_geo_mean_pos(arr)),
+            })
+
+        # Timeouts optional anhängen (bezogen auf ILP-Gesamtstatus)
+        df_stats = pd.DataFrame(rows)
+        if timeout_rate is not None:
+            df_stats["timeout_count_overall"] = timeout_count
+            df_stats["timeout_rate_overall"] = timeout_rate
+
+        out_csv = self.output_dir / f"runtime_comparison_stats_{self.timestamp}.csv"
+        df_stats.to_csv(out_csv, index=False)
+        print(f"Saved runtime statistics to {out_csv}")
 
     def analyze_warmstart_effectiveness(self):
         """Detailed analysis of _chalupa_warmstart effectiveness"""
