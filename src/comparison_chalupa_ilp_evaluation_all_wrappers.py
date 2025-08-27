@@ -4,6 +4,7 @@ WP1.c Evaluation ++WP2: Comprehensive comparison of all solver variants
 Extends the original comparison to include reduced and interactive reduced ILP methods
 """
 
+import re
 import os
 import sys
 import time
@@ -28,8 +29,10 @@ from src.wrapperV2 import (
     reduced_ilp_wrapper,
     chalupa_wrapper,
     interactive_reduced_ilp_wrapper,
-    debug_clique_cover
+    USE_WARMSTART_DEFAULT,
+    INTERACTIVE_MAX_ROUNDS
 )
+
 from src.utils import txt_to_networkx
 from src.simulator import GraphGenerator, GraphConfig
 from src.utils_metrics import (set_global_seeds, safe_ratio, rel_change,
@@ -37,20 +40,144 @@ from src.utils_metrics import (set_global_seeds, safe_ratio, rel_change,
 
 set_global_seeds(33)
 
+#setting tiny positive boundary to filter out problematic values regarding runtime
+EPS = 1e-12
+
 # Configure plotting style
 plt.style.use('seaborn-v0_8-darkgrid')
 sns.set_palette("husl")
 
 
+def _paired_speedup_stats(df: pd.DataFrame, method_time_col: str,
+                          baseline_col: str = 'ilp_time',
+                          trim: float = 0.10) -> dict:
+    """
+    Bildet speedup = baseline / method (hier: ilp_time / method_time)
+    und aggregiert zu robusten Kennzahlen.
+    Berücksichtigt nur Zeilen, in denen beide Zeiten vorhanden sind.
+    """
+    sub = df[[baseline_col, method_time_col]].dropna()
+    if sub.empty:
+        return dict(mean=np.nan, median=np.nan, geomean=np.nan,
+                    trimmed_mean=np.nan, n_pairs=0)
+
+    base = pd.to_numeric(sub[baseline_col], errors="coerce").to_numpy(float)
+    meth = pd.to_numeric(sub[method_time_col], errors="coerce").to_numpy(float)
+
+    mask = np.isfinite(base) & np.isfinite(meth) & (base > EPS) & (meth > EPS)
+    if not np.any(mask):
+        return dict(mean=np.nan, median=np.nan, geomean=np.nan,
+                    trimmed_mean=np.nan, n_pairs=0)
+
+    sp = base[mask] / meth[mask]
+    sp = sp[np.isfinite(sp) & (sp > 0)]
+    if sp.size == 0:
+        return dict(mean=np.nan, median=np.nan, geomean=np.nan,
+                    trimmed_mean=np.nan, n_pairs=0)
+
+    s = np.sort(sp)
+    k = int(np.floor(trim * len(s)))
+    trimmed = s[k:len(s) - k] if len(s) - 2 * k > 0 else s
+    geomean = float(np.exp(np.mean(np.log(s)))) if (s > 0).all() else np.nan
+
+    return dict(
+        mean=float(np.mean(s)),
+        median=float(np.median(s)),
+        geomean=geomean,
+        trimmed_mean=float(np.mean(trimmed)),
+        n_pairs=int(len(s))
+    )
+
+
+def _normalize_wrapper_result(res):
+    """
+    Accepts either a scalar theta or a dict from the wrappers and normalizes it
+    to a metadata dict with optional fields. All keys are optional; missing keys
+    are filled with None to keep CSV columns consistent.
+
+    Expected optional keys if available from wrapper:
+      - 'theta', 'time', 'status', 'gap'
+      - 'kernel_nodes', 'kernel_edges'  # final kernel before ILP
+      - 'used_warmstart', 'start_objective', 'improvement_over_start'
+      - 'rounds'                        # number of interactive rounds
+      - 'k_start', 'k_final'            # initial & final k estimate
+      - 'k_rounds'                      # list of k per round
+      - 'kernel_nodes_rounds', 'kernel_edges_rounds'  # lists per round
+      - 'round_logs'                    # list[dict], each round with optional keys above
+
+    Returns dict with those keys (present or None).
+    """
+    meta = {
+        'theta': None, 'time': None, 'status': None, 'gap': None,
+        'kernel_nodes': None, 'kernel_edges': None,
+        'used_warmstart': None, 'start_objective': None, 'improvement_over_start': None,
+        'rounds': None, 'k_start': None, 'k_final': None,
+        'k_rounds': None, 'kernel_nodes_rounds': None, 'kernel_edges_rounds': None,
+        'round_logs': None,
+    }
+
+    if res is None:
+        return meta
+
+    if not isinstance(res, dict):
+        # assume it's just a theta value
+        meta['theta'] = res
+        return meta
+
+    # copy known scalars if present
+    for k in meta.keys():
+        if k in res:
+            meta[k] = res[k]
+
+    # try to infer rounds/k from round_logs if given
+    rl = res.get('round_logs')
+    if isinstance(rl, list) and rl:
+        meta['round_logs'] = rl
+        meta['rounds'] = len(rl) if meta['rounds'] is None else meta['rounds']
+
+        # per-round series (best-effort)
+        k_seq = [r.get('k', None) for r in rl] if any('k' in r for r in rl) else None
+        if k_seq:
+            meta['k_rounds'] = k_seq
+            if meta['k_start'] is None:
+                meta['k_start'] = k_seq[0]
+            if meta['k_final'] is None:
+                meta['k_final'] = k_seq[-1]
+
+        kn_seq = [r.get('kernel_nodes', None) for r in rl] if any('kernel_nodes' in r for r in rl) else None
+        ke_seq = [r.get('kernel_edges', None) for r in rl] if any('kernel_edges' in r for r in rl) else None
+        if kn_seq:
+            meta['kernel_nodes_rounds'] = kn_seq
+            if meta['kernel_nodes'] is None:
+                meta['kernel_nodes'] = kn_seq[-1]
+        if ke_seq:
+            meta['kernel_edges_rounds'] = ke_seq
+            if meta['kernel_edges'] is None:
+                meta['kernel_edges'] = ke_seq[-1]
+
+    return meta
+
+
+def _merge_into_result(dst: dict, prefix: str, meta: dict):
+    """
+    Merge normalized meta dict into the evaluation 'result' dict with a prefix,
+    so columns become e.g. 'interactive_ilp_rounds', 'reduced_ilp_kernel_nodes', etc.
+    """
+    for k, v in meta.items():
+        dst[f'{prefix}_{k}'] = v
+
 class WP1cEvaluator:
     """Main evaluation class for WP1.c comparisons"""
 
-    def __init__(self, output_dir="evaluation_results"):
+    def __init__(self, output_dir: str = "evaluation_results", **kwargs):
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(exist_ok=True)
         self.results = []
         self.timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
+        # optionale, nicht zwingend genutzte Parameter aufnehmen (kompatibel zu main())
+        self.use_warmstart = kwargs.get("use_warmstart", False)
+        self.interactive_max_rounds = kwargs.get("interactive_max_rounds", None)
     def evaluate_single_instance(self, filepath: str, timeout: int = 300) -> Dict:
         """
         Evaluate a single graph instance with both Chalupa and ILP.
@@ -64,6 +191,7 @@ class WP1cEvaluator:
         result = {'filepath': filepath}
 
         # Load graph and get basic properties
+        # Load graph and get basic properties
         try:
             G = txt_to_networkx(filepath)
             result['n_nodes'] = G.number_of_nodes()
@@ -71,16 +199,23 @@ class WP1cEvaluator:
             result['density'] = nx.density(G)
 
             # Extract perturbation level from filename if available
-            import re
-            match = re.search(r'r(\d+)', Path(filepath).stem)
-            if match:
-                result['perturbation'] = int(match.group(1)) / 100
-            else:
-                result['perturbation'] = None
+            stem = Path(filepath).stem
+            # tries: ..._pXYZ..., ..._rXX..., ...perturbationXX...
+            m = (re.search(r'[pP](\d{2,3})', stem) or
+                 re.search(r'[rR](\d{1,3})', stem) or
+                 re.search(r'perturbation(\d{1,3})', stem))
+            result['perturbation'] = (int(m.group(1)) / 100) if m else None
 
         except Exception as e:
             print(f"Error loading {filepath}: {e}")
             return None
+
+           # match = re.search(r'r(\d+)', Path(filepath).stem)
+           # if match:
+           #     result['perturbation'] = int(match.group(1)) / 100
+           # else:
+           #     result['perturbation'] = None
+
 
         # Run Chalupa heuristic
         try:
@@ -208,7 +343,8 @@ class WP1cEvaluator:
 
          # 1. Runtime vs Problem Size (nodes)
         ax = axes[0, 0]
-        valid_data = self.df.dropna(subset=['chalupa_time', 'ilp_time', 'n_nodes'])
+        valid_data = self.df.dropna(subset=['chalupa_time', 'ilp_time', 'n_nodes']).copy()
+        valid_data = valid_data[(valid_data['chalupa_time'] > EPS) & (valid_data['ilp_time'] > EPS)]
 
         ax.scatter(valid_data['n_nodes'], valid_data['chalupa_time'],
                    alpha=0.6, label='Chalupa', s=50)
@@ -236,7 +372,14 @@ class WP1cEvaluator:
 
         # 3. Runtime Speedup
         ax = axes[1, 0]
-        speedup = valid_data['ilp_time'] / valid_data['chalupa_time']
+        speedup = (valid_data['ilp_time'] / valid_data['chalupa_time']).replace([np.inf, -np.inf], np.nan).dropna()
+        speedup = speedup[speedup > 0]
+        if not speedup.empty:
+            ax.hist(speedup, bins=30, edgecolor='black', alpha=0.7)
+            ax.set_xscale('log')
+        else:
+            ax.text(0.5, 0.5, "No finite speedup data", ha='center', va='center')
+
         ax.hist(speedup, bins=30, edgecolor='black', alpha=0.7)
         ax.axvline(x=1, color='red', linestyle='--', label='No speedup')
         ax.set_xlabel('Speedup Factor (ILP time / Chalupa time)')
@@ -431,6 +574,7 @@ class WP1cEvaluator:
         # 2. Runtime vs Perturbation
         ax = axes[0, 1]
         valid = pert_df.dropna(subset=['perturbation', 'chalupa_time', 'ilp_time'])
+        valid = valid[(valid['chalupa_time'] > EPS) & (valid['ilp_time'] > EPS)]
 
         if not valid.empty:
             ax.plot(valid['perturbation'] * 100, valid['chalupa_time'],
@@ -637,11 +781,8 @@ class WP1cEvaluator:
 class ExtendedWP1cEvaluator(WP1cEvaluator):
     """Extended evaluation class for WP1.c comparisons with all solver variants"""
 
-    def __init__(self, output_dir="evaluation_results"):
-        self.output_dir = Path(output_dir)
-        self.output_dir.mkdir(exist_ok=True)
-        self.results = []
-        self.timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    def __init__(self, output_dir: str = "evaluation_results", **kwargs):
+        super().__init__(output_dir=output_dir, **kwargs)
 
     def evaluate_single_instance(self, filepath: str, timeout: int = 300) -> Dict:
         """
@@ -675,6 +816,23 @@ class ExtendedWP1cEvaluator(WP1cEvaluator):
         # Chalupa as greedy heuristic that iteratively finds cliques to cover the graph...
         try:
             t0 = time.time()
+            chalupa_res = chalupa_wrapper(filepath)
+            chalupa_time = time.time() - t0
+            # normalize
+            ch_meta = _normalize_wrapper_result(chalupa_res)
+            if ch_meta['time'] is None:
+                ch_meta['time'] = chalupa_time
+            result['chalupa_time'] = ch_meta['time']
+            result['chalupa_theta'] = ch_meta['theta']
+            _merge_into_result(result, 'chalupa', ch_meta)
+        except Exception as e:
+            print(f"Chalupa failed on {filepath}: {e}")
+            result['chalupa_time'] = None
+            result['chalupa_theta'] = None
+
+        """ old version
+        try:
+            t0 = time.time()
             chalupa_result = chalupa_wrapper(filepath)
             result['chalupa_time'] = time.time() - t0
             result['chalupa_theta'] = chalupa_result if chalupa_result is not None else None
@@ -682,9 +840,38 @@ class ExtendedWP1cEvaluator(WP1cEvaluator):
             print(f"Chalupa failed on {filepath}: {e}")
             result['chalupa_time'] = None
             result['chalupa_theta'] = None
-
+        """
         # 2. Run standard ILP solver (exact solution without any enhancements, no warmstart)
         # solves the clique cover problem by coloring the complement graph
+        try:
+            t0 = time.time()
+            ilp_res = ilp_wrapper(
+                filepath,
+                use_warmstart=False,
+                time_limit=timeout,
+                mip_gap=0.01,
+                verbose=False,
+                return_assignment=False
+            )
+            ilp_time = time.time() - t0
+
+            ilp_meta = _normalize_wrapper_result(ilp_res)
+            if ilp_meta['time'] is None:
+                ilp_meta['time'] = ilp_time
+
+            result['ilp_time'] = ilp_meta['time']
+            result['ilp_theta'] = ilp_meta['theta']
+            result['ilp_status'] = ilp_meta['status'] or 'solved'
+            result['ilp_gap'] = ilp_meta['gap']
+            _merge_into_result(result, 'ilp', ilp_meta)
+        except Exception as e:
+            print(f"ILP failed on {filepath}: {e}")
+            result['ilp_theta'] = None
+            result['ilp_time'] = None
+            result['ilp_status'] = 'failed'
+            result['ilp_gap'] = None
+
+        """
         try:
             t0 = time.time()
             ilp_res = ilp_wrapper(
@@ -711,9 +898,43 @@ class ExtendedWP1cEvaluator(WP1cEvaluator):
             result['ilp_time'] = None
             result['ilp_status'] = 'failed'
             result['ilp_gap'] = None
-
+        """
         # 3. Run ILP with Chalupa warmstart (uses heuristic solution to initialize ILP)
         # Warmstart provides initial feasible solution in order to speed up ILP convergence..
+        # 3. ILP with Chalupa warmstart
+        try:
+            t0 = time.time()
+            ilp_warm_res = ilp_wrapper(
+                filepath,
+                use_warmstart=True,
+                time_limit=timeout,
+                mip_gap=0.01,
+                verbose=False,
+                return_assignment=False
+            )
+            w_time = time.time() - t0
+
+            w_meta = _normalize_wrapper_result(ilp_warm_res)
+            if w_meta['time'] is None:
+                w_meta['time'] = w_time
+
+            result['ilp_warmstart_time'] = w_meta['time']
+            result['ilp_warmstart_theta'] = w_meta['theta']
+            result['ilp_warmstart_status'] = w_meta['status'] or 'solved'
+            result['ilp_warmstart_gap'] = w_meta['gap']
+            # also store typical warmstart extras if present
+            result['ilp_warmstart_used'] = w_meta['used_warmstart']
+            result['ilp_warmstart_start_objective'] = w_meta['start_objective']
+            result['ilp_warmstart_improvement_over_start'] = w_meta['improvement_over_start']
+            _merge_into_result(result, 'ilp_warmstart', w_meta)
+        except Exception as e:
+            print(f"ILP with warmstart failed on {filepath}: {e}")
+            result['ilp_warmstart_theta'] = None
+            result['ilp_warmstart_time'] = None
+            result['ilp_warmstart_status'] = 'failed'
+            result['ilp_warmstart_gap'] = None
+
+        """
         try:
             t0 = time.time()
             ilp_warm_res = ilp_wrapper(
@@ -743,9 +964,42 @@ class ExtendedWP1cEvaluator(WP1cEvaluator):
             result['ilp_warmstart_time'] = None
             result['ilp_warmstart_status'] = 'failed'
             result['ilp_warmstart_gap'] = None
-
+        """
         # 4. Run Reduced ILP (applies graph reductions before solving process starts)
         # Graph reductions simplify the problem by removing/merging nodes while preserving θ(G)
+        # 4. Reduced ILP (single-pass reduction)
+        try:
+            t0 = time.time()
+            reduced_res = reduced_ilp_wrapper(
+                filepath,
+                use_warmstart=False,
+                time_limit=timeout,
+                mip_gap=0.01,
+                verbose=False,
+                return_assignment=False
+            )
+            r_time = time.time() - t0
+
+            r_meta = _normalize_wrapper_result(reduced_res)
+            if r_meta['time'] is None:
+                r_meta['time'] = r_time
+
+            result['reduced_ilp_time'] = r_meta['time']
+            result['reduced_ilp_theta'] = r_meta['theta']
+            result['reduced_ilp_status'] = r_meta['status'] or 'solved'
+            result['reduced_ilp_gap'] = r_meta['gap']
+            # kernel sizes if provided
+            result['reduced_ilp_kernel_nodes'] = r_meta['kernel_nodes']
+            result['reduced_ilp_kernel_edges'] = r_meta['kernel_edges']
+            _merge_into_result(result, 'reduced_ilp', r_meta)
+        except Exception as e:
+            print(f"Reduced ILP failed on {filepath}: {e}")
+            result['reduced_ilp_theta'] = None
+            result['reduced_ilp_time'] = None
+            result['reduced_ilp_status'] = 'failed'
+            result['reduced_ilp_gap'] = None
+
+        """
         try:
             t0 = time.time()
             reduced_res = reduced_ilp_wrapper(
@@ -772,10 +1026,63 @@ class ExtendedWP1cEvaluator(WP1cEvaluator):
             result['reduced_ilp_time'] = None
             result['reduced_ilp_status'] = 'failed'
             result['reduced_ilp_gap'] = None
+        """
 
         # 5. Run Interactive Reduced ILP (iterative reduction guided by heuristic upper bounds)
         # This method alternates between computing heuristic bounds and applying reductions
         # until no further improvement is possible, then solves the final reduced problem by using ILP
+        # 5. Interactive Reduced ILP (iterative reduction + heuristic)
+        try:
+            t0 = time.time()
+            interactive_res = interactive_reduced_ilp_wrapper(
+                filepath,
+                use_warmstart=False,
+                max_rounds=10,
+                time_limit=timeout,
+                mip_gap=0.01,
+                verbose=False,
+                return_assignment=False
+            )
+            i_time = time.time() - t0
+
+            i_meta = _normalize_wrapper_result(interactive_res)
+            if i_meta['time'] is None:
+                i_meta['time'] = i_time
+
+            result['interactive_ilp_time'] = i_meta['time']
+            result['interactive_ilp_theta'] = i_meta['theta']
+            result['interactive_ilp_status'] = i_meta['status'] or 'solved'
+            result['interactive_ilp_gap'] = i_meta['gap']
+
+            #iteration-wise metadata (if provided by wrapper) ---
+            result['interactive_ilp_rounds'] = i_meta['rounds']
+            result['interactive_ilp_k_start'] = i_meta['k_start']
+            result['interactive_ilp_k_final'] = i_meta['k_final']
+            result['interactive_ilp_k_rounds'] = i_meta['k_rounds']  # list or None
+            result['interactive_ilp_kernel_nodes'] = i_meta['kernel_nodes']
+            result['interactive_ilp_kernel_edges'] = i_meta['kernel_edges']
+            result['interactive_ilp_kernel_nodes_rounds'] = i_meta['kernel_nodes_rounds']
+            result['interactive_ilp_kernel_edges_rounds'] = i_meta['kernel_edges_rounds']
+            result['interactive_ilp_round_logs'] = i_meta['round_logs']
+
+            _merge_into_result(result, 'interactive_ilp', i_meta)
+        except Exception as e:
+            print(f"Interactive reduced ILP failed on {filepath}: {e}")
+            result['interactive_ilp_theta'] = None
+            result['interactive_ilp_time'] = None
+            result['interactive_ilp_status'] = 'failed'
+            result['interactive_ilp_gap'] = None
+            result['interactive_ilp_rounds'] = None
+            result['interactive_ilp_k_start'] = None
+            result['interactive_ilp_k_final'] = None
+            result['interactive_ilp_k_rounds'] = None
+            result['interactive_ilp_kernel_nodes'] = None
+            result['interactive_ilp_kernel_edges'] = None
+            result['interactive_ilp_kernel_nodes_rounds'] = None
+            result['interactive_ilp_kernel_edges_rounds'] = None
+            result['interactive_ilp_round_logs'] = None
+
+        """
         try:
             t0 = time.time()
             interactive_res = interactive_reduced_ilp_wrapper(
@@ -803,6 +1110,7 @@ class ExtendedWP1cEvaluator(WP1cEvaluator):
             result['interactive_ilp_time'] = None
             result['interactive_ilp_status'] = 'failed'
             result['interactive_ilp_gap'] = None
+        """
 
         # Calculate quality metrics (using standard ILP without warmstart as baseline for exact solution)
         baseline = result.get('ilp_theta')
@@ -828,38 +1136,6 @@ class ExtendedWP1cEvaluator(WP1cEvaluator):
 
         return result
 
-    def _paired_speedup_stats(df: pd.DataFrame, method_time_col: str,
-                              baseline_col: str = 'ilp_time',
-                              trim: float = 0.10) -> dict:
-        """
-        Bildet speedup = baseline / method (hier: ilp_time / method_time)
-        und aggregiert zu robusten Kennzahlen.
-        Berücksichtigt nur Zeilen, in denen beide Zeiten vorhanden sind.
-        """
-        sub = df[[baseline_col, method_time_col]].dropna()
-        if sub.empty:
-            return dict(mean=np.nan, median=np.nan, geomean=np.nan,
-                        trimmed_mean=np.nan, n_pairs=0)
-        sp = sub[baseline_col].to_numpy(dtype=float) / sub[method_time_col].to_numpy(dtype=float)
-        sp = sp[np.isfinite(sp) & (sp > 0)]
-        if sp.size == 0:
-            return dict(mean=np.nan, median=np.nan, geomean=np.nan,
-                        trimmed_mean=np.nan, n_pairs=0)
-
-        # getrimmtes Mittel (z.B. 10%) gegen Ausreißer
-        s = np.sort(sp)
-        k = int(np.floor(trim * len(s)))
-        trimmed = s[k:len(s) - k] if len(s) - 2 * k > 0 else s
-        geomean = float(np.exp(np.mean(np.log(s)))) if (s > 0).all() else np.nan
-
-        return dict(
-            mean=float(np.mean(s)),
-            median=float(np.median(s)),
-            geomean=geomean,
-            trimmed_mean=float(np.mean(trimmed)),
-            n_pairs=int(len(s))
-        )
-
     def create_reduction_effectiveness_plot(self):
         """Analyze the effectiveness of graph reductions"""
         if self.df.empty:
@@ -871,20 +1147,20 @@ class ExtendedWP1cEvaluator(WP1cEvaluator):
         # 1. Compare reduced vs interactive reduced
         ax = axes[0, 0]
         if 'reduced_ilp_time' in self.df.columns and 'interactive_ilp_time' in self.df.columns:
-            valid_idx = self.df[['reduced_ilp_time', 'interactive_ilp_time']].notna().all(axis=1)
+            valid_idx = self.df[['reduced_ilp_time', 'interactive_ilp_time', 'n_nodes']].notna().all(axis=1)
+            valid_idx &= (self.df['reduced_ilp_time'] > EPS) & (self.df['interactive_ilp_time'] > EPS)
             if valid_idx.any():
-                ax.scatter(self.df.loc[valid_idx, 'reduced_ilp_time'],
-                           self.df.loc[valid_idx, 'interactive_ilp_time'],
-                           alpha=0.6, s=50, c=self.df.loc[valid_idx, 'n_nodes'],
-                           cmap='viridis')
-                max_time = max(self.df.loc[valid_idx, 'reduced_ilp_time'].max(),
-                               self.df.loc[valid_idx, 'interactive_ilp_time'].max())
-                ax.plot([0, max_time], [0, max_time], 'r--', alpha=0.5,
-                        label='Equal runtime')
-                ax.fill_between([0, max_time], [0, max_time], 0,
-                                alpha=0.1, color='green',
-                                label='Interactive faster')
-                plt.colorbar(ax.collections[0], ax=ax, label='Number of Nodes')
+                xs = self.df.loc[valid_idx, 'reduced_ilp_time']
+                ys = self.df.loc[valid_idx, 'interactive_ilp_time']
+                sc = ax.scatter(xs, ys, alpha=0.6, s=50, c=self.df.loc[valid_idx, 'n_nodes'], cmap='viridis')
+
+                tmin = min(xs.min(), ys.min())
+                tmax = max(xs.max(), ys.max())
+                line_x = np.linspace(tmin, tmax, 200)
+                ax.plot(line_x, line_x, 'r--', alpha=0.5, label='Equal runtime')
+
+                plt.colorbar(sc, ax=ax, label='Number of Nodes')
+
         ax.set_xlabel('Reduced ILP Time (s)')
         ax.set_ylabel('Interactive Reduced ILP Time (s)')
         ax.set_title('Single vs Interactive Reduction')
@@ -905,10 +1181,15 @@ class ExtendedWP1cEvaluator(WP1cEvaluator):
                 if 'ilp_time' in self.df.columns and 'reduced_ilp_time' in self.df.columns:
                     valid = mask & self.df[['ilp_time', 'reduced_ilp_time']].notna().all(axis=1)
                     if valid.any():
-                        speedup = (self.df.loc[valid, 'ilp_time'] /
-                                   self.df.loc[valid, 'reduced_ilp_time']).mean()
-                        reduction_speedup.append(speedup)
-                        bin_centers.append(bin_val.mid)
+                        pair = self.df.loc[valid, ['ilp_time', 'reduced_ilp_time']].astype(float)
+                        mask = (pair['ilp_time'] > EPS) & (pair['reduced_ilp_time'] > EPS)
+                        if mask.any():
+                            sp = (pair.loc[mask, 'ilp_time'] / pair.loc[mask, 'reduced_ilp_time']).to_numpy()
+                            sp = sp[np.isfinite(sp) & (sp > 0)]
+                            if sp.size:
+                                speedup = float(np.mean(sp))
+                                reduction_speedup.append(speedup);
+                                bin_centers.append(bin_val.mid)
 
             if reduction_speedup:
                 ax.bar(range(len(reduction_speedup)), reduction_speedup,
@@ -926,7 +1207,7 @@ class ExtendedWP1cEvaluator(WP1cEvaluator):
         # 3. Cumulative runtime distribution
         ax = axes[1, 0]
         methods_to_plot = ['ilp', 'ilp_warmstart', 'reduced_ilp', 'interactive_ilp', 'chalupa']
-        colors = ['red', 'green', 'orange', 'purple']
+        colors = ['red', 'green', 'orange', 'purple', 'blue']
 
         for method, color in zip(methods_to_plot, colors):
             time_col = f'{method}_time'
@@ -1044,10 +1325,6 @@ class ExtendedWP1cEvaluator(WP1cEvaluator):
             print("No data available for runtime comparison")
             return
 
-        import numpy as np
-        import pandas as pd
-        import matplotlib.pyplot as plt
-
         # --- Methoden & Labels (nur plotten, was wirklich vorhanden ist) ---
         method_labels = [
             ("chalupa", "Chalupa"),
@@ -1062,7 +1339,8 @@ class ExtendedWP1cEvaluator(WP1cEvaluator):
         for key, label in method_labels:
             col = f"{key}_time"
             if col in self.df.columns:
-                arr = self.df[col].dropna().values
+                arr = pd.to_numeric(self.df[col], errors="coerce").dropna().to_numpy(float)
+                arr = arr[np.isfinite(arr) & (arr > EPS)]
                 if arr.size:
                     times[label] = arr
                     cols_present.append((key, label, col))
@@ -1108,8 +1386,12 @@ class ExtendedWP1cEvaluator(WP1cEvaluator):
                     continue
                 sub = self.df[[col, "ilp_time"]].dropna()
                 if not sub.empty:
-                    sp = sub["ilp_time"].values / sub[col].values
-                    sp = sp[sp > 0]
+                    num = pd.to_numeric(sub["ilp_time"], errors="coerce").to_numpy(float)
+                    den = pd.to_numeric(sub[col], errors="coerce").to_numpy(float)
+                    mask = np.isfinite(num) & np.isfinite(den) & (num > EPS) & (den > EPS)
+                    sp = num[mask] / den[mask]
+                    sp = sp[np.isfinite(sp) & (sp > 0)]
+
                     if sp.size:
                         speedup_data.append(sp)
                         speedup_labels.append(label)
@@ -1241,11 +1523,15 @@ class ExtendedWP1cEvaluator(WP1cEvaluator):
                 if 'ilp_time' in self.df.columns and 'ilp_warmstart_time' in self.df.columns:
                     valid = mask & self.df[['ilp_time', 'ilp_warmstart_time']].notna().all(axis=1)
                     if valid.any():
-                        improvement = ((self.df.loc[valid, 'ilp_time'] -
-                                        self.df.loc[valid, 'ilp_warmstart_time']) /
-                                       self.df.loc[valid, 'ilp_time'] * 100).mean()
-                        warmstart_improvements.append(improvement)
-                        bin_centers.append(bin_val.mid)
+                        # robust gegen 0/Inf/NaN
+                        vals = self.df.loc[valid, ['ilp_time', 'ilp_warmstart_time']].astype(float)
+                        mask2 = (vals['ilp_time'] > EPS) & (vals['ilp_warmstart_time'] > EPS) & np.isfinite(vals).all(
+                            axis=1)
+                        if mask2.any():
+                            improvement = ((vals.loc[mask2, 'ilp_time'] - vals.loc[mask2, 'ilp_warmstart_time'])
+                                           / vals.loc[mask2, 'ilp_time'] * 100).mean()
+                            warmstart_improvements.append(float(improvement))
+                            bin_centers.append(bin_val.mid)
 
             if warmstart_improvements:
                 bars = ax.bar(range(len(warmstart_improvements)), warmstart_improvements,
@@ -1292,22 +1578,26 @@ class ExtendedWP1cEvaluator(WP1cEvaluator):
         if all(col in self.df.columns for col in ['chalupa_theta', 'ilp_theta',
                                                   'ilp_time', 'ilp_warmstart_time']):
             valid = self.df[['chalupa_theta', 'ilp_theta',
-                             'ilp_time', 'ilp_warmstart_time']].notna().all(axis=1)
+                             'ilp_time', 'ilp_warmstart_time', 'n_nodes']].notna().all(axis=1)
             if valid.any():
-                initial_gap = ((self.df.loc[valid, 'chalupa_theta'] -
-                                self.df.loc[valid, 'ilp_theta']) /
-                               self.df.loc[valid, 'ilp_theta'] * 100)
-                speedup = self.df.loc[valid, 'ilp_time'] / self.df.loc[valid, 'ilp_warmstart_time']
+                # robust gegen 0/Inf/NaN
+                vals = self.df.loc[
+                    valid, ['ilp_time', 'ilp_warmstart_time', 'chalupa_theta', 'ilp_theta', 'n_nodes']].astype(float)
+                mask2 = (vals['ilp_time'] > EPS) & (vals['ilp_warmstart_time'] > EPS) & np.isfinite(vals).all(axis=1)
+                vals = vals[mask2]
+                if not vals.empty:
+                    initial_gap = ((vals['chalupa_theta'] - vals['ilp_theta']) / vals['ilp_theta'] * 100)
+                    speedup = vals['ilp_time'] / vals['ilp_warmstart_time']
 
-                scatter = ax.scatter(initial_gap, speedup, alpha=0.6, s=50,
-                                     c=self.df.loc[valid, 'n_nodes'], cmap='viridis')
-                ax.set_xlabel('Initial Solution Gap (%)')
-                ax.set_ylabel('Speedup Factor')
-                ax.set_title('Initial Quality vs Speedup')
-                ax.axhline(y=1, color='red', linestyle='--', alpha=0.5, label='No speedup')
-                ax.axvline(x=0, color='green', linestyle='--', alpha=0.5, label='Perfect initial')
-                plt.colorbar(scatter, ax=ax, label='Number of Nodes')
-                ax.legend()
+                    scatter = ax.scatter(initial_gap, speedup, alpha=0.6, s=50, c=vals['n_nodes'], cmap='viridis')
+                    ax.set_xlabel('Initial Solution Gap (%)')
+                    ax.set_ylabel('Speedup Factor')
+                    ax.set_title('Initial Quality vs Speedup')
+                    ax.axhline(y=1, color='red', linestyle='--', alpha=0.5, label='No speedup')
+                    ax.axvline(x=0, color='green', linestyle='--', alpha=0.5, label='Perfect initial')
+                    plt.colorbar(scatter, ax=ax, label='Number of Nodes')
+                    ax.legend()
+
         ax.grid(True, alpha=0.3)
 
         # 4. Warmstart vs problem density
@@ -1505,6 +1795,21 @@ class ExtendedWP1cEvaluator(WP1cEvaluator):
                         f.write(f"  Within 5% of optimal: {within_5:.1f}%\n")
                         f.write(f"  Within 10% of optimal: {within_10:.1f}%\n")
 
+            # --- Iterations (WP2c) ---
+            f.write("\nITERATIVE REDUCTION (WP2c)\n")
+            f.write("-" * 60 + "\n")
+            if all(c in self.df.columns for c in
+                   ['interactive_ilp_rounds', 'reduced_ilp_time', 'interactive_ilp_time']):
+                sub = self.df[['interactive_ilp_rounds', 'reduced_ilp_time', 'interactive_ilp_time']].dropna()
+                if not sub.empty:
+                    mean_rounds = sub['interactive_ilp_rounds'].mean()
+                    med_rounds = sub['interactive_ilp_rounds'].median()
+                    speedup = (sub['reduced_ilp_time'] / sub['interactive_ilp_time']).mean()
+                    f.write(f"  Avg rounds: {mean_rounds:.2f} (median {med_rounds:.0f})\n")
+                    f.write(f"  Mean speedup vs single-pass: {speedup:.2f}x\n")
+                else:
+                     f.write("  No interactive rounds data available.\n")
+
             f.write("\n" + "=" * 80 + "\n")
             f.write("END OF EXTENDED REPORT\n")
             f.write("=" * 80 + "\n")
@@ -1553,7 +1858,12 @@ def main():
     print("=" * 60)
 
     # Initialize extended evaluator
-    evaluator = ExtendedWP1cEvaluator()
+    evaluator = ExtendedWP1cEvaluator(
+        output_dir="evaluation_results",
+        use_warmstart=USE_WARMSTART_DEFAULT,
+        interactive_max_rounds=INTERACTIVE_MAX_ROUNDS
+    )
+
 
     # Check if test graphs exist
     test_dir = "test_graphs/generated/perturbed"
