@@ -16,7 +16,7 @@ from src.algorithms.cluster_editing_ilp import solve_cluster_editing_ilp
 
 class ClusterEditingSolver:
     """
-    Main solver for cluster editing problem using (optional) kernelization + ILP.
+    Main solver for cluster editing problem using (optional) kernelization + ILP..
     """
 
     def __init__(self, graph: nx.Graph, weights: Optional[Dict] = None):
