@@ -1,0 +1,157 @@
+1: 2 3 4
+2: 1 97 98
+3: 1 99 102
+4: 1 100 101
+5: 13 15 16
+6: 14 17 18
+7: 19 20 34
+8: 22 24 35
+9: 21 26 33
+10: 23 25 27
+11: 28 32 36
+12: 29 30 31
+13: 5 14 37
+14: 6 13 39
+15: 5 36 60
+16: 5 35 59
+17: 6 34 58
+18: 6 33 42
+19: 7 32 38
+20: 7 31 47
+21: 9 22 50
+22: 8 21 40
+23: 10 24 52
+24: 8 23 46
+25: 10 28 53
+26: 9 30 45
+27: 10 29 41
+28: 11 25 54
+29: 12 27 55
+30: 12 26 48
+31: 12 20 57
+32: 11 19 56
+33: 9 18 49
+34: 7 17 44
+35: 8 16 51
+36: 11 15 43
+37: 13 38 61
+38: 19 37 80
+39: 14 40 64
+40: 22 39 81
+41: 27 50 65
+42: 18 57 66
+43: 36 58 77
+44: 34 45 72
+45: 26 44 78
+46: 24 48 73
+47: 20 53 74
+48: 30 46 76
+49: 33 59 68
+50: 21 41 79
+51: 35 54 82
+52: 23 60 71
+53: 25 47 67
+54: 28 51 69
+55: 29 56 63
+56: 32 55 83
+57: 31 42 62
+58: 17 43 70
+59: 16 49 75
+60: 15 52 84
+61: 37 62 85
+62: 57 61 92
+63: 55 84 85
+64: 39 71 86
+65: 41 66 86
+66: 42 65 89
+67: 53 70 89
+68: 49 77 90
+69: 54 79 90
+70: 58 67 93
+71: 52 64 93
+72: 44 81 96
+73: 46 74 96
+74: 47 73 91
+75: 59 76 92
+76: 48 75 94
+77: 43 68 95
+78: 45 83 95
+79: 50 69 87
+80: 38 82 88
+81: 40 72 88
+82: 51 80 91
+83: 56 78 87
+84: 60 63 94
+85: 61 63 97
+86: 64 65 97
+87: 79 83 98
+88: 80 81 98
+89: 66 67 99
+90: 68 69 99
+91: 74 82 102
+92: 62 75 102
+93: 70 71 100
+94: 76 84 101
+95: 77 78 101
+96: 72 73 100
+97: 2 85 86
+98: 2 87 88
+99: 3 89 90
+100: 4 93 96
+101: 4 94 95
+102: 3 91 92
+
+Acyclic: No
+Algebraic Connectivity: 0.438
+Average Degree: 3
+Bipartite: No
+Chromatic Index: 3
+Chromatic Number: 3
+Circumference: 102
+Claw-Free: No
+Clique Number: 2
+Connected: Yes
+Degeneracy: 3
+Density: 0.03
+Diameter: 7
+Domination Number: 28
+Edge Connectivity: 3
+Eulerian: No
+Feedback Vertex Set Number: 26
+Genus: Computation time out
+Girth: 9
+Group Size: 2448
+Hamiltonian: Yes
+Hypohamiltonian: No
+Hypotraceable: No
+Independence Number: 43
+Index: 3
+Laplacian Largest Eigenvalue: 5.532
+Length of Longest Induced Cycle: Computation time out
+Length of Longest Induced Path: Computation time out
+Length of Longest Path: 101
+Matching Number: 51
+Maximum Degree: 3
+Minimum Degree: 3
+Number of Arc Orbits: 1
+Number of Components: 1
+Number of Edge Orbits: 1
+Number of Edges: 153
+Number of Spanning Trees: 2147483647
+Number of Triangles: 0
+Number of Vertex Orbits: 1
+Number of Vertices: 102
+Number of Zero Eigenvalues: 17
+Planar: No
+Radius: 7
+Regular: Yes
+Second Largest Eigenvalue: 2.562
+Smallest Eigenvalue: -2.532
+Traceable: Yes
+Treewidth: Computation time out
+Twin-Free: Yes
+Vertex Connectivity: 3
+Vertex Cover Number: 59
+
+
+

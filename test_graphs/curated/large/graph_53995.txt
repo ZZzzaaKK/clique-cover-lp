@@ -1,0 +1,119 @@
+1: 25 26
+2: 23 24
+3: 21 22
+4: 27 28
+5: 13 25 49
+6: 14 21 50
+7: 15 22 51
+8: 16 28 52
+9: 18 24 54
+10: 17 23 53
+11: 20 26 56
+12: 19 27 55
+13: 5 14 57
+14: 6 13 58
+15: 7 16 59
+16: 8 15 60
+17: 10 20 62
+18: 9 19 61
+19: 12 18 64
+20: 11 17 63
+21: 3 6 46
+22: 3 7 46
+23: 2 10 48
+24: 2 9 48
+25: 1 5 45
+26: 1 11 45
+27: 4 12 47
+28: 4 8 47
+29: 30 31 33 40
+30: 29 32 34 35
+31: 29 32 37 38
+32: 30 31 36 39
+33: 29 34 41 57
+34: 30 33 42 58
+35: 30 36 42 59
+36: 32 35 43 60
+37: 31 40 44 62
+38: 31 39 44 61
+39: 32 38 43 64
+40: 29 37 41 63
+41: 33 40 49 56
+42: 34 35 50 51
+43: 36 39 52 55
+44: 37 38 53 54
+45: 25 26 49 56
+46: 21 22 50 51
+47: 27 28 52 55
+48: 23 24 53 54
+49: 5 41 45 57
+50: 6 42 46 58
+51: 7 42 46 59
+52: 8 43 47 60
+53: 10 44 48 62
+54: 9 44 48 61
+55: 12 43 47 64
+56: 11 41 45 63
+57: 13 33 49 58
+58: 14 34 50 57
+59: 15 35 51 60
+60: 16 36 52 59
+61: 18 38 54 64
+62: 17 37 53 63
+63: 20 40 56 62
+64: 19 39 55 61
+
+Acyclic: No
+Algebraic Connectivity: 0.152
+Average Degree: 3.5
+Bipartite: Yes
+Chromatic Index: 4
+Chromatic Number: 2
+Circumference: 64
+Claw-Free: No
+Clique Number: 2
+Connected: Yes
+Degeneracy: 2
+Density: 0.056
+Diameter: 14
+Domination Number: 16
+Edge Connectivity: 2
+Eulerian: No
+Feedback Vertex Set Number: 18
+Genus: 0
+Girth: 4
+Group Size: 8
+Hamiltonian: Yes
+Hypohamiltonian: No
+Hypotraceable: No
+Independence Number: 32
+Index: 3.759
+Laplacian Largest Eigenvalue: 7.696
+Length of Longest Induced Cycle: 40
+Length of Longest Induced Path: 41
+Length of Longest Path: 63
+Matching Number: 32
+Maximum Degree: 4
+Minimum Degree: 2
+Number of Arc Orbits: 28
+Number of Components: 1
+Number of Edge Orbits: 16
+Number of Edges: 112
+Number of Spanning Trees: 2147483647
+Number of Triangles: 0
+Number of Vertex Orbits: 10
+Number of Vertices: 64
+Number of Zero Eigenvalues: 8
+Planar: Yes
+Radius: 8
+Regular: No
+Second Largest Eigenvalue: 3.411
+Smallest Eigenvalue: -3.759
+Traceable: Yes
+Treewidth: 8
+Twin-Free: Yes
+Vertex Connectivity: 2
+Vertex Cover Number: 32
+
+
+

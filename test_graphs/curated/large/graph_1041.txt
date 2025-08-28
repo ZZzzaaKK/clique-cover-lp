@@ -1,0 +1,117 @@
+1: 31 32 51 52
+2: 33 34 53 54
+3: 35 45 57 60
+4: 36 46 58 59
+5: 34 38 53 55
+6: 33 40 53 56
+7: 33 39 54 56
+8: 34 37 54 55
+9: 35 37 54 57
+10: 36 38 53 58
+11: 36 40 53 59
+12: 35 39 54 60
+13: 37 41 55 57
+14: 38 44 55 58
+15: 39 42 56 60
+16: 40 43 56 59
+17: 42 43 56 62
+18: 41 44 55 61
+19: 45 47 51 57
+20: 46 50 52 58
+21: 45 48 51 60
+22: 46 49 52 59
+23: 41 47 57 61
+24: 42 48 60 62
+25: 43 49 59 62
+26: 44 50 58 61
+27: 32 47 51 61
+28: 31 49 52 62
+29: 31 48 51 62
+30: 32 50 52 61
+31: 1 28 29 51 52 62
+32: 1 27 30 51 52 61
+33: 2 6 7 53 54 56
+34: 2 5 8 53 54 55
+35: 3 9 12 54 57 60
+36: 4 10 11 53 58 59
+37: 8 9 13 54 55 57
+38: 5 10 14 53 55 58
+39: 7 12 15 54 56 60
+40: 6 11 16 53 56 59
+41: 13 18 23 55 57 61
+42: 15 17 24 56 60 62
+43: 16 17 25 56 59 62
+44: 14 18 26 55 58 61
+45: 3 19 21 51 57 60
+46: 4 20 22 52 58 59
+47: 19 23 27 51 57 61
+48: 21 24 29 51 60 62
+49: 22 25 28 52 59 62
+50: 20 26 30 52 58 61
+51: 1 19 21 27 29 31 32 45 47 48
+52: 1 20 22 28 30 31 32 46 49 50
+53: 2 5 6 10 11 33 34 36 38 40
+54: 2 7 8 9 12 33 34 35 37 39
+55: 5 8 13 14 18 34 37 38 41 44
+56: 6 7 15 16 17 33 39 40 42 43
+57: 3 9 13 19 23 35 37 41 45 47
+58: 4 10 14 20 26 36 38 44 46 50
+59: 4 11 16 22 25 36 40 43 46 49
+60: 3 12 15 21 24 35 39 42 45 48
+61: 18 23 26 27 30 32 41 44 47 50
+62: 17 24 25 28 29 31 42 43 48 49
+
+Acyclic: No
+Algebraic Connectivity: 0.787
+Average Degree: 5.806
+Bipartite: No
+Chromatic Index: 10
+Chromatic Number: 3
+Circumference: 62
+Claw-Free: No
+Clique Number: 3
+Connected: Yes
+Degeneracy: 4
+Density: 0.095
+Diameter: 6
+Domination Number: 8
+Edge Connectivity: 4
+Eulerian: Yes
+Feedback Vertex Set Number: 18
+Genus: 0
+Girth: 3
+Group Size: 120
+Hamiltonian: Yes
+Hypohamiltonian: No
+Hypotraceable: No
+Independence Number: 30
+Index: 6.359
+Laplacian Largest Eigenvalue: 12.646
+Length of Longest Induced Cycle: 40
+Length of Longest Induced Path: 38
+Length of Longest Path: 61
+Matching Number: 31
+Maximum Degree: 10
+Minimum Degree: 4
+Number of Arc Orbits: 6
+Number of Components: 1
+Number of Edge Orbits: 3
+Number of Edges: 180
+Number of Spanning Trees: 2147483647
+Number of Triangles: 120
+Number of Vertex Orbits: 3
+Number of Vertices: 62
+Number of Zero Eigenvalues: 5
+Planar: Yes
+Radius: 6
+Regular: No
+Second Largest Eigenvalue: 5.384
+Smallest Eigenvalue: -4
+Traceable: Yes
+Treewidth: 12
+Twin-Free: Yes
+Vertex Connectivity: 4
+Vertex Cover Number: 32
+
+
+

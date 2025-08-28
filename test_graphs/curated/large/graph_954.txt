@@ -1,0 +1,93 @@
+1: 2 3 4
+2: 1 34 38
+3: 1 33 37
+4: 1 35 36
+5: 9 15 19
+6: 10 16 20
+7: 10 11 18
+8: 9 12 17
+9: 5 8 14
+10: 6 7 13
+11: 7 13 22
+12: 8 14 21
+13: 10 11 25
+14: 9 12 26
+15: 5 17 31
+16: 6 18 32
+17: 8 15 24
+18: 7 16 23
+19: 5 26 30
+20: 6 25 29
+21: 12 24 28
+22: 11 23 27
+23: 18 22 36
+24: 17 21 35
+25: 13 20 34
+26: 14 19 33
+27: 22 28 38
+28: 21 27 37
+29: 20 32 34
+30: 19 31 33
+31: 15 30 35
+32: 16 29 36
+33: 3 26 30
+34: 2 25 29
+35: 4 24 31
+36: 4 23 32
+37: 3 28 38
+38: 2 27 37
+
+Acyclic: No
+Algebraic Connectivity: 0.107
+Average Degree: 3
+Bipartite: No
+Chromatic Index: 3
+Chromatic Number: 3
+Circumference: 37
+Claw-Free: No
+Clique Number: 2
+Connected: Yes
+Degeneracy: 3
+Density: 0.081
+Diameter: 9
+Domination Number: 11
+Edge Connectivity: 3
+Eulerian: No
+Feedback Vertex Set Number: 10
+Genus: 0
+Girth: 4
+Group Size: 2
+Hamiltonian: No
+Hypohamiltonian: No
+Hypotraceable: No
+Independence Number: 16
+Index: 3
+Laplacian Largest Eigenvalue: 5.668
+Length of Longest Induced Cycle: 25
+Length of Longest Induced Path: 25
+Length of Longest Path: 37
+Matching Number: 19
+Maximum Degree: 3
+Minimum Degree: 3
+Number of Arc Orbits: 58
+Number of Components: 1
+Number of Edge Orbits: 30
+Number of Edges: 57
+Number of Spanning Trees: 2147483647
+Number of Triangles: 0
+Number of Vertex Orbits: 20
+Number of Vertices: 38
+Number of Zero Eigenvalues: 1
+Planar: Yes
+Radius: 5
+Regular: Yes
+Second Largest Eigenvalue: 2.893
+Smallest Eigenvalue: -2.668
+Traceable: Yes
+Treewidth: 5
+Twin-Free: Yes
+Vertex Connectivity: 3
+Vertex Cover Number: 22
+
+
+

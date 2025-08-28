@@ -1,0 +1,100 @@
+1: 2 3 4 5 6 7
+2: 1 3 30 31 32 33
+3: 1 2 42 43 44 45
+4: 1 5 22 26 34 38
+5: 1 4 24 27 36 41
+6: 1 7 23 28 35 39
+7: 1 6 25 29 37 40
+8: 9 20 22 23 24 25
+9: 8 20 26 27 28 29
+10: 11 21 34 35 36 37
+11: 10 21 38 39 40 41
+12: 13 21 24 26 31 43
+13: 12 21 22 27 33 44
+14: 15 21 25 28 30 42
+15: 14 21 23 29 32 45
+16: 19 20 30 36 38 45
+17: 18 20 31 37 39 44
+18: 17 20 33 35 40 43
+19: 16 20 32 34 41 42
+20: 8 9 16 17 18 19
+21: 10 11 12 13 14 15
+22: 4 8 13 25 38 44
+23: 6 8 15 24 39 45
+24: 5 8 12 23 41 43
+25: 7 8 14 22 40 42
+26: 4 9 12 28 31 34
+27: 5 9 13 29 33 36
+28: 6 9 14 26 30 35
+29: 7 9 15 27 32 37
+30: 2 14 16 28 33 38
+31: 2 12 17 26 32 39
+32: 2 15 19 29 31 41
+33: 2 13 18 27 30 40
+34: 4 10 19 26 37 42
+35: 6 10 18 28 36 43
+36: 5 10 16 27 35 45
+37: 7 10 17 29 34 44
+38: 4 11 16 22 30 39
+39: 6 11 17 23 31 38
+40: 7 11 18 25 33 41
+41: 5 11 19 24 32 40
+42: 3 14 19 25 34 43
+43: 3 12 18 24 35 42
+44: 3 13 17 22 37 45
+45: 3 15 16 23 36 44
+
+Acyclic: No
+Algebraic Connectivity: 3
+Average Degree: 6
+Bipartite: No
+Chromatic Index: 7
+Chromatic Number: 4
+Circumference: 45
+Claw-Free: No
+Clique Number: 3
+Connected: Yes
+Degeneracy: 6
+Density: 0.136
+Diameter: 4
+Domination Number: 8
+Edge Connectivity: 6
+Eulerian: Yes
+Feedback Vertex Set Number: 23
+Genus: Computation time out
+Girth: 3
+Group Size: 2160
+Hamiltonian: Yes
+Hypohamiltonian: No
+Hypotraceable: No
+Independence Number: 15
+Index: 6
+Laplacian Largest Eigenvalue: 9
+Length of Longest Induced Cycle: 19
+Length of Longest Induced Path: 20
+Length of Longest Path: 44
+Matching Number: 22
+Maximum Degree: 6
+Minimum Degree: 6
+Number of Arc Orbits: 1
+Number of Components: 1
+Number of Edge Orbits: 1
+Number of Edges: 135
+Number of Spanning Trees: 2147483647
+Number of Triangles: 45
+Number of Vertex Orbits: 1
+Number of Vertices: 45
+Number of Zero Eigenvalues: 0
+Planar: No
+Radius: 4
+Regular: Yes
+Second Largest Eigenvalue: 3
+Smallest Eigenvalue: -3
+Traceable: Yes
+Treewidth: 16
+Twin-Free: Yes
+Vertex Connectivity: 6
+Vertex Cover Number: 30
+
+
+
