@@ -1,785 +1,457 @@
+# src/wp3_evaluation.py
 """
-Kernelization for Cluster Editing - Evaluation Script for WP3
-
-This script evaluates the kernelization techniques for cluster editing
-as specified in Work Package 3 of the project.
-
-this module provides:
-- WP3Evaluator: evaluation-framework
-- implementation of WP3.a (tests algorithms)
-- implementation of WP3.b (quantifcation of improvements)
-- generation of reports and visualizations
-
-how to use:
-- complete evaluation: python src/wp3_evaluation.py
-- only effectiveness-tests (WP3.a): python src/wp3_evaluation.py --task effectiveness
-- only improvement-quantification (WP3.b): python src/wp3_evaluation.py --task improvements
-- quick-test with less instances: python src/wp3_evaluation.py --quick
-- with our testgraphs: python src/wp3_evaluation.py --test-dir test_graphs/generated
-
-output:
-- CSV-files with detailled results
-- visualizations
-- report as txt
-- saved in dir: results/wp3/
+WP3 Evaluation using existing test graphs from test_graphs/generated/perturbed
+(kein Greedy-Fallback; ILP mit Gurobi)
 """
-
-import os
 import sys
+from pathlib import Path
+
+# sys.path früh erweitern, falls direkt gestartet
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
 import time
 import json
-import argparse
-from pathlib import Path
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any, Optional, Tuple, Set
 import pandas as pd
 import numpy as np
 import networkx as nx
 import matplotlib.pyplot as plt
 
-
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
-
- #Utils/Heuristiken ganz zentral aus src.utils_metrics ziehen
-try:
-    from utils_metrics import (
-        set_global_seeds, safe_ratio, rel_change,
-        clean_for_plot, nanmean, safe_idxmax,
-        should_kernelize, estimate_loglog_slope
-    )
-except ImportError:
-    # Fallback: explizit über src-Paket
-    from src.utils_metrics import (
-        set_global_seeds, safe_ratio, rel_change,
-        clean_for_plot, nanmean, safe_idxmax,
-        should_kernelize, estimate_loglog_slope
-    )
-
-
-set_global_seeds(33)
-
-from algorithms.cluster_editing_kernelization import (
-    ClusterEditingInstance,
-    ClusterEditingKernelization,
-    OptimizedClusterEditingKernelization,
-    CriticalClique
+from src.utils import txt_to_networkx
+from src.algorithms.cluster_editing_kernelization import (
+    AdvancedClusterEditingInstance,
+    AdvancedKernelization,
 )
-from algorithms.cluster_editing_solver import (
-    ClusterEditingSolver,
-    create_weighted_instance
-)
+from src.algorithms.cluster_editing_solver import ClusterEditingSolver
 
-# Import utilities if available
-try:
-    from utils import txt_to_networkx
+# ----------------------------------------------------------------------
+# Hilfsfunktionen für Cluster-Vergleich
+# ----------------------------------------------------------------------
+def _pair_set_from_clusters(clusters: List[Set[int]]) -> Set[Tuple[int, int]]:
+    """Erzeugt die Menge aller ungeordneten Knotenpaare, die im selben Cluster liegen."""
+    pairs: Set[Tuple[int, int]] = set()
+    for C in clusters:
+        cl = sorted(C)
+        for i, u in enumerate(cl):
+            for v in cl[i + 1:]:
+                a, b = (u, v) if u < v else (v, u)
+                pairs.add((a, b))
+    return pairs
 
-    HAS_UTILS = True
-except ImportError:
-    HAS_UTILS = False
-    print("Warning: utils module not found. Some features may be limited.")
+
+def _jaccard_pairs(clA: List[Set[int]], clB: List[Set[int]]) -> float:
+    """Jaccard-Index der Co-Clustering-Paare von zwei Partitionen."""
+    A = _pair_set_from_clusters(clA)
+    B = _pair_set_from_clusters(clB)
+    if not A and not B:
+        return 1.0
+    return len(A & B) / float(len(A | B))
 
 
-class WP3Evaluator:
-    """
-    Evaluator for WP3 tasks: Cluster Editing Kernelization.
-    """
-
-    def __init__(self, output_dir: str = "results/wp3"):
-        """
-        Initialize evaluator.
-
-        Args:
-            output_dir: Directory for saving results
-        """
+# ----------------------------------------------------------------------
+class WP3TestGraphEvaluator:
+    def __init__(self,
+                 test_graphs_dir: str = "test_graphs/generated/perturbed",
+                 output_dir: str = "results/wp3",
+                 ilp_time_limit: Optional[float] = None,
+                 ilp_gap: Optional[float] = None,
+                 ilp_threads: Optional[int] = None):
+        self.test_graphs_dir = Path(test_graphs_dir)
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
-        self.results = []
 
-    def evaluate_kernelization_effectiveness(self,
-                                             test_graphs_dir: Optional[str] = None,
-                                             instance_types: List[str] = None) -> pd.DataFrame:
-        """
-        WP3.a: Test kernelization algorithms thoroughly.
+        self.ilp_time_limit = ilp_time_limit
+        self.ilp_gap = ilp_gap
+        self.ilp_threads = ilp_threads
 
-        Args:
-            test_graphs_dir: Directory with test graphs
-            instance_types: Types of synthetic instances to test
+        if not self.test_graphs_dir.exists():
+            raise ValueError(f"Test graphs directory not found: {self.test_graphs_dir}")
 
-        Returns:
-            DataFrame with evaluation results
-        """
+        self.test_graphs = self._load_test_graphs()
+        print(f"Loaded {len(self.test_graphs)} test graphs from {self.test_graphs_dir}")
+
+    def _load_test_graphs(self) -> Dict[str, nx.Graph]:
+        graphs: Dict[str, nx.Graph] = {}
+        for file_path in self.test_graphs_dir.glob("*"):
+            if file_path.suffix in ['.txt', '.edges', '.edgelist']:
+                try:
+                    if file_path.suffix == '.txt':
+                        graph = self._read_txt_graph(file_path)
+                    else:
+                        graph = nx.read_edgelist(file_path, nodetype=int)
+                    graphs[file_path.stem] = graph
+                except Exception as e:
+                    print(f"Warning: Could not load {file_path.name}: {e}")
+            elif file_path.suffix == '.graphml':
+                try:
+                    graph = nx.read_graphml(file_path)
+                    graphs[file_path.stem] = graph
+                except Exception as e:
+                    print(f"Warning: Could not load {file_path.name}: {e}")
+        return graphs
+
+    def _read_txt_graph(self, file_path: Path) -> nx.Graph:
+        return txt_to_networkx(str(file_path))
+
+    # ---------------- WP3.a ----------------
+    def evaluate_kernelization_on_test_graphs(self,
+                                              configurations: Optional[List[Dict]] = None) -> pd.DataFrame:
+        print("\n" + "=" * 80)
+        print("WP3.a: Testing Kernelization on Existing Test Graphs")
         print("=" * 80)
-        print("WP3.a: Testing Kernelization Algorithms")
-        print("=" * 80)
 
-        results = []
+        if configurations is None:
+            configurations = [
+                {'name': 'Basic', 'preprocessing': False, 'smart_ordering': False},
+                {'name': 'With Preprocessing', 'preprocessing': True, 'smart_ordering': False},
+                {'name': 'Smart Ordering', 'preprocessing': False, 'smart_ordering': True},
+                {'name': 'Full Optimization', 'preprocessing': True, 'smart_ordering': True}
+            ]
 
-        # Test on provided graphs if available
-        if test_graphs_dir and os.path.exists(test_graphs_dir):
-            print(f"\nTesting on graphs from {test_graphs_dir}")
-            results.extend(self._test_on_directory(test_graphs_dir))
+        rows: List[Dict[str, Any]] = []
 
-        # Test on synthetic instances
-        if instance_types is None:
-            instance_types = ['uniform', 'mixed', 'powerlaw', 'dense']
+        for graph_name, graph in self.test_graphs.items():
+            print(f"\nProcessing: {graph_name}  "
+                  f"({graph.number_of_nodes()} nodes, {graph.number_of_edges()} edges)")
+            weights = self._create_weights_for_graph(graph)
 
-        print("\nTesting on synthetic instances:")
-        for instance_type in instance_types:
-            for size in [30, 50, 100, 150]:
-                print(f"  {instance_type} (n={size})...", end="")
-                result = self._test_synthetic_instance(instance_type, size)
-                results.append(result)
-                print(f" done (reduction: {result['reduction_ratio']:.1%})")
+            for config in configurations:
+                instance = AdvancedClusterEditingInstance(graph.copy(), weights.copy())
+                kernelizer = AdvancedKernelization(
+                    instance,
+                    use_preprocessing=config.get('preprocessing', False),
+                    use_smart_ordering=config.get('smart_ordering', False),
+                    use_parallel=config.get('parallel', True)
+                )
+                t0 = time.time()
+                _ = kernelizer.kernelize(max_iterations=100)
+                t = time.time() - t0
+                stats = kernelizer.get_comprehensive_stats()
 
-        # Create DataFrame
-        df = pd.DataFrame(results)
+                rows.append({
+                    'graph_name': graph_name,
+                    'config': config['name'],
+                    'original_nodes': graph.number_of_nodes(),
+                    'original_edges': graph.number_of_edges(),
+                    'kernel_nodes': stats['final_graph']['nodes'],
+                    'kernel_edges': stats['final_graph']['edges'],
+                    'reduction_ratio': stats['reduction_ratio'],
+                    'iterations': stats['iterations'],
+                    'time_seconds': t,
+                    'vertices_merged': stats.get('vertices_merged', 0),
+                    'forbidden_edges': stats.get('forbidden_edges', 0)
+                })
 
-        # Save results
-        df.to_csv(self.output_dir / "kernelization_effectiveness.csv", index=False)
-
-        # Print summary
+        df = pd.DataFrame(rows)
+        df.to_csv(self.output_dir / "test_graphs_kernelization.csv", index=False)
         self._print_effectiveness_summary(df)
-
         return df
 
-    def quantify_improvements(self, test_cases: Optional[List[Dict]] = None) -> pd.DataFrame:
-        """
-        WP3.b: Quantify improvements achieved by kernelization.
-
-        Args:
-            test_cases: Optional list of test case specifications
-
-        Returns:
-            DataFrame with improvement metrics
-        """
+    # ---------------- WP3.b ----------------
+    def compare_with_without_kernelization(self) -> pd.DataFrame:
         print("\n" + "=" * 80)
-        print("WP3.b: Quantifying Kernelization Improvements")
+        print("WP3.b: Comparing Performance With and Without Kernelization")
         print("=" * 80)
 
-        if test_cases is None:
-            test_cases = self._get_default_test_cases()
+        results: List[Dict[str, Any]] = []
+        jsonl_path = self.output_dir / "wp3b_runs.jsonl"
+        open(jsonl_path, "w").close()  # truncate
 
-        results = []
+        for graph_name, graph in self.test_graphs.items():
+            if graph.number_of_nodes() > 500:
+                print(f"Skipping {graph_name} (too large for comparison)")
+                continue
 
-        for i, test_case in enumerate(test_cases, 1):
-            print(f"\nTest case {i}/{len(test_cases)}: {test_case['name']}")
-            print("-" * 40)
-
-            # Create instance
-            graph = self._create_test_graph(test_case)
-
-            # Test without kernelization
-            print("  Testing without kernelization...", end="")
-            solver_no_kernel = ClusterEditingSolver(graph)
+            print(f"\nProcessing: {graph_name}")
+            # --- WITHOUT K ---
+            print("  Without kernelization...", end="")
+            solver_no_kernel = ClusterEditingSolver(graph.copy())
+            t0 = time.time()
             result_no_kernel = solver_no_kernel.solve(
                 use_kernelization=False,
-                clustering_algorithm=test_case.get('algorithm', 'greedy_improved')
+                clustering_algorithm='ilp',
+                time_limit=self.ilp_time_limit,
+                mip_gap=self.ilp_gap,
+                threads=self.ilp_threads,
             )
-            print(f" done ({result_no_kernel['time_seconds']:.3f}s)")
+            time_no_kernel = time.time() - t0
+            print(f" done ({time_no_kernel:.3f}s)")
 
-            # Test with standard kernelization
-            print("  Testing with standard kernelization...", end="")
-            solver_standard = ClusterEditingSolver(graph)
-            result_standard = solver_standard.solve(
-                use_kernelization=True,
-                kernelization_type='standard',
-                clustering_algorithm=test_case.get('algorithm', 'greedy_improved')
-            )
-            print(f" done ({result_standard['time_seconds']:.3f}s)")
-
-            # Test with optimized kernelization
-            print("  Testing with optimized kernelization...", end="")
-            solver_optimized = ClusterEditingSolver(graph)
-            result_optimized = solver_optimized.solve(
+            # --- WITH K ---
+            print("  With kernelization...", end="")
+            solver_with_kernel = ClusterEditingSolver(graph.copy())
+            t0 = time.time()
+            result_with_kernel = solver_with_kernel.solve(
                 use_kernelization=True,
                 kernelization_type='optimized',
-                clustering_algorithm=test_case.get('algorithm', 'greedy_improved')
+                clustering_algorithm='ilp',
+                time_limit=self.ilp_time_limit,
+                mip_gap=self.ilp_gap,
+                threads=self.ilp_threads,
             )
-            print(f" done ({result_optimized['time_seconds']:.3f}s)")
+            time_with_kernel = time.time() - t0
+            print(f" done ({time_with_kernel:.3f}s)")
 
-            # Collect metrics
-            improvement = {
-                'test_case': test_case['name'],
-                'graph_nodes': graph.number_of_nodes(),
-                'graph_edges': graph.number_of_edges(),
+            kstats = result_with_kernel.get('kernel_stats') or {}
+            kernel_nodes = (kstats.get('final_graph', {}) or {}).get('nodes', graph.number_of_nodes())
 
-                # No kernelization baseline
-                'time_no_kernel': result_no_kernel['time_seconds'],
+            # Zusatzmetriken
+            kernel_reduction = 1.0 - (kernel_nodes / float(graph.number_of_nodes())) if graph.number_of_nodes() > 0 else 0.0
+            cl_nok = result_no_kernel['clusters']
+            cl_k = result_with_kernel['clusters']
+            solution_change = _jaccard_pairs(cl_nok, cl_k)
+            obj_gap_abs = abs(result_no_kernel['editing_cost'] - result_with_kernel['editing_cost'])
+
+            row = {
+                'graph_name': graph_name,
+                'nodes': graph.number_of_nodes(),
+                'edges': graph.number_of_edges(),
+                'time_no_kernel': time_no_kernel,
+                'time_with_kernel': time_with_kernel,
+                'speedup': (time_no_kernel / time_with_kernel) if time_with_kernel > 0 else 1.0,
                 'cost_no_kernel': result_no_kernel['editing_cost'],
+                'cost_with_kernel': result_with_kernel['editing_cost'],
+                'cost_ratio': (result_with_kernel['editing_cost'] / result_no_kernel['editing_cost']
+                               if result_no_kernel['editing_cost'] > 0 else 1.0),
                 'clusters_no_kernel': result_no_kernel['num_clusters'],
+                'clusters_with_kernel': result_with_kernel['num_clusters'],
+                'kernel_size': kernel_nodes,
+                'kernel_reduction': kernel_reduction,
+                'solution_change_jaccard': solution_change,
+                'obj_gap_abs': obj_gap_abs,
+                'solver': 'ilp'
+            }
+            results.append(row)
+            with open(jsonl_path, "a") as jf:
+                jf.write(json.dumps(row) + "\n")
 
-                # Standard kernelization
-                'time_standard': result_standard['time_seconds'],
-                'cost_standard': result_standard['editing_cost'],
-                'clusters_standard': result_standard['num_clusters'],
-                'kernel_nodes_standard': result_standard['kernel_stats']['kernel_nodes'],
-                'reduction_standard': result_standard['kernel_stats']['reduction_ratio'],
+            print(f"  Speedup: {row['speedup']:.2f}x")
 
-                # Optimized kernelization
-                'time_optimized': result_optimized['time_seconds'],
-                'cost_optimized': result_optimized['editing_cost'],
-                'clusters_optimized': result_optimized['num_clusters'],
-                'kernel_nodes_optimized': result_optimized['kernel_stats']['kernel_nodes'],
-                'reduction_optimized': result_optimized['kernel_stats']['reduction_ratio'],
+        df = pd.DataFrame(results)
+        df.to_csv(self.output_dir / "kernelization_improvements.csv", index=False)
+        self._print_improvement_summary(df)
+        self._create_improvement_plots(df)
+        self._write_summary_report(jsonl_path, df)
+        return df
 
-                # Speedups
-                'speedup_standard': result_no_kernel['time_seconds'] / result_standard['time_seconds'],
-                'speedup_optimized': result_no_kernel['time_seconds'] / result_optimized['time_seconds'],
+    # ---------------- WP3.c ----------------
+    def create_comparison_data_for_vcc(self) -> Dict[str, Any]:
+        print("\n" + "=" * 80)
+        print("Creating Comparison Data for VCC")
+        print("=" * 80)
 
-                # Quality ratios (1.0 = same quality)
-                'quality_ratio_standard': result_standard['editing_cost'] / result_no_kernel['editing_cost']
-                if result_no_kernel['editing_cost'] > 0 else 1.0,
-                'quality_ratio_optimized': result_optimized['editing_cost'] / result_no_kernel['editing_cost']
-                if result_no_kernel['editing_cost'] > 0 else 1.0
+        comparison_data = {'graphs': {}, 'kernelization_stats': {}, 'solution_quality': {}}
+
+        for graph_name, graph in self.test_graphs.items():
+            print(f"Processing {graph_name}...")
+            comparison_data['graphs'][graph_name] = {
+                'nodes': graph.number_of_nodes(),
+                'edges': graph.number_of_edges(),
+                'density': nx.density(graph),
+                'clustering_coefficient': nx.average_clustering(graph) if graph.number_of_nodes() > 0 else 0.0
             }
 
-            results.append(improvement)
+            weights = self._create_weights_for_graph(graph)
+            instance = AdvancedClusterEditingInstance(graph.copy(), weights.copy())
+            kernelizer = AdvancedKernelization(instance, use_preprocessing=True, use_smart_ordering=True)
+            _ = kernelizer.kernelize()
+            stats = kernelizer.get_comprehensive_stats()
 
-            # Print summary
-            print(f"  Speedup: {improvement['speedup_standard']:.2f}x (standard), "
-                  f"{improvement['speedup_optimized']:.2f}x (optimized)")
-            print(f"  Reduction: {improvement['reduction_standard']:.1%} (standard), "
-                  f"{improvement['reduction_optimized']:.1%} (optimized)")
+            comparison_data['kernelization_stats'][graph_name] = {
+                'reduction_ratio': stats['reduction_ratio'],
+                'kernel_nodes': stats['final_graph']['nodes'],
+                'kernel_edges': stats['final_graph']['edges'],
+                'iterations': stats['iterations']
+            }
 
-        # Create DataFrame
-        df = pd.DataFrame(results)
-
-        # Save results
-        df.to_csv(self.output_dir / "kernelization_improvements.csv", index=False)
-
-        # Generate visualizations
-        self._create_improvement_plots(df)
-
-        # Print summary
-        self._print_improvement_summary(df)
-
-        return df
-
-    def run_comprehensive_evaluation(self) -> Dict[str, pd.DataFrame]:
-        """
-        Run comprehensive evaluation for both WP3.a and WP3.b.
-
-        Returns:
-            Dictionary with all evaluation results
-        """
-        print("=" * 80)
-        print("WP3: COMPREHENSIVE CLUSTER EDITING KERNELIZATION EVALUATION")
-        print("=" * 80)
-
-        # WP3.a: Test algorithms
-        df_effectiveness = self.evaluate_kernelization_effectiveness()
-
-        # WP3.b: Quantify improvements
-        df_improvements = self.quantify_improvements()
-
-        # Additional analysis
-        df_rules = self._analyze_reduction_rules()
-        df_scaling = self._analyze_scaling_behavior()
-
-        # Generate report
-        self._generate_report({
-            'effectiveness': df_effectiveness,
-            'improvements': df_improvements,
-            'rules': df_rules,
-            'scaling': df_scaling
-        })
-
-        return {
-            'effectiveness': df_effectiveness,
-            'improvements': df_improvements,
-            'rules': df_rules,
-            'scaling': df_scaling
-        }
-
-    def _test_on_directory(self, directory: str) -> List[Dict]:
-        """Test kernelization on graphs from a directory."""
-        results = []
-        path = Path(directory)
-
-        for file_path in path.glob("*.txt"):
-            if HAS_UTILS:
-                try:
-                    graph = txt_to_networkx(str(file_path))
-                    result = self._test_single_graph(graph, str(file_path.name))
-                    results.append(result)
-                except Exception as e:
-                    print(f"  Error processing {file_path}: {e}")
-
-        return results
-
-    def _test_synthetic_instance(self, instance_type: str, size: int) -> Dict:
-        """Test on a synthetic instance."""
-        graph = self._create_synthetic_graph(instance_type, size)
-        return self._test_single_graph(graph, f"{instance_type}_n{size}")
-
-    def _test_single_graph(self, graph: nx.Graph, name: str) -> Dict:
-        """Test kernelization on a single graph."""
-        # Create instance
-        instance = create_weighted_instance(graph, 'unit')
-
-        # Test standard kernelization
-        kernel_std = ClusterEditingKernelization(instance)
-        start = time.time()
-        kernel_std.kernelize()
-        time_std = time.time() - start
-        stats_std = kernel_std.get_kernel_statistics()
-
-        # Test optimized kernelization
-        kernel_opt = OptimizedClusterEditingKernelization(instance)
-        start = time.time()
-        kernel_opt.kernelize()
-        time_opt = time.time() - start
-        stats_opt = kernel_opt.get_kernel_statistics()
-
-        # Test critical cliques
-        cc = CriticalClique(graph)
-
-        return {
-            'name': name,
-            'original_nodes': graph.number_of_nodes(),
-            'original_edges': graph.number_of_edges(),
-            'critical_cliques': len(cc.critical_cliques),
-            'avg_clique_size': np.mean(cc.get_clique_sizes()) if cc.critical_cliques else 1,
-
-            # Standard kernelization
-            'kernel_nodes_std': stats_std['kernel_nodes'],
-            'kernel_edges_std': stats_std['kernel_edges'],
-            'reduction_ratio': stats_std['reduction_ratio'],
-            'time_std': time_std,
-            'rules_applied_std': sum(stats_std['rules_applied'].values()),
-
-            # Optimized kernelization
-            'kernel_nodes_opt': stats_opt['kernel_nodes'],
-            'kernel_edges_opt': stats_opt['kernel_edges'],
-            'reduction_ratio_opt': stats_opt['reduction_ratio'],
-            'time_opt': time_opt,
-            'rules_applied_opt': sum(stats_opt['rules_applied'].values()),
-
-            # Comparison
-            'speedup': time_std / time_opt if time_opt > 0 else 1.0
-        }
-
-    def _create_synthetic_graph(self, instance_type: str, n: int) -> nx.Graph:
-        """Create a synthetic test graph."""
-        import random
-
-        if instance_type == 'uniform':
-            # Uniform clique sizes
-            clique_size = int(np.sqrt(n))
-            num_cliques = n // clique_size
-            graph = nx.Graph()
-
-            vertex_id = 0
-            for _ in range(num_cliques):
-                for i in range(clique_size):
-                    for j in range(i + 1, min(clique_size, n - vertex_id)):
-                        graph.add_edge(vertex_id + i, vertex_id + j)
-                vertex_id += clique_size
-                if vertex_id >= n:
-                    break
-
-            # Add noise
-            for _ in range(n // 10):
-                u, v = random.randint(0, n - 1), random.randint(0, n - 1)
-                if u != v:
-                    if graph.has_edge(u, v):
-                        graph.remove_edge(u, v)
-                    else:
-                        graph.add_edge(u, v)
-
-        elif instance_type == 'mixed':
-            # Mixed clique sizes
-            graph = nx.Graph()
-            vertex_id = 0
-            clique_sizes = [5, 10, 15] * (n // 30)
-
-            for size in clique_sizes:
-                if vertex_id >= n:
-                    break
-                actual_size = min(size, n - vertex_id)
-                for i in range(actual_size):
-                    for j in range(i + 1, actual_size):
-                        graph.add_edge(vertex_id + i, vertex_id + j)
-                vertex_id += actual_size
-
-            # Add noise
-            noise_edges = int(0.15 * n)
-            for _ in range(noise_edges):
-                u, v = random.randint(0, n - 1), random.randint(0, n - 1)
-                if u != v:
-                    if graph.has_edge(u, v):
-                        graph.remove_edge(u, v)
-                    else:
-                        graph.add_edge(u, v)
-
-        elif instance_type == 'powerlaw':
-            # Power-law degree distribution
-            graph = nx.powerlaw_cluster_graph(n, 3, 0.1)
-
-        elif instance_type == 'dense':
-            # Dense random graph with planted structure
-            graph = nx.erdos_renyi_graph(n, 0.3)
-            # Plant some cliques
-            for _ in range(3):
-                size = random.randint(5, min(15, n // 3))
-                nodes = random.sample(range(n), size)
-                for i, u in enumerate(nodes):
-                    for v in nodes[i + 1:]:
-                        graph.add_edge(u, v)
-
-        else:
-            # Default: random graph
-            graph = nx.erdos_renyi_graph(n, 0.1)
-
-        return graph
-
-    def _create_test_graph(self, test_case: Dict) -> nx.Graph:
-        """Create a test graph from specification."""
-        if 'type' in test_case:
-            return self._create_synthetic_graph(
-                test_case['type'],
-                test_case.get('size', 100)
-            )
-        elif 'file' in test_case and HAS_UTILS:
-            return txt_to_networkx(test_case['file'])
-        else:
-            # Default
-            return nx.erdos_renyi_graph(
-                test_case.get('nodes', 100),
-                test_case.get('edge_prob', 0.1)
+            solver = ClusterEditingSolver(graph.copy())
+            result = solver.solve(
+                use_kernelization=True,
+                kernelization_type='optimized',
+                clustering_algorithm='ilp',
+                time_limit=self.ilp_time_limit,
+                mip_gap=self.ilp_gap,
+                threads=self.ilp_threads,
             )
 
-    def _get_default_test_cases(self) -> List[Dict]:
-        """Get default test cases for improvement quantification."""
-        return [
-            {'name': 'Small uniform', 'type': 'uniform', 'size': 50},
-            {'name': 'Medium uniform', 'type': 'uniform', 'size': 100},
-            {'name': 'Small mixed', 'type': 'mixed', 'size': 50},
-            {'name': 'Medium mixed', 'type': 'mixed', 'size': 100},
-            {'name': 'Large mixed', 'type': 'mixed', 'size': 200},
-            {'name': 'Power-law small', 'type': 'powerlaw', 'size': 50},
-            {'name': 'Power-law medium', 'type': 'powerlaw', 'size': 100},
-            {'name': 'Dense small', 'type': 'dense', 'size': 30},
-            {'name': 'Dense medium', 'type': 'dense', 'size': 50}
-        ]
+            comparison_data['solution_quality'][graph_name] = {
+                'num_clusters': result['num_clusters'],
+                'editing_cost': result['editing_cost'],
+                'time_seconds': result['time_seconds']
+            }
 
-    def _analyze_reduction_rules(self) -> pd.DataFrame:
-        """Analyze effectiveness of individual reduction rules."""
-        print("\nAnalyzing individual reduction rules...")
+        with open(self.output_dir / "cluster_editing_results.json", 'w') as f:
+            json.dump(comparison_data, f, indent=2)
 
-        results = []
-        test_graphs = [
-            ('uniform', 50),
-            ('mixed', 100),
-            ('powerlaw', 75),
-            ('dense', 40)
-        ]
+        print(f"Comparison data saved to {self.output_dir / 'cluster_editing_results.json'}")
+        return comparison_data
 
-        for graph_type, size in test_graphs:
-            graph = self._create_synthetic_graph(graph_type, size)
-            instance = create_weighted_instance(graph, 'unit')
-
-            # Test each rule individually
-            for rule_name in ['critical_clique', 'heavy_non_edge', 'heavy_edge_single', 'heavy_edge_both']:
-                kernel = ClusterEditingKernelization(instance.copy())
-
-                # Apply only specific rule
-                if rule_name == 'critical_clique':
-                    applied = kernel.apply_critical_clique_reduction()
-                elif rule_name == 'heavy_non_edge':
-                    applied = kernel.apply_rule_1_heavy_non_edge()
-                elif rule_name == 'heavy_edge_single':
-                    applied = kernel.apply_rule_2_heavy_edge_single()
-                else:  # heavy_edge_both
-                    applied = kernel.apply_rule_3_heavy_edge_both()
-
-                stats = kernel.get_kernel_statistics()
-
-                results.append({
-                    'graph_type': graph_type,
-                    'graph_size': size,
-                    'rule': rule_name,
-                    'applied': applied,
-                    'vertices_removed': stats['vertices_removed'],
-                    'edges_modified': stats['edges_modified'],
-                    'reduction_ratio': stats['reduction_ratio']
-                })
-
-        df = pd.DataFrame(results)
-        df.to_csv(self.output_dir / "rule_analysis.csv", index=False)
-        return df
-
-    def _analyze_scaling_behavior(self) -> pd.DataFrame:
-        """Analyze how kernelization scales with graph size."""
-        print("\nAnalyzing scaling behavior...")
-
-        results = []
-        sizes = [20, 40, 60, 80, 100, 150, 200]
-
-        for size in sizes:
-            for graph_type in ['uniform', 'mixed', 'dense']:
-                graph = self._create_synthetic_graph(graph_type, size)
-
-                # Test kernelization
-                solver = ClusterEditingSolver(graph)
-                start = time.time()
-                result = solver.solve(
-                    use_kernelization=True,
-                    kernelization_type='optimized'
-                )
-                time_taken = time.time() - start
-
-                results.append({
-                    'size': size,
-                    'type': graph_type,
-                    'original_nodes': size,
-                    'kernel_nodes': result['kernel_stats']['kernel_nodes'],
-                    'reduction_ratio': result['kernel_stats']['reduction_ratio'],
-                    'time': time_taken,
-                    'rules_applied': sum(result['kernel_stats']['rules_applied'].values())
-                })
-
-        df = pd.DataFrame(results)
-        df.to_csv(self.output_dir / "scaling_analysis.csv", index=False)
-        return df
-
-    def _create_improvement_plots(self, df: pd.DataFrame):
-        """Create visualization plots for improvements."""
-        fig, axes = plt.subplots(2, 2, figsize=(12, 10))
-
-        # Speedup comparison
-        ax = axes[0, 0]
-        x = range(len(df))
-        width = 0.35
-        ax.bar([i - width / 2 for i in x], df['speedup_standard'], width, label='Standard', alpha=0.8)
-        ax.bar([i + width / 2 for i in x], df['speedup_optimized'], width, label='Optimized', alpha=0.8)
-        ax.set_xlabel('Test Case')
-        ax.set_ylabel('Speedup')
-        ax.set_title('Speedup from Kernelization')
-        ax.set_xticks(x)
-        ax.set_xticklabels(df['test_case'], rotation=45, ha='right')
-        ax.legend()
-        ax.grid(True, alpha=0.3)
-
-        # Reduction ratio comparison
-        ax = axes[0, 1]
-        ax.scatter(df['graph_nodes'], df['reduction_standard'], label='Standard', alpha=0.7)
-        ax.scatter(df['graph_nodes'], df['reduction_optimized'], label='Optimized', alpha=0.7)
-        ax.set_xlabel('Graph Size (nodes)')
-        ax.set_ylabel('Reduction Ratio')
-        ax.set_title('Kernel Reduction vs Graph Size')
-        ax.legend()
-        ax.grid(True, alpha=0.3)
-
-        # Quality preservation
-        ax = axes[1, 0]
-        ax.bar(x, df['quality_ratio_standard'], width, label='Standard', alpha=0.8)
-        ax.bar([i + width for i in x], df['quality_ratio_optimized'], width, label='Optimized', alpha=0.8)
-        ax.axhline(y=1.0, color='r', linestyle='--', alpha=0.5)
-        ax.set_xlabel('Test Case')
-        ax.set_ylabel('Quality Ratio (1.0 = same as baseline)')
-        ax.set_title('Solution Quality Preservation')
-        ax.set_xticks([i + width / 2 for i in x])
-        ax.set_xticklabels(df['test_case'], rotation=45, ha='right')
-        ax.legend()
-        ax.grid(True, alpha=0.3)
-
-        # Time vs kernel size
-        ax = axes[1, 1]
-        ax.scatter(df['kernel_nodes_standard'], df['time_standard'], label='Standard', alpha=0.7)
-        ax.scatter(df['kernel_nodes_optimized'], df['time_optimized'], label='Optimized', alpha=0.7)
-        ax.set_xlabel('Kernel Size (nodes)')
-        ax.set_ylabel('Time (seconds)')
-        ax.set_title('Runtime vs Kernel Size')
-        ax.legend()
-        ax.grid(True, alpha=0.3)
-
-        plt.tight_layout()
-        plt.savefig(self.output_dir / "improvement_plots.png", dpi=150)
-        plt.close()
+    # -------------- helpers --------------
+    def _create_weights_for_graph(self, graph: nx.Graph) -> Dict[Tuple[int, int], float]:
+        weights: Dict[Tuple[int, int], float] = {}
+        for u, v, data in graph.edges(data=True):
+            weights[(min(u, v), max(u, v))] = float(data.get('weight', 1.0))
+        nodes = list(graph.nodes())
+        for i, u in enumerate(nodes):
+            for v in nodes[i + 1:]:
+                e = (min(u, v), max(u, v))
+                if e not in weights and not graph.has_edge(u, v):
+                    weights[e] = -1.0
+        return weights
 
     def _print_effectiveness_summary(self, df: pd.DataFrame):
-        """Print summary of kernelization effectiveness."""
         print("\n" + "=" * 60)
         print("KERNELIZATION EFFECTIVENESS SUMMARY")
         print("=" * 60)
+        for config in df['config'].unique():
+            config_df = df[df['config'] == config]
+            print(f"\n{config}:")
+            print(f"  Average reduction: {config_df['reduction_ratio'].mean():.1%}")
+            print(f"  Best reduction: {config_df['reduction_ratio'].max():.1%}")
+            print(f"  Average time: {config_df['time_seconds'].mean():.3f}s")
 
-        print(f"\nTotal instances tested: {len(df)}")
-        print(f"Average reduction ratio: {df['reduction_ratio'].mean():.1%}")
-        print(f"Best reduction: {df['reduction_ratio'].max():.1%}")
-        print(f"Worst reduction: {df['reduction_ratio'].min():.1%}")
-
-        print(f"\nAverage critical cliques: {df['critical_cliques'].mean():.1f}")
-        print(f"Average rules applied: {df['rules_applied_std'].mean():.1f}")
-
-        print(f"\nOptimized vs Standard speedup: {df['speedup'].mean():.2f}x")
-
-        # Group by type if available
-        if 'name' in df.columns:
-            print("\nReduction by instance type:")
-            for name_prefix in ['uniform', 'mixed', 'powerlaw', 'dense']:
-                subset = df[df['name'].str.contains(name_prefix, na=False)]
-                if not subset.empty:
-                    print(f"  {name_prefix}: {subset['reduction_ratio'].mean():.1%}")
+        print("\nBest reduced graphs:")
+        best = df.groupby('graph_name')['reduction_ratio'].mean().sort_values(ascending=False).head(5)
+        for gname, red in best.items():
+            print(f"  {gname}: {red:.1%}")
 
     def _print_improvement_summary(self, df: pd.DataFrame):
-        """Print summary of improvements."""
         print("\n" + "=" * 60)
-        print("KERNELIZATION IMPROVEMENT SUMMARY")
+        print("IMPROVEMENT SUMMARY")
         print("=" * 60)
+        print(f"Average speedup: {df['speedup'].mean():.2f}x")
+        print(f"Max speedup: {df['speedup'].max():.2f}x")
+        print(f"Average cost ratio: {df['cost_ratio'].mean():.3f}")
+        print(f"Graphs with >2x speedup: {(df['speedup'] > 2).sum()}/{len(df)}")
 
-        print(f"\nAverage speedup:")
-        print(f"  Standard kernelization: {df['speedup_standard'].mean():.2f}x")
-        print(f"  Optimized kernelization: {df['speedup_optimized'].mean():.2f}x")
+    def _create_improvement_plots(self, df: pd.DataFrame):
+        fig, axes = plt.subplots(2, 3, figsize=(16, 10))
 
-        print(f"\nKernel size reduction:")
-        print(f"  Standard: {df['reduction_standard'].mean():.1%}")
-        print(f"  Optimized: {df['reduction_optimized'].mean():.1%}")
+        ax = axes[0, 0]
+        ax.scatter(df['nodes'], df['speedup'], alpha=0.7)
+        ax.set_xlabel('Graph Size (nodes)')
+        ax.set_ylabel('Speedup')
+        ax.set_title('Speedup vs Graph Size')
+        ax.axhline(y=1, color='r', linestyle='--', alpha=0.5)
+        ax.grid(True, alpha=0.3)
 
-        print(f"\nSolution quality (cost ratio):")
-        print(f"  Standard: {df['quality_ratio_standard'].mean():.3f}")
-        print(f"  Optimized: {df['quality_ratio_optimized'].mean():.3f}")
+        ax = axes[0, 1]
+        ax.scatter(df['nodes'], df['kernel_size'], alpha=0.7)
+        mx = df['nodes'].max() if len(df) else 1
+        ax.plot([0, mx], [0, mx], 'r--', alpha=0.5)
+        ax.set_xlabel('Original Size (nodes)')
+        ax.set_ylabel('Kernel Size (nodes)')
+        ax.set_title('Kernel Reduction')
+        ax.grid(True, alpha=0.3)
 
-        # Best improvements
-        best_speedup_idx = df['speedup_optimized'].idxmax()
-        print(f"\nBest speedup: {df.loc[best_speedup_idx, 'speedup_optimized']:.2f}x "
-              f"on {df.loc[best_speedup_idx, 'test_case']}")
+        ax = axes[0, 2]
+        x = np.arange(len(df))
+        width = 0.35
+        ax.bar(x - width/2, df['time_no_kernel'], width, label='No Kernel', alpha=0.85)
+        ax.bar(x + width/2, df['time_with_kernel'], width, label='With Kernel', alpha=0.85)
+        ax.set_xlabel('Graph')
+        ax.set_ylabel('Time (s)')
+        ax.set_title('Runtime Comparison (ILP)')
+        ax.set_xticks(x)
+        ax.set_xticklabels(df['graph_name'], rotation=60, ha='right', fontsize=8)
+        ax.legend()
+        ax.grid(True, alpha=0.3)
 
-        best_reduction_idx = df['reduction_optimized'].idxmax()
-        print(f"Best reduction: {df.loc[best_reduction_idx, 'reduction_optimized']:.1%} "
-              f"on {df.loc[best_reduction_idx, 'test_case']}")
+        ax = axes[1, 0]
+        ax.scatter(df['cost_no_kernel'], df['cost_with_kernel'], alpha=0.7)
+        maxc = max(df['cost_no_kernel'].max(), df['cost_with_kernel'].max()) if len(df) else 1
+        ax.plot([0, maxc], [0, maxc], 'r--', alpha=0.5)
+        ax.set_xlabel('Cost without Kernelization')
+        ax.set_ylabel('Cost with Kernelization')
+        ax.set_title('Solution Quality Preservation (ILP)')
+        ax.grid(True, alpha=0.3)
 
-    def _generate_report(self, results: Dict[str, pd.DataFrame]):
-        """Generate comprehensive report."""
-        report_path = self.output_dir / "wp3_report.txt"
+        ax = axes[1, 1]
+        ax.hist(df['speedup'], bins=20, alpha=0.85)
+        ax.set_xlabel('Speedup (NoK / K)')
+        ax.set_ylabel('#Graphs')
+        ax.set_title('Speedup Distribution')
 
-        with open(report_path, 'w') as f:
-            f.write("=" * 80 + "\n")
-            f.write("WP3: CLUSTER EDITING KERNELIZATION - EVALUATION REPORT\n")
-            f.write("=" * 80 + "\n\n")
+        ax = axes[1, 2]
+        ratio = df['kernel_size'] / df['nodes']
+        ax.hist(ratio, bins=20, alpha=0.85)
+        ax.set_xlabel('Kernel / Original')
+        ax.set_ylabel('#Graphs')
+        ax.set_title('Kernel Size Ratio')
 
-            # Executive Summary
-            f.write("EXECUTIVE SUMMARY\n")
-            f.write("-" * 40 + "\n")
-            f.write(f"Total test instances: {len(results['effectiveness']) + len(results['improvements'])}\n")
-            f.write(f"Average kernel reduction: {results['effectiveness']['reduction_ratio'].mean():.1%}\n")
-            f.write(f"Average speedup: {results['improvements']['speedup_optimized'].mean():.2f}x\n")
-            f.write(f"Solution quality preserved: {results['improvements']['quality_ratio_optimized'].mean():.1%}\n\n")
+        plt.tight_layout()
+        plt.savefig(self.output_dir / "improvement_plots_extended.png", dpi=150)
+        plt.close()
+        print(f"Plots saved to {self.output_dir / 'improvement_plots_extended.png'}")
 
-            # WP3.a Results
-            f.write("WP3.a: KERNELIZATION ALGORITHM TESTING\n")
-            f.write("-" * 40 + "\n")
-            f.write(results['effectiveness'].describe().to_string())
-            f.write("\n\n")
+    def _write_summary_report(self, jsonl_path: Path, df: pd.DataFrame):
+        summary = {
+            "n_graphs": int(len(df)),
+            "avg_speedup": float(df['speedup'].mean()) if len(df) else None,
+            "median_speedup": float(df['speedup'].median()) if len(df) else None,
+            "avg_cost_ratio": float(df['cost_ratio'].mean()) if len(df) else None,
+            "solver": "ilp",
+            "ilp_time_limit": self.ilp_time_limit,
+            "ilp_gap": self.ilp_gap,
+            "ilp_threads": self.ilp_threads,
+        }
+        with open(self.output_dir / "summary.json", "w") as f:
+            json.dump(summary, f, indent=2)
 
-            # WP3.b Results
-            f.write("WP3.b: IMPROVEMENT QUANTIFICATION\n")
-            f.write("-" * 40 + "\n")
-            f.write(results['improvements'].describe().to_string())
-            f.write("\n\n")
+        lines = [
+            "# WP3.b Summary Report",
+            "",
+            f"- Graphs: **{summary['n_graphs']}**",
+            f"- Solver: **{summary['solver']}**",
+            f"- Avg speedup: **{summary['avg_speedup']:.2f}x**" if summary["avg_speedup"] is not None else "-",
+            f"- Median speedup: **{summary['median_speedup']:.2f}x**" if summary["median_speedup"] is not None else "-",
+            f"- Avg cost ratio (K/NoK): **{summary['avg_cost_ratio']:.3f}**" if summary["avg_cost_ratio"] is not None else "-",
+            "",
+            "### Parameter",
+            f"- time_limit: {self.ilp_time_limit}",
+            f"- mip_gap: {self.ilp_gap}",
+            f"- threads: {self.ilp_threads}",
+            "",
+            "### Datenquelle",
+            f"- JSONL: `{jsonl_path}`",
+            f"- CSV: `{self.output_dir / 'kernelization_improvements.csv'}`",
+        ]
+        (self.output_dir / "summary.md").write_text("\n".join(lines), encoding="utf-8")
+        print(f"Summary saved to {self.output_dir / 'summary.md'}")
 
-            # Rule Analysis
-            f.write("REDUCTION RULE ANALYSIS\n")
-            f.write("-" * 40 + "\n")
-            rule_summary = results['rules'].groupby('rule').agg({
-                'applied': 'sum',
-                'vertices_removed': 'mean',
-                'edges_modified': 'mean',
-                'reduction_ratio': 'mean'
-            })
-            f.write(rule_summary.to_string())
-            f.write("\n\n")
-
-            # Scaling Analysis
-            f.write("SCALING BEHAVIOR\n")
-            f.write("-" * 40 + "\n")
-            f.write(f"Tested sizes: {results['scaling']['size'].unique()}\n")
-            f.write(f"Time complexity appears to be O(n^{self._estimate_complexity(results['scaling'])})\n")
-            f.write("\n")
-
-            # Conclusions
-            f.write("CONCLUSIONS\n")
-            f.write("-" * 40 + "\n")
-            f.write("1. Kernelization is highly effective for structured graphs\n")
-            f.write("2. Critical clique reduction provides the most significant improvements\n")
-            f.write("3. Optimized implementation achieves 2-5x speedup over standard\n")
-            f.write("4. Solution quality is well-preserved (>95% in most cases)\n")
-            f.write("5. Kernelization scales well up to graphs with 200+ nodes\n")
-
-        print(f"\nReport saved to: {report_path}")
-    """
-    def _estimate_complexity(self, df: pd.DataFrame) -> float:
-        #Estimate time complexity from scaling data.
-        # Simple log-log regression
-        import scipy.stats
-
-        log_n = np.log(df['size'])
-        log_t = np.log(df['time'])
-
-        # Remove infinities
-        mask = np.isfinite(log_n) & np.isfinite(log_t)
-        if mask.sum() < 2:
-            return 2.0  # Default estimate
-
-        slope, _, _, _, _ = scipy.stats.linregress(log_n[mask], log_t[mask])
-        return round(slope, 1)
-    """
-
-    def _estimate_complexity(self, df: pd.DataFrame) -> float:
-        return estimate_loglog_slope(df['size'].values, df['time'].values)
 
 def main():
-    """Main execution function."""
-    parser = argparse.ArgumentParser(
-        description="WP3: Evaluate Cluster Editing Kernelization"
-    )
-    parser.add_argument(
-        '--test-dir',
-        type=str,
-        help='Directory containing test graphs'
-    )
-    parser.add_argument(
-        '--output-dir',
-        type=str,
-        default='results/wp3',
-        help='Output directory for results'
-    )
-    parser.add_argument(
-        '--quick',
-        action='store_true',
-        help='Run quick evaluation with fewer test cases'
-    )
-    parser.add_argument(
-        '--task',
-        choices=['all', 'effectiveness', 'improvements'],
-        default='all',
-        help='Which evaluation task to run'
-    )
-
+    import argparse
+    parser = argparse.ArgumentParser(description="WP3 Evaluation using existing test graphs")
+    parser.add_argument('--test-dir', type=str, default='test_graphs/generated/perturbed')
+    parser.add_argument('--output-dir', type=str, default='results/wp3')
+    parser.add_argument('--task', choices=['effectiveness', 'improvements', 'comparison', 'all'], default='all')
+    parser.add_argument('--ilp-time-limit', type=float, default=None)
+    parser.add_argument('--ilp-gap', type=float, default=None)
+    parser.add_argument('--ilp-threads', type=int, default=None)
     args = parser.parse_args()
 
-    # Create evaluator
-    evaluator = WP3Evaluator(args.output_dir)
+    try:
+        evaluator = WP3TestGraphEvaluator(
+            test_graphs_dir=args.test_dir,
+            output_dir=args.output_dir,
+            ilp_time_limit=args.ilp_time_limit,
+            ilp_gap=args.ilp_gap,
+            ilp_threads=args.ilp_threads,
+        )
+    except ValueError as e:
+        print(f"Error: {e}")
+        print(f"Please ensure test graphs are in {args.test_dir}")
+        return
 
-    # Run evaluation
-    if args.task == 'all':
-        if args.quick:
-            # Quick evaluation with fewer cases
-            test_cases = [
-                {'name': 'Small test', 'type': 'uniform', 'size': 30},
-                {'name': 'Medium test', 'type': 'mixed', 'size': 50}
-            ]
-            evaluator.quantify_improvements(test_cases)
-        else:
-            # Full evaluation
-            evaluator.run_comprehensive_evaluation()
-
-    elif args.task == 'effectiveness':
-        evaluator.evaluate_kernelization_effectiveness(args.test_dir)
-
-    elif args.task == 'improvements':
-        evaluator.quantify_improvements()
+    if args.task in ['effectiveness', 'all']:
+        evaluator.evaluate_kernelization_on_test_graphs()
+    if args.task in ['improvements', 'all']:
+        evaluator.compare_with_without_kernelization()
+    if args.task in ['comparison', 'all']:
+        evaluator.create_comparison_data_for_vcc()
 
     print("\n" + "=" * 60)
     print("WP3 EVALUATION COMPLETE")
