@@ -35,11 +35,8 @@ with open(output_file, "w") as f:
     f.write(f"\nConnected: {'Yes' if nx.is_connected(G) else 'No'}\n")
     f.write(f"Number of Vertices: {G.number_of_nodes()}\n")
     f.write(f"Number of Edges: {G.number_of_edges()}\n")
-    f.write(f"Average Degree: {sum(dict(G.degree()).values()) / G.number_of_nodes():.3f}\n")
     f.write(f"Density: {nx.density(G):.3f}\n")
     f.write(f"Number of Components: {nx.number_connected_components(G)}\n")
-    f.write(f"Maximum Degree: {max(dict(G.degree()).values())}\n")
-    f.write(f"Minimum Degree: {min(dict(G.degree()).values())}\n")
 
 print(f"Graph saved to {output_file}")
 print(f"Node mapping saved for reference:")
