@@ -1,0 +1,68 @@
+1: 12
+2: 13
+3: 13
+4: 13
+5: 13
+6: 13
+7: 12
+8: 12
+9: 12
+10: 12
+11: 12 13
+12: 1 7 8 9 10 11
+13: 2 3 4 5 6 11
+
+Acyclic: Yes
+Algebraic Connectivity: 0.146
+Average Degree: 1.846
+Bipartite: Yes
+Chromatic Index: 6
+Chromatic Number: 2
+Circumference: undefined
+Claw-Free: No
+Clique Number: 2
+Connected: Yes
+Degeneracy: 1
+Density: 0.154
+Diameter: 4
+Domination Number: 2
+Edge Connectivity: 1
+Eulerian: No
+Feedback Vertex Set Number: 0
+Genus: 0
+Girth: undefined
+Group Size: 28800
+Hamiltonian: No
+Hypohamiltonian: No
+Hypotraceable: No
+Independence Number: 11
+Index: 2.646
+Laplacian Largest Eigenvalue: 7.193
+Length of Longest Induced Cycle: undefined
+Length of Longest Induced Path: 4
+Length of Longest Path: 4
+Matching Number: 2
+Maximum Degree: 6
+Minimum Degree: 1
+Number of Arc Orbits: 4
+Number of Components: 1
+Number of Edge Orbits: 2
+Number of Edges: 12
+Number of Spanning Trees: 1
+Number of Triangles: 0
+Number of Vertex Orbits: 3
+Number of Vertices: 13
+Number of Zero Eigenvalues: 9
+Planar: Yes
+Radius: 2
+Regular: No
+Second Largest Eigenvalue: 2.236
+Smallest Eigenvalue: -2.646
+Traceable: No
+Treewidth: 1
+Twin-Free: No
+Vertex Connectivity: 1
+Vertex Cover Number: 2
+
+
+
