@@ -156,6 +156,9 @@ class AdvancedClusterEditingInstance:
         self._weight_index = defaultdict(list)
         self._init_structures()
 
+        # Mapping: aktueller Knoten (Supernode) -> wirft Menge Originalknoten
+        self.supernode_members: Dict[int, Set[int]] = {v: {v} for v in graph.nodes()}
+
     def _init_sparse_representation(self):
         from scipy.sparse import lil_matrix
         n = self.graph.number_of_nodes()
@@ -509,7 +512,15 @@ class AdvancedKernelization:
                     G.add_edge(u, nbr)
 
         G.remove_node(v)
+        # Gewichte des entfernten Knotens säubern
         self.instance.weights = {e: w for e, w in self.instance.weights.items() if v not in e}
+
+        # Mapping der Supernodes zusammenführen lets see
+        if u not in self.instance.supernode_members:
+            self.instance.supernode_members[u] = {u}
+        members_v = self.instance.supernode_members.get(v, {v})
+        self.instance.supernode_members[u].update(members_v)
+        self.instance.supernode_members.pop(v, None)
 
         # neighbor_sums für u und seine Nachbarn aktualisieren
         affected = set([u]) | set(G.neighbors(u))

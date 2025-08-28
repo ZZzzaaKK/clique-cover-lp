@@ -97,13 +97,22 @@ class ClusterEditingSolver:
             gurobi_params=gurobi_params,
         )
 
+        # Lifting & faire Kostenauswertung auf dem Original
+        if use_kernelization:
+            clusters_lifted = self._lift_clusters_to_original(instance_to_solve, clusters)
+            editing_cost = self.calculate_editing_cost(self.instance, clusters_lifted)
+            clusters_to_report = clusters_lifted
+        else:
+            editing_cost = self.calculate_editing_cost(instance_to_solve, clusters)
+            clusters_to_report = clusters
+
         # Kosten berechnen
         editing_cost = self.calculate_editing_cost(instance_to_solve, clusters)
 
         elapsed_time = time.time() - start_time
         self.solution = {
-            'clusters': clusters,
-            'num_clusters': len(clusters),
+            'clusters': clusters_to_report,
+            'num_clusters': len(clusters_to_report),
             'editing_cost': editing_cost,
             'time_seconds': elapsed_time,
             'original_stats': original_stats,
@@ -112,6 +121,7 @@ class ClusterEditingSolver:
             'use_kernelization': use_kernelization,
             'ilp': ilp_stats,
         }
+
         return self.solution
 
     def _greedy_clustering(self, instance: ClusterEditingInstance) -> List[Set[int]]:
@@ -150,6 +160,22 @@ class ClusterEditingSolver:
                             cost += abs(instance.get_weight(u, v))
 
         return cost
+
+    def _lift_clusters_to_original(self, kernel_instance, clusters_on_kernel: List[Set[int]]) -> List[Set[int]]:
+        """
+        Mappt Cluster aus dem Kernel zurück auf Originalknoten via kernel_instance.supernode_members.
+        Fällt zurück auf Identität, falls Mapping fehlt.
+        """
+        lifted: List[Set[int]] = []
+        mapping = getattr(kernel_instance, "supernode_members", None)
+        if not mapping:
+            return [set(C) for C in clusters_on_kernel]
+        for C in clusters_on_kernel:
+            S: Set[int] = set()
+            for s in C:
+                S.update(mapping.get(s, {s}))
+            lifted.append(S)
+        return lifted
 
     def get_solution_quality_metrics(self) -> Dict[str, Any]:
         if not self.solution:
