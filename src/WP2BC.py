@@ -27,7 +27,8 @@ class WP2bcResultsAnalyzer:
 
     def __init__(self, results_dir: str = "evaluation_results"):
         self.results_dir = Path(results_dir)
-        self.output_dir = Path("wp2bc_analysis")
+        #self.output_dir = Path("wp2bc_analysis")
+        self.output_dir = Path("results/wp2")
         self.output_dir.mkdir(exist_ok=True)
         self.timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         self.df = None
@@ -36,7 +37,7 @@ class WP2bcResultsAnalyzer:
         """Load the most recent evaluation results CSV"""
         csv_files = list(self.results_dir.glob("evaluation_results_*.csv"))
         if not csv_files:
-            raise FileNotFoundError(f"No evaluation results found in {self.results_dir}")
+            raise FileNotFoundError(f"No evaluation results found in {self.results_dir} go get them whereelse")
 
         # Get most recent file
         latest_file = max(csv_files, key=lambda p: p.stat().st_mtime)
@@ -591,22 +592,6 @@ class WP2bcResultsAnalyzer:
                     runtime_saved = (self.df.loc[valid, 'reduced_ilp_time'] -
                                    self.df.loc[valid, 'interactive_ilp_time']).mean()
                     f.write(f"  Average runtime saved: {runtime_saved:.2f}s per instance\n\n")
-
-            # Combined conclusions
-            f.write("\n" + "="*80 + "\n")
-            f.write("COMBINED CONCLUSIONS\n")
-            f.write("-"*60 + "\n")
-            f.write("1. The reduction workflow successfully extends the feasible instance space\n")
-            f.write("2. Interactive refinement (WP2c) provides additional benefits over single-pass\n")
-            f.write("3. Benefits are most pronounced for:\n")
-            f.write("   • Larger instances (100+ nodes)\n")
-            f.write("   • Moderately to highly perturbed graphs\n")
-            f.write("   • Instances where standard ILP struggles or fails\n")
-            f.write("4. The computational overhead of iterations is justified by kernel reduction\n")
-
-            f.write("\n" + "="*80 + "\n")
-            f.write("END OF REPORT\n")
-            f.write("="*80 + "\n")
 
         print(f"\nGenerated combined report: {report_path}")
         return report_path

@@ -3,12 +3,11 @@ Integer Linear Programming (ILP) formulation for the vertex clique coloring prob
 
 kurzer Hinweis zur Integration:
 
-- Aufruf: res = solve_ilp_clique_cover(G, warmstart=heur_cover_dict, time_limit=300, mip_gap=0.0)
+- Aufruf: res = solve_ilp_clique_cover(G, warmstart=heur_cover_dict, time_limit=600, mip_gap=0.0)
 - Ergebnis: res['theta'] ist θ(G); identisch zu res['chi_complement'].
 - Für add_ground_truth.py: Zeile Clique Cover Number θ(G): {res['theta']} (Calculated by ILP on complement graph Ḡ).
 - Für Warmstart: akzeptiert {node: color} oder {color: [nodes...]} oder Liste in G.nodes()-Reihenfolge.
 """
-
 
 """
 ILP solver for the Clique Cover Number θ(G) via Coloring on the complement graph Ḡ.
@@ -169,7 +168,7 @@ def _parse_warmstart(
 def solve_ilp_clique_cover(
         G: nx.Graph,
         is_already_complement: bool = False,
-        time_limit: int = 300,
+        time_limit: int = 600,
         mip_gap: Optional[float] = None,
         threads: Optional[int] = None,
         max_colors: Optional[int] = None,
@@ -429,8 +428,6 @@ def solve_ilp_clique_cover(
             'error': str(e),
         }
 
-
-# Convenience function for backwards compatibility
 def solve_ilp_direct_on_complement(
         Gc: nx.Graph,
         **kwargs
@@ -441,110 +438,3 @@ def solve_ilp_direct_on_complement(
     This is equivalent to calling solve_ilp_clique_cover(Gc, is_already_complement=True, **kwargs)
     """
     return solve_ilp_clique_cover(Gc, is_already_complement=True, **kwargs)
-
-"""
-#OLD Version von Til, hat folgende Probleme: 
-# Bezeichner‑Konflikt / Zielgröße unklar
-#      Rückgabe/Feld chromatic_number, während die WP‑Aufgabe θ(G) (Clique‑Cover‑Zahl) verlangt.
-#      Keine klare Note, ob auf G (Cover) oder auf Ḡ (Coloring) optimiert wird → Verwechslungsgefahr zwischen χ(Ḡ) und θ(G).
-# Komplement-Behandlung inkonsistent
-#      An einer Stelle wird Ḡ extern (im Wrapper/anderen Skripten) gebildet, an anderer Stelle nicht → Doppelarbeit und Risiken für falsche Ergebnisse.
-# Konflikt‑Constraints potenziell falsch/uneindeutig
-#     In Coloring‑Modellen müssen für Kanten in Ḡ die Gleichfarbigkeit verboten werden:
-#     xu,i+xv,i≤1
-#     Im alten Code gab es Hinweise auf xu,i+xv,i≤yi/ fehlende klare Trennung → kann zulässige Färbungen erlauben, die eigentlich verboten sind.
-# Symmetrie nicht gebrochen
-#     Keine Ordnung der Farben yi≥yi+1, kein „Anker“‑Knoten → unnötiger Suchraum, längere Laufzeiten.
-# Rückgabe nicht „klar“
-#      Nur eine Zahl/Feld (z.B chromatic_number), keine saubere Struktur mit theta, assignment, gap, time etc.
-#      Erschwert Integration in add_ground_truth.py/Auswertung.
-# Fehlende/harte Solver‑Parameter
-#     Kein (oder fest verdrahteter) TimeLimit, MIPGap, Threads, keine kontrollierte Verbosität → schlechter reproduzierbar, schwer zu debuggen.
-# 
-# Kein Warmstart‑Interface
-#     Heuristische Lösunge like our Chalupa approach werden nicht als Startlösung gesetzt werden → verschenktes Performance‑Potenzial.
-#     ist für den Vergleich zwischen Chalupa und ILP auch großer Quatsch, aber möglicherweise für später 1 gutes Tool for best Performance 
-# Label‑Stabilität
-#      Kein sauberer Umgang mit Original‑Knotenlabels in der Rückgabe (Color→Knotenlisten) → frickelige Nachnutzung.
-
-# ----------------------------------------------------------
-# Hauptfunktion: Löse Vertex Clique Coloring mit ILP
-# (Assignment Model gemäß Mutzel, Folie 24)
-# ----------------------------------------------------------
-def solve_ilp_clique_cover(G):
-    V = list(G.nodes())           # Liste aller Knoten
-    E = list(G.edges())           # Liste aller Kanten
-    n = len(V)                    # Anzahl Knoten
-    H = n                         # Obergrenze für Farben (max. eine pro Knoten)
-
-    # Neues Gurobi-Modell erstellen
-    model = gp.Model("clique_coloring")
-    model.setParam("OutputFlag", 0)  # Keine Konsolenausgabe von Gurobi
-
-    # Binärvariablen: x[v, i] = 1, wenn Knoten v Farbe i erhält
-    x = model.addVars(V, range(H), vtype=GRB.BINARY)
-
-    # Binärvariablen: w[i] = 1, wenn Farbe i überhaupt verwendet wird
-    w = model.addVars(range(H), vtype=GRB.BINARY)
-
-    # (1) Jeder Knoten bekommt genau eine Farbe
-    for v in V:
-        model.addConstr(gp.quicksum(x[v, i] for i in range(H)) == 1)
-
-    # (2) Benachbarte Knoten dürfen nicht dieselbe Farbe haben
-    for (u, v) in E:
-        for i in range(H):
-            model.addConstr(x[u, i] + x[v, i] <= w[i])
-
-    # (3) Farbe i darf nur verwendet werden (w[i] = 1), wenn sie auch zugewiesen wird
-    for i in range(H):
-        model.addConstr(w[i] <= gp.quicksum(x[v, i] for v in V))
-
-    # (4) Symmetriebrechung: wenn Farbe i verwendet wird, muss auch Farbe i-1 verwendet worden sein
-    for i in range(1, H):
-        model.addConstr(w[i] <= w[i - 1])
-
-    # Ziel: Minimale Anzahl verwendeter Farben (entspricht Cliqueanzahl)
-    model.setObjective(gp.quicksum(w[i] for i in range(H)), GRB.MINIMIZE)
-
-    # Optimierung starten
-    model.optimize()
-
-    # Wenn optimale Lösung gefunden, extrahiere Resultat
-    if model.status == GRB.OPTIMAL:
-        # chromatic_number = Anzahl verwendeter Farben (d.h. Cliquen)
-        chromatic_number = int(sum(w[i].X for i in range(H)))
-
-        # Zuweisung der Farbe (bzw. Clique) für jeden Knoten
-        coloring = {v: [i for i in range(H) if x[v, i].X > 0.5][0] for v in V}
-
-        return {
-            "chromatic_number": chromatic_number,
-            "coloring": coloring,
-            "n_nodes": len(V),
-            "n_edges": len(E),
-        }
-    else:
-        return {"error": "Keine optimale Lösung gefunden."}
-
-# ----------------------------------------------------------
-# Beispiel: Graph laden und ILP lösen
-# ----------------------------------------------------------
-if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        print("Usage: python test_chalupa.py <path_to_graph_file>")
-        print("Example: python test_chalupa.py test_graphs/curated/graph_50593.txt")
-        sys.exit()
-
-    graph_path = sys.argv[1]
-
-    try:
-        G = txt_to_networkx(graph_path)
-        result = solve_ilp_clique_cover(G)
-
-        print("Anzahl Knoten:", result["n_nodes"])
-        print("Anzahl Kanten:", result["n_edges"])
-        print(result)
-    except Exception as e:
-        print(f"An exception occured: {e}")
-"""

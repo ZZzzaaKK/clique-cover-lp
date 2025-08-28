@@ -40,7 +40,7 @@ from src.utils_metrics import (set_global_seeds, safe_ratio, rel_change,
 
 set_global_seeds(33)
 
-#setting tiny positive boundary to filter out problematic values regarding runtime
+#setting tiny positive boundary to filter out problematic values regarding runtime (important for ILP)
 EPS = 1e-12
 
 # Configure plotting style
@@ -169,7 +169,7 @@ def _merge_into_result(dst: dict, prefix: str, meta: dict):
 class WP1cEvaluator:
     """Main evaluation class for WP1.c comparisons"""
 
-    def __init__(self, output_dir: str = "evaluation_results", **kwargs):
+    def __init__(self, output_dir: str = "results/WP1and2", **kwargs):
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(exist_ok=True)
         self.results = []
@@ -1867,6 +1867,10 @@ def main():
 
     # Check if test graphs exist
     test_dir = "test_graphs/generated/perturbed"
+
+    # für Zugriff auf die größeren Graphen von generate_testgraphs_extended:
+    #test_dir = "test_graphs/generated/perturbed_bigger_graph"
+
     if not Path(test_dir).exists():
         print(f"Test directory {test_dir} not found.")
         print("Please run generate_test_graphs.py first.")

@@ -1,4 +1,5 @@
 """
+wrapperV2.py
 WRAPPERS for running reduction, heuristic and ILP on clique-cover Instances...
 THOUGHTS
 --------------------- How to handle UB for best ILP Performance? ------------------------
@@ -92,17 +93,21 @@ try:
 except ImportError:
     from reductions.reductions import apply_all_reductions
 
-
+# --- Config flags (optional, via ENV überschreibbar) ---
+INTERACTIVE_MAX_ROUNDS = int(os.getenv("INTERACTIVE_MAX_ROUNDS", "10"))
+USE_WARMSTART_DEFAULT = bool(int(os.getenv("USE_WARMSTART", "0")))
 
 def _compact_int_labels(G: nx.Graph) -> nx.Graph:
     """
     Brings node labels safely to 0...n-1 (stable sorting)
     Important after reductions to maintain consistent array/ILP indexing
     """
-    if not G:
+    if G is None or G.number_of_nodes() == 0:
         return G
-    mapping = {old: i for i, old in enumerate(G.nodes())}
+        # enumerate in deterministic insertion order
+    mapping = {old: i for i, old in enumerate(list(G.nodes()))}
     return nx.relabel_nodes(G, mapping, copy=True)
+
 
 
 def _is_valid_clique_cover(G: nx.Graph, color_of: dict) -> bool:
@@ -223,12 +228,12 @@ def chalupa_wrapper(txt_filepath: str, verbose: bool = False) -> Optional[int]:
 
 
 def _chalupa_warmstart(G: nx.Graph) -> Optional[Dict[Any, int]]:
-    """
-    Generate warmstart for ILP from Chalupa's clique covering of G.
-    FIXED: Now correctly works on G directly.
 
-    Returns: Dictionary mapping node -> clique_id
-    """
+   # Generate warmstart for ILP from Chalupa's clique covering of G.
+   # FIXED: Now correctly works on G directly.
+
+   # Returns: Dictionary mapping node -> clique_id
+
     if ChalupaHeuristic is None:
         return None
     try:
@@ -280,6 +285,28 @@ def _chalupa_warmstart_for_coloring(Gc: nx.Graph) -> Optional[Dict[Any, int]]:
     except Exception:
         return None
 
+""" oder so: 
+def _chalupa_warmstart_for_coloring(Gc: nx.Graph) -> Optional[Dict[Any, int]]:
+    
+    #Warmstart für das Coloring auf Gc: benutze eine Clique-Cover auf G = complement(Gc),
+    #denn Cliquen in G entsprechen Unabhängigkeitsmengen in Gc (Farben).
+    
+    if ChalupaHeuristic is None:
+        return None
+    try:
+        G = nx.complement(Gc)
+        heuristic = ChalupaHeuristic(G)
+        cover = heuristic.iterated_greedy_clique_covering()
+        if cover is None:
+            return None
+        col = {}
+        for c_idx, clique in enumerate(cover):
+            for v in clique:
+                col[v] = c_idx  # diese "Cliquen in G" sind Farben (= IS) in Gc
+        return col
+    except Exception:
+        return None
+"""
 
 def ilp_wrapper(txt_filepath: str, use_warmstart: bool = False, validate: bool = True,
                 verbose: bool = False, **kwargs):
@@ -366,7 +393,42 @@ def reduced_ilp_wrapper(txt_filepath: str, use_warmstart: bool = False, validate
         if verbose:
             print(f"ℹ Reduced from {G_original.number_of_nodes()} to {Gc_red.number_of_nodes()} nodes")
 
+    res = dict(res) if isinstance(res, dict) else {'theta': res}
+    res.setdefault('status', 'optimal')  # falls dein Solver das nicht setzt
+    res['kernel_nodes'] = Gc_red.number_of_nodes()
+    res['kernel_edges'] = Gc_red.number_of_edges()
     return res
+
+""" gibt Zeit und UB direkt in den ILP weiter
+def reduced_ilp_wrapper(..., **kwargs) -> Dict[str, Any]:
+    ...
+    # optional: UB aus kwargs extrahieren und an Solver geben
+    solver_kwargs = dict(kwargs)  # copy
+    # Beispiel:
+    # if 'theta_ub' in solver_kwargs: pass
+    # (sonst unmodifiziert lassen)
+
+    t0 = time.time()
+    res = solve_ilp_clique_cover(Gc_red, is_already_complement=True,
+                                 warmstart=warm, **solver_kwargs)
+    if isinstance(res, dict):
+        res.setdefault('time', time.time() - t0)
+    else:
+        res = {'theta': res, 'time': time.time() - t0}
+
+    res.setdefault('status', 'optimal')
+    res['kernel_nodes'] = Gc_red.number_of_nodes()
+    res['kernel_edges'] = Gc_red.number_of_edges()
+
+    if validate and isinstance(res, dict):
+        res['validation'] = {
+            'note': 'No assignment validation on reduced/complement kernel',
+            'reduced_nodes': Gc_red.number_of_nodes(),
+            'original_nodes': G_original.number_of_nodes(),
+            'reduction_efficiency': f"{G_original.number_of_nodes() - Gc_red.number_of_nodes()} nodes removed"
+        }
+    return res
+"""
 
 
 def interactive_reduced_ilp_wrapper(
@@ -378,8 +440,10 @@ def interactive_reduced_ilp_wrapper(
         **kwargs
 ) -> Dict[str, Any]:
     """
-    Interactive reduction: iteratively improve upper bound and apply reductions.
-    Works on the complement graph for coloring.
+    Interactive reduction: iteratively improve an UB on χ(Gc) and apply reductions
+    on the complement graph Gc, then solve the final kernel exactly via ILP.
+
+    Returns a dict with θ(G)=χ(Gc) plus rich metadata expected by evaluation scripts.
     """
     if not os.path.exists(txt_filepath):
         raise FileNotFoundError(f'Input file not found: {txt_filepath}')
@@ -387,82 +451,158 @@ def interactive_reduced_ilp_wrapper(
     if verbose:
         print(f"Running Interactive Reduced ILP on: {txt_filepath}")
 
+    t0_total = time.time()
+
+    # Load and prepare
     G = txt_to_networkx(txt_filepath)
     G_original = G.copy()
     G = _compact_int_labels(G)
 
-    # Work with complement for graph coloring
+    # Work on complement for coloring
     Gc_curr = nx.complement(G)
     Gc_curr = _compact_int_labels(Gc_curr)
 
-    prev_ub = float('inf')
+    # --- Bookkeeping for metadata / plots ---
     rounds = 0
+    prev_ub = float('inf')
+    k_rounds: List[Optional[int]] = []           # UB per round (acts as "k" surrogate)
+    kn_rounds: List[int] = [Gc_curr.number_of_nodes()]  # kernel nodes after each stage (start included)
+    ke_rounds: List[int] = [Gc_curr.number_of_edges()]  # kernel edges after each stage (start included)
+    round_logs: List[Dict[str, Any]] = []
 
     if verbose:
         print(f"Starting interactive reduction (max {max_rounds} rounds)")
+        print(f"Initial complement size: |V|={Gc_curr.number_of_nodes()}, |E|={Gc_curr.number_of_edges()}")
 
     while rounds < max_rounds:
-        # Compute UB via coloring heuristic on Gc_curr
+        # --- Heuristic UB on the *current* problem instance ---
         if ChalupaHeuristic is None:
             if verbose:
-                print("✗ ChalupaHeuristic not available, stopping early")
+                print("✗ ChalupaHeuristic not available → stop interactive loop")
             break
 
-        # For coloring Gc, we find cliques in Gc (independent sets in G)
+
+        # UB auf χ(Gc_curr) via θ(G) mit G = complement(Gc_curr)
+        # Für die Schleife brauchsts Upper Bound auf χ(Gc). Der kommt hier aus einer Clique-Cover auf G = complement(Gc) (weil θ(G) = χ(Gc))
+        G_curr = nx.complement(Gc_curr)
+        chal = ChalupaHeuristic(G_curr)
+        if hasattr(chal, 'iterated_greedy_clique_covering'):
+            cover = chal.iterated_greedy_clique_covering()
+            ub = len(cover) if cover is not None else float('inf')
+        elif hasattr(chal, 'run'):
+            _r = chal.run()
+            # falls run() ein Dict mit 'upper_bound' liefert (θ(G)):
+            ub = _r.get('upper_bound', float('inf')) if isinstance(_r, dict) else float('inf')
+        else:
+            ub = float('inf')
+
+        # Using Chalupa on Gc_curr (as in your current setup)
+        """
         chal = ChalupaHeuristic(Gc_curr)
         if hasattr(chal, 'iterated_greedy_clique_covering'):
             cover = chal.iterated_greedy_clique_covering()
             ub = len(cover) if cover is not None else float('inf')
         elif hasattr(chal, 'run'):
-            res = chal.run()
-            ub = res.get('upper_bound', float('inf')) if isinstance(res, dict) else float('inf')
+            _r = chal.run()
+            ub = _r.get('upper_bound', float('inf')) if isinstance(_r, dict) else float('inf')
         else:
             ub = float('inf')
+        """
+        k_rounds.append(None if (ub == float('inf')) else int(ub))
 
         if verbose:
-            print(f"Round {rounds + 1}: UB = {ub}, prev_UB = {prev_ub}")
+            print(f"Round {rounds + 1}: UB={ub} (prev={prev_ub})")
 
+        # Stop if no improvement
         if ub >= prev_ub:
             if verbose:
-                print("✓ No UB improvement, stopping")
+                print("✓ No UB improvement → stop")
             break
         prev_ub = ub
 
-        # Apply reductions on Gc_curr
+        # --- Apply reductions on complement ---
         nodes_before = Gc_curr.number_of_nodes()
-        Gc_curr, _ = apply_all_reductions(Gc_curr, verbose=False, timing=False)
-        Gc_curr = _compact_int_labels(Gc_curr)
-        nodes_after = Gc_curr.number_of_nodes()
+        edges_before = Gc_curr.number_of_edges()
+
+        Gc_next, _meta = apply_all_reductions(Gc_curr, verbose=False, timing=False)
+        Gc_next = _compact_int_labels(Gc_next)
+
+        nodes_after = Gc_next.number_of_nodes()
+        edges_after = Gc_next.number_of_edges()
+
+        round_logs.append({
+            'round': rounds + 1,
+            'ub': None if (ub == float('inf')) else int(ub),
+            'kernel_nodes_before': nodes_before,
+            'kernel_edges_before': edges_before,
+            'kernel_nodes': nodes_after,
+            'kernel_edges': edges_after,
+            'reduction_removed_nodes': nodes_before - nodes_after
+        })
 
         if verbose:
-            print(f"   Reduced from {nodes_before} to {nodes_after} nodes")
+            print(f"   Reduction: |V| {nodes_before} → {nodes_after}  |E| {edges_before} → {edges_after}")
 
+        # If no structural change, stop
+        if nodes_after == nodes_before and edges_after == edges_before:
+            if verbose:
+                print("   No further reductions possible → stop")
+            Gc_curr = Gc_next  # keep it anyway
+            kn_rounds.append(nodes_after)
+            ke_rounds.append(edges_after)
+            rounds += 1
+            break
+
+        # advance
+        Gc_curr = Gc_next
+        kn_rounds.append(nodes_after)
+        ke_rounds.append(edges_after)
         rounds += 1
 
     if verbose:
-        print(f"Finished after {rounds} rounds, final size: {Gc_curr.number_of_nodes()} nodes")
+        print(f"Finished after {rounds} round(s). Final kernel: |V|={Gc_curr.number_of_nodes()}, |E|={Gc_curr.number_of_edges()}")
 
-    # Generate warmstart for final coloring
+    # --- Warmstart on the final kernel (optional) ---
     warm = _chalupa_warmstart_for_coloring(Gc_curr) if use_warmstart else None
     if verbose and use_warmstart:
-        print(f"✓ Warmstart {'generated' if warm else 'failed'}")
+        print(f"✓ Warmstart {'generated' if warm else 'not available'}")
 
-    # Solve final reduced problem
+    # --- Exact solve on the reduced complement instance ---
+    t0_solve = time.time()
     res = solve_ilp_clique_cover(Gc_curr, is_already_complement=True, warmstart=warm, **kwargs)
+    t_solve = time.time() - t0_solve
 
-    # Add metadata
+    # --- Normalize / enrich result dict ---
+    res = dict(res) if isinstance(res, dict) else {'theta': res}
+    res.setdefault('status', 'optimal')
+    # ensure a total time is present (solver may already set 'time')
+    res.setdefault('time', t_solve + (time.time() - t0_total - t_solve))
+
+    # Validation note (true assignment check would need back-mapping)
     if validate and isinstance(res, dict):
         res['validation'] = {
-            'note': 'Interactive reduction on complement graph',
+            'note': 'Interactive reduction on complement graph; validation on reduced kernels only.',
             'final_reduced_nodes': Gc_curr.number_of_nodes(),
             'original_nodes': G_original.number_of_nodes(),
             'rounds': rounds,
             'reduction_efficiency': f"{G_original.number_of_nodes() - Gc_curr.number_of_nodes()} nodes removed in {rounds} rounds"
         }
-        if verbose:
-            print(f"ℹ Final: {G_original.number_of_nodes()} → {Gc_curr.number_of_nodes()} nodes after {rounds} rounds")
+
+    # --- Metadata expected by evaluation scripts ---
+    res['rounds'] = rounds
+    res['k_start'] = (k_rounds[0] if k_rounds and k_rounds[0] is not None else None)
+    res['k_final'] = (k_rounds[-1] if k_rounds and k_rounds[-1] is not None else None)
+    res['k_rounds'] = (k_rounds if k_rounds else None)
+
+    res['kernel_nodes'] = Gc_curr.number_of_nodes()
+    res['kernel_edges'] = Gc_curr.number_of_edges()
+    res['kernel_nodes_rounds'] = (kn_rounds if kn_rounds else None)
+    res['kernel_edges_rounds'] = (ke_rounds if ke_rounds else None)
+    res['round_logs'] = round_logs if round_logs else None
 
     return res
+
+
 
 
 def batch_ilp(file_list: List[str], use_warmstart: bool = False, validate: bool = True,

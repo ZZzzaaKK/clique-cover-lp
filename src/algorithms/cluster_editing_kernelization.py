@@ -1,438 +1,559 @@
-"""
-Core implementation of cluster editing kernelization algorithms.
-
-This module provides:
-- Core-algorithms for kernelisation
-- ClusterEditingInstance: Data structure for instances
-- CriticalClique: Critical clique detection
-- ClusterEditingKernelization: Kernelization rules
-- OptimizedClusterEditingKernelization: Performance-optimized version
-
-References:
-- Böcker & Baumbach (2013): Cluster editing
-- Cao & Chen (2012): Cluster editing: Kernelization based on edge cuts
-- Chen & Meng (2012): A 2k kernel for the cluster editing problem
-"""
+# src/algorithms/cluster_editing_kernelization.py
+import logging
+import time
+import hashlib
+import pickle
+from collections import defaultdict, deque
+from dataclasses import dataclass, field
+from enum import Enum
+from pathlib import Path
+from typing import Dict, Tuple, Set, List, Optional, FrozenSet, Any
 
 import networkx as nx
 import numpy as np
-from typing import Dict, Tuple, Set, List, Optional, FrozenSet, Any
-from collections import defaultdict
-from dataclasses import dataclass, field
+
+from src.utils import txt_to_networkx
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Endliches "verboten"-Gewicht (statt -inf, damit ILP stabil bleibt)
+FORBIDDEN_WEIGHT = -1e6
+
+
+class ReductionRule(Enum):
+    CRITICAL_CLIQUE = "critical_clique"
+    HEAVY_NON_EDGE = "heavy_non_edge"
+    HEAVY_EDGE_SINGLE = "heavy_edge_single"
+    HEAVY_EDGE_BOTH = "heavy_edge_both"
+    ALMOST_CLIQUE = "almost_clique"
+    SIMILAR_NEIGHBORHOOD = "similar_neighborhood"
+
+
+class UnionFind:
+    def __init__(self):
+        self.parent = {}
+        self.rank = {}
+        self.size = {}
+
+    def make_set(self, x):
+        if x not in self.parent:
+            self.parent[x] = x
+            self.rank[x] = 0
+            self.size[x] = 1
+
+    def find(self, x):
+        if x not in self.parent:
+            self.make_set(x)
+        if self.parent[x] != x:
+            self.parent[x] = self.find(self.parent[x])
+        return self.parent[x]
+
+    def union(self, x, y):
+        rx, ry = self.find(x), self.find(y)
+        if rx == ry:
+            return False
+        if self.rank[rx] < self.rank[ry]:
+            self.parent[rx] = ry
+            self.size[ry] += self.size[rx]
+        elif self.rank[rx] > self.rank[ry]:
+            self.parent[ry] = rx
+            self.size[rx] += self.size[ry]
+        else:
+            self.parent[ry] = rx
+            self.size[rx] += self.size[ry]
+            self.rank[rx] += 1
+        return True
+
+    def get_components(self) -> List[Set]:
+        comps = defaultdict(set)
+        for x in self.parent:
+            comps[self.find(x)].add(x)
+        return list(comps.values())
 
 
 @dataclass
-class ClusterEditingInstance:
-    """
-    Represents a weighted cluster editing instance.
+class KernelizationCache:
+    _cache: Dict[str, Any] = field(default_factory=dict)
+    _hits: int = field(default=0)
+    _misses: int = field(default=0)
+    _max_size: int = field(default=10000)
 
-    Attributes:
-        graph: NetworkX graph
-        weights: Edge weights dictionary
-        k: Optional parameter budget for modifications
-    """
-    graph: nx.Graph
-    weights: Dict[Tuple[int, int], float] = field(default_factory=dict)
-    k: Optional[float] = None
+    def _make_key(self, *args) -> str:
+        return hashlib.md5(pickle.dumps(args)).hexdigest()
 
-    # Cached computations for performance
-    _neighbor_sums: Dict[int, float] = field(default_factory=dict, init=False)
-    _weight_matrix: Optional[np.ndarray] = field(default=None, init=False)
-    _use_matrix: bool = field(default=False, init=False)
-    _node_to_idx: Dict[int, int] = field(default_factory=dict, init=False)
+    def get(self, *args):
+        key = self._make_key(*args)
+        if key in self._cache:
+            self._hits += 1
+            return self._cache[key]
+        self._misses += 1
+        return None
+
+    def set(self, value, *args):
+        if len(self._cache) >= self._max_size:
+            oldest = next(iter(self._cache))
+            del self._cache[oldest]
+        key = self._make_key(*args)
+        self._cache[key] = value
+
+    def get_stats(self) -> Dict[str, Any]:
+        total = self._hits + self._misses
+        return {
+            'hits': self._hits,
+            'misses': self._misses,
+            'hit_rate': self._hits / total if total > 0 else 0,
+            'size': len(self._cache)
+        }
+
+
+@dataclass
+class RuleEffectiveness:
+    rule_stats: Dict[ReductionRule, Dict[str, float]] = field(default_factory=dict)
 
     def __post_init__(self):
-        """Initialize cached structures based on graph density."""
+        for rule in ReductionRule:
+            self.rule_stats[rule] = {
+                'applications': 0,
+                'reductions': 0,
+                'time_spent': 0.0,
+                'effectiveness': 1.0
+            }
+
+    def update(self, rule: ReductionRule, applied: bool, reduction: int, time_spent: float):
+        stats = self.rule_stats[rule]
+        if applied:
+            stats['applications'] += 1
+        stats['reductions'] += reduction
+        stats['time_spent'] += time_spent
+        if stats['time_spent'] > 0:
+            stats['effectiveness'] = stats['reductions'] / stats['time_spent']
+
+    def get_rule_order(self) -> List[ReductionRule]:
+        return sorted(self.rule_stats.keys(),
+                      key=lambda r: self.rule_stats[r]['effectiveness'],
+                      reverse=True)
+
+
+class AdvancedClusterEditingInstance:
+    def __init__(self, graph: nx.Graph, weights: Optional[Dict] = None, k: Optional[float] = None):
+        self.graph = graph
+        self.weights = weights or {}
+        self.k = k
+
+        self.union_find = UnionFind()
+        self.cache = KernelizationCache()
+
+        self._use_sparse = graph.number_of_nodes() > 1000
+        if self._use_sparse:
+            self._init_sparse_representation()
+
+        self._delta_queue = deque(maxlen=100)
+        self._checkpoint_interval = 10
+        self._operations_since_checkpoint = 0
+
+        self._neighbor_sums = {}
+        self._weight_index = defaultdict(list)
+        self._init_structures()
+
+    def _init_sparse_representation(self):
+        from scipy.sparse import lil_matrix
         n = self.graph.number_of_nodes()
-        m = self.graph.number_of_edges()
-
-        # Use matrix representation for dense graphs (>25% density)
-        if n > 0 and m > 0.25 * n * (n - 1) / 2:
-            self._use_matrix = True
-            self._init_weight_matrix()
-
-        self._normalize_weights()
-        self._update_neighbor_sums()
-
-    def _init_weight_matrix(self):
-        """Initialize weight matrix for dense graphs."""
-        nodes = sorted(self.graph.nodes())
-        n = len(nodes)
-        self._weight_matrix = np.zeros((n, n))
-        self._node_to_idx = {node: i for i, node in enumerate(nodes)}
-
+        self._node_list = list(self.graph.nodes())
+        self._node_to_idx = {node: i for i, node in enumerate(self._node_list)}
+        self._sparse_weights = lil_matrix((n, n))
         for (u, v), w in self.weights.items():
             if u in self._node_to_idx and v in self._node_to_idx:
                 i, j = self._node_to_idx[u], self._node_to_idx[v]
-                self._weight_matrix[i, j] = w
-                self._weight_matrix[j, i] = w
+                self._sparse_weights[i, j] = w
+                self._sparse_weights[j, i] = w
 
-    def _normalize_weights(self):
-        """Ensure all edges use (min, max) convention."""
-        normalized = {}
-        for edge, weight in self.weights.items():
-            u, v = edge
-            normalized[(min(u, v), max(u, v))] = weight
-        self.weights = normalized
-
-    def _update_neighbor_sums(self, nodes: Optional[Set[int]] = None):
-        """Update cached neighbor sums for specified nodes."""
-        if nodes is None:
-            nodes = self.graph.nodes()
-
-        for u in nodes:
+    def _init_structures(self):
+        for node in self.graph.nodes():
+            self.union_find.make_set(node)
+        for u in self.graph.nodes():
             self._neighbor_sums[u] = sum(
-                self.get_weight(u, v)
-                for v in self.graph.neighbors(u)
+                self.get_weight(u, v) for v in self.graph.neighbors(u)
             )
+        for edge, weight in self.weights.items():
+            bucket = int(weight / 10)
+            self._weight_index[bucket].append(edge)
 
     def get_weight(self, u: int, v: int) -> float:
-        """Get edge weight efficiently."""
         if u == v:
-            return 0
-
-        if self._use_matrix and hasattr(self, '_node_to_idx'):
-            if u in self._node_to_idx and v in self._node_to_idx:
-                return self._weight_matrix[self._node_to_idx[u], self._node_to_idx[v]]
-
-        return self.weights.get((min(u, v), max(u, v)), 0)
-
-    def set_weight(self, u: int, v: int, weight: float):
-        """Set edge weight with cache updates."""
-        if u == v:
-            return
-
-        edge = (min(u, v), max(u, v))
-        old_weight = self.weights.get(edge, 0)
-        self.weights[edge] = weight
-
-        if self._use_matrix and hasattr(self, '_node_to_idx'):
+            return 0.0
+        cached = self.cache.get('weight', u, v)
+        if cached is not None:
+            return cached
+        if self._use_sparse and hasattr(self, '_sparse_weights'):
             if u in self._node_to_idx and v in self._node_to_idx:
                 i, j = self._node_to_idx[u], self._node_to_idx[v]
-                self._weight_matrix[i, j] = weight
-                self._weight_matrix[j, i] = weight
+                weight = float(self._sparse_weights[i, j])
+                self.cache.set(weight, 'weight', u, v)
+                return weight
+        weight = float(self.weights.get((min(u, v), max(u, v)), 0.0))
+        self.cache.set(weight, 'weight', u, v)
+        return weight
 
-        # Update affected neighbor sums
-        if u in self.graph and v in self.graph and self.graph.has_edge(u, v):
-            diff = weight - old_weight
-            if u in self._neighbor_sums:
-                self._neighbor_sums[u] += diff
-            if v in self._neighbor_sums:
-                self._neighbor_sums[v] += diff
+    def create_checkpoint(self):
+        self._checkpoint = {
+            'graph': self.graph.copy(),
+            'weights': self.weights.copy(),
+            'neighbor_sums': self._neighbor_sums.copy()
+        }
+        self._operations_since_checkpoint = 0
+
+    def rollback_to_checkpoint(self):
+        if hasattr(self, '_checkpoint'):
+            self.graph = self._checkpoint['graph']
+            self.weights = self._checkpoint['weights']
+            self._neighbor_sums = self._checkpoint['neighbor_sums']
+            self.cache._cache.clear()
 
     def get_neighbor_sum(self, u: int) -> float:
-        """Get cached neighbor sum for vertex u."""
-        return self._neighbor_sums.get(u, 0)
-
-    def copy(self) -> 'ClusterEditingInstance':
-        """Create a deep copy of the instance."""
-        new_instance = ClusterEditingInstance(
-            graph=self.graph.copy(),
-            weights=self.weights.copy(),
-            k=self.k
-        )
-        new_instance._neighbor_sums = self._neighbor_sums.copy()
-        if self._weight_matrix is not None:
-            new_instance._weight_matrix = self._weight_matrix.copy()
-            new_instance._node_to_idx = self._node_to_idx.copy()
-        new_instance._use_matrix = self._use_matrix
-        return new_instance
-
-    def get_statistics(self) -> Dict[str, Any]:
-        """Get instance statistics."""
-        return {
-            'nodes': self.graph.number_of_nodes(),
-            'edges': self.graph.number_of_edges(),
-            'density': nx.density(self.graph),
-            'uses_matrix': self._use_matrix,
-            'num_weights': len(self.weights)
-        }
+        return float(self._neighbor_sums.get(u, 0.0))
 
 
-class CriticalClique:
-    """
-    Manages critical cliques in a graph.
-    A critical clique is a maximal clique where all vertices
-    have identical (closed) neighborhoods.
-    """
+class AdvancedKernelization:
+    def __init__(self, instance: AdvancedClusterEditingInstance,
+                 use_parallel: bool = True,
+                 use_preprocessing: bool = True,
+                 use_smart_ordering: bool = True):
+        self.instance = instance
+        self.use_parallel = use_parallel and instance.graph.number_of_nodes() > 100
+        self.use_preprocessing = use_preprocessing
+        self.use_smart_ordering = use_smart_ordering
 
-    def __init__(self, graph: nx.Graph):
-        self.graph = graph
-        self.critical_cliques: List[Set[int]] = []
-        self.vertex_to_clique: Dict[int, int] = {}
-        self._find_critical_cliques()
+        self.rule_effectiveness = RuleEffectiveness()
+        self.stats = defaultdict(int)
+        self.reduction_history = []
 
-    def _get_closed_neighborhood(self, v: int) -> FrozenSet[int]:
-        """Get hashable closed neighborhood of vertex v."""
-        return frozenset(self.graph.neighbors(v)) | {v}
+        self.executor = None  # Threadpool optional
 
-    def _find_critical_cliques(self):
-        """Find all critical cliques using neighborhood hashing - O(n*m) complexity."""
-        # Group vertices by closed neighborhood
-        neighborhood_groups = defaultdict(set)
+        self.merge_queue: List[Tuple[int, int]] = []
+        self.forbid_queue: List[Tuple[int, int]] = []
 
-        for v in self.graph.nodes():
-            closed_nbh = self._get_closed_neighborhood(v)
-            neighborhood_groups[closed_nbh].add(v)
-
-        # Verify tht each group forms a clique and store
-        clique_id = 0
-        for vertices in neighborhood_groups.values():
-            if len(vertices) > 0 and self._is_clique(vertices):
-                self.critical_cliques.append(vertices)
-                for v in vertices:
-                    self.vertex_to_clique[v] = clique_id
-                clique_id += 1
-
-    def _is_clique(self, vertices: Set[int]) -> bool:
-        """Verify if vertices form a clique - O(|vertices|^2)."""
-        vertices_list = list(vertices)
-        n = len(vertices_list)
-
-        if n <= 1:
-            return True
-
-        # Count edges - should be n*(n-1)/2 for complete clique
-        edge_count = sum(
-            1 for i in range(n) for j in range(i + 1, n)
-            if self.graph.has_edge(vertices_list[i], vertices_list[j])
-        )
-
-        return edge_count == n * (n - 1) // 2
-
-    def get_clique_sizes(self) -> List[int]:
-        """Get sizes of all critical cliques."""
-        return [len(clique) for clique in self.critical_cliques]
-
-
-class ClusterEditingKernelization:
-    """
-    Implements kernelization rules for cluster editing.
-
-    Provides three main reduction rules:
-    1. Heavy non-edge rule
-    2. Heavy edge rule (single end)
-    3. Heavy edge rule (both ends)
-    """
-
-    def __init__(self, instance: ClusterEditingInstance):
-        """
-        Initialize kernelization with a cluster editing instance.
-
-        Args:
-            instance: ClusterEditingInstance to be reduced
-        """
-        self.instance = instance.copy()
-        self.reduction_history: List[Tuple] = []
-        self.stats = {
-            'rules_applied': defaultdict(int),
-            'vertices_removed': 0,
-            'edges_modified': 0,
-            'initial_size': (instance.graph.number_of_nodes(),
-                             instance.graph.number_of_edges())
-        }
-
-    def apply_rule_1_heavy_non_edge(self) -> bool:
-        """
-        Rule 1: Heavy non-edge rule.
-        Set an edge uv with s(uv) < 0 to forbidden if |s(uv)| >= sum of s(uw) for w in N(u).
-
-        Returns:
-            True if any reduction was applied
-        """
-        applied = False
-        edges_to_forbid = []
-
-        for u in self.instance.graph.nodes():
-            u_sum = self.instance.get_neighbor_sum(u)
-
-            for v in self.instance.graph.nodes():
-                if u < v:
-                    weight = self.instance.get_weight(u, v)
-
-                    if weight < 0 and abs(weight) >= u_sum:
-                        edges_to_forbid.append((u, v))
-                        applied = True
-
-        # Apply modifications
-        for u, v in edges_to_forbid:
-            if self.instance.graph.has_edge(u, v):
-                self.instance.graph.remove_edge(u, v)
-                self.stats['edges_modified'] += 1
-
-            self.instance.set_weight(u, v, float('-inf'))
-            self.reduction_history.append(('forbid_edge', u, v))
-            self.stats['rules_applied']['heavy_non_edge'] += 1
-
-        return applied
-
-    def apply_rule_2_heavy_edge_single(self) -> bool:
-        """
-        Rule 2: Heavy edge rule (single end).
-        Merge vertices u, v if s(uv) >= sum of |s(uw)| for all w != u,v.
-
-        Returns:
-            True if any reduction was applied
-        """
-        applied = False
-        merges = []
-
-        for edge in list(self.instance.graph.edges()):
-            u, v = edge
-            weight = self.instance.get_weight(u, v)
-
-            if weight > 0:
-                total_sum = sum(
-                    abs(self.instance.get_weight(u, w)) +
-                    abs(self.instance.get_weight(v, w))
-                    for w in self.instance.graph.nodes()
-                    if w != u and w != v
-                ) / 2  # Divided by 2 as we count each weight twice
-
-                if weight >= total_sum:
-                    merges.append((u, v))
-                    applied = True
-
-        # Apply merges
-        for u, v in merges:
-            if u in self.instance.graph and v in self.instance.graph:
-                self._merge_vertices(u, v)
-                self.stats['rules_applied']['heavy_edge_single'] += 1
-
-        return applied
-
-    def apply_rule_3_heavy_edge_both(self) -> bool:
-        applied = False
-        merges = []
-
-        #Rule 3: Heavy edge rule (both ends).
-        #Merge vertices u, v if s(uv) >= sum s(uw) for w in N(u)\{v} + sum s(vw) for w in N(v)\{u}
-        #Returns:
-        #True if any reduction was applied
-
-        for edge in list(self.instance.graph.edges()):
-            u, v = edge
-            weight = self.instance.get_weight(u, v)
-
-            if weight > 0:
-                u_sum = sum(
-                    self.instance.get_weight(u, w)
-                    for w in self.instance.graph.neighbors(u)
-                    if w != v
-                )
-                v_sum = sum(
-                    self.instance.get_weight(v, w)
-                    for w in self.instance.graph.neighbors(v)
-                    if w != u
-                )
-
-                if weight >= u_sum + v_sum:
-                    merges.append((u, v))
-                    applied = True
-
-        # Apply merges
-        for u, v in merges:
-            if u in self.instance.graph and v in self.instance.graph:
-                self._merge_vertices(u, v)
-                self.stats['rules_applied']['heavy_edge_both'] += 1
-
-        return applied
-
-    def _merge_vertices(self, u: int, v: int):
-        """
-        Merge vertex v into vertex u.
-
-        Args:
-            u: Target vertex (kept)
-            v: Source vertex (removed)
-        """
-        if u == v or v not in self.instance.graph:
-            return
-
-        # Update edges and weights
-        for neighbor in list(self.instance.graph.neighbors(v)):
-            if neighbor != u:
-                edge_un = (min(u, neighbor), max(u, neighbor))
-                edge_vn = (min(v, neighbor), max(v, neighbor))
-
-                new_weight = self.instance.weights.get(edge_un, 0)
-                new_weight += self.instance.weights.get(edge_vn, 0)
-
-                self.instance.weights[edge_un] = new_weight
-
-                if not self.instance.graph.has_edge(u, neighbor):
-                    self.instance.graph.add_edge(u, neighbor)
-
-        # Remove vertex v
-        self.instance.graph.remove_node(v)
-
-        # Clean up weights
-        self.instance.weights = {
-            edge: w for edge, w in self.instance.weights.items()
-            if v not in edge
-        }
-
-        # Update caches
-        affected = {u} | set(self.instance.graph.neighbors(u))
-        self.instance._update_neighbor_sums(affected)
-
-        self.reduction_history.append(('merge', u, v))
-        self.stats['vertices_removed'] += 1
-
-    def apply_critical_clique_reduction(self) -> bool:
-        """
-        Apply critical clique reduction.
-        Merges all vertices within each critical clique.
-
-        Returns:
-            True if any reduction was applied
-        """
-        cc = CriticalClique(self.instance.graph)
-
-        if not cc.critical_cliques or all(len(c) == 1 for c in cc.critical_cliques):
+    def preprocess(self) -> bool:
+        if not self.use_preprocessing:
             return False
 
-        applied = False
-        for clique in cc.critical_cliques:
-            if len(clique) > 1:
-                clique_list = list(clique)
-                base_vertex = clique_list[0]
+        reduced = False
 
-                for v in clique_list[1:]:
-                    if v in self.instance.graph:
-                        self._merge_vertices(base_vertex, v)
-                        self.stats['rules_applied']['critical_clique'] += 1
-                        applied = True
+        components = list(nx.connected_components(self.instance.graph))
+        for component in components:
+            if len(component) <= 20:
+                subgraph = self.instance.graph.subgraph(component)
+                if self._is_clique(subgraph):
+                    for node in list(component):
+                        self.instance.graph.remove_node(node)
+                    reduced = True
+
+        if self.instance.weights:
+            wvals = list(self.instance.weights.values())
+            if len(wvals) >= 2:
+                heavy_threshold = float(np.percentile(wvals, 95))
+                light_threshold = float(np.percentile(wvals, 5))
+            else:
+                heavy_threshold = 1.0
+                light_threshold = -1.0
+
+            for (u, v), weight in self.instance.weights.items():
+                if weight > heavy_threshold:
+                    nu = set(self.instance.graph.neighbors(u))
+                    nv = set(self.instance.graph.neighbors(v))
+                    if len(nu | nv) > 0 and len(nu & nv) / float(len(nu | nv)) > 0.8:
+                        self.merge_queue.append((u, v))
+                        reduced = True
+
+            for (u, v), weight in self.instance.weights.items():
+                if weight < light_threshold:
+                    self.forbid_queue.append((u, v))
+                    reduced = True
+
+        return reduced
+
+    def _is_clique(self, subgraph) -> bool:
+        n = subgraph.number_of_nodes()
+        m = subgraph.number_of_edges()
+        return m == n * (n - 1) // 2
+
+    def apply_rules_smart_order(self) -> bool:
+        if not self.use_smart_ordering:
+            return self.apply_rules_standard_order()
+
+        applied = False
+        for rule in self.rule_effectiveness.get_rule_order():
+            start = time.time()
+            before = self.instance.graph.number_of_nodes()
+
+            ok = False
+            if rule == ReductionRule.CRITICAL_CLIQUE:
+                ok = self.apply_critical_cliques_batch()
+            elif rule == ReductionRule.HEAVY_NON_EDGE:
+                ok = self.apply_heavy_non_edges_batch()
+            elif rule == ReductionRule.HEAVY_EDGE_SINGLE:
+                ok = self.apply_heavy_edge_single_batch()
+            elif rule == ReductionRule.HEAVY_EDGE_BOTH:
+                ok = self.apply_heavy_edge_both_batch()
+            elif rule == ReductionRule.ALMOST_CLIQUE:
+                ok = self.apply_almost_clique_advanced()
+            elif rule == ReductionRule.SIMILAR_NEIGHBORHOOD:
+                ok = self.apply_similar_neighborhood_advanced()
+
+            spent = time.time() - start
+            reduction = before - self.instance.graph.number_of_nodes()
+            self.rule_effectiveness.update(rule, ok, reduction, spent)
+            applied = applied or ok
 
         return applied
 
-    def kernelize(self, max_iterations: int = 100) -> ClusterEditingInstance:
-        """
-        Apply all reduction rules iteratively until fixpoint.
+    def apply_rules_standard_order(self) -> bool:
+        applied = False
+        if self.apply_critical_cliques_batch():
+            applied = True
+        if self.apply_heavy_non_edges_batch():
+            applied = True
+        if self.apply_heavy_edge_single_batch():
+            applied = True
+        if self.apply_heavy_edge_both_batch():
+            applied = True
+        return applied
 
-        Args:
-            max_iterations: Maximum number of iterations
+    def apply_critical_cliques_batch(self) -> bool:
+        crits = self._find_critical_cliques()
+        if not crits:
+            return False
+        for clique in crits:
+            if len(clique) > 1:
+                base = next(iter(clique))
+                for v in clique:
+                    if v != base:
+                        self.instance.union_find.union(base, v)
+                        self.merge_queue.append((base, v))
+        self._apply_merge_batch()
+        return True
 
-        Returns:
-            Kernelized ClusterEditingInstance
-        """
+    def _find_critical_cliques(self) -> List[Set[int]]:
+        cached = self.instance.cache.get('critical_cliques', self.instance.graph)
+        if cached is not None:
+            return cached
+
+        groups = defaultdict(set)
+        for v in self.instance.graph.nodes():
+            closed = frozenset(self.instance.graph.neighbors(v)) | {v}
+            groups[closed].add(v)
+
+        crits: List[Set[int]] = []
+        for verts in groups.values():
+            if len(verts) > 1:
+                sub = self.instance.graph.subgraph(verts)
+                exp_deg = len(verts) - 1
+                if all(sub.degree(x) == exp_deg for x in verts):
+                    crits.append(set(verts))
+
+        self.instance.cache.set(crits, 'critical_cliques', self.instance.graph)
+        return crits
+
+    def apply_heavy_non_edges_batch(self) -> bool:
+        for u in self.instance.graph.nodes():
+            u_sum = float(self.instance._neighbor_sums.get(u, 0.0))
+            for v in self.instance.graph.nodes():
+                if u < v:
+                    w = self.instance.get_weight(u, v)
+                    if w < 0 and abs(w) >= u_sum:
+                        self.forbid_queue.append((u, v))
+        if self.forbid_queue:
+            self._apply_forbid_batch()
+            return True
+        return False
+
+    def apply_heavy_edge_single_batch(self) -> bool:
+        for u, v in list(self.instance.graph.edges()):
+            w = self.instance.get_weight(u, v)
+            if w > 0:
+                total = 0.0
+                for wnb in self.instance.graph.nodes():
+                    if wnb != u and wnb != v:
+                        total += abs(self.instance.get_weight(u, wnb))
+                if w >= total:
+                    self.merge_queue.append((u, v))
+        if self.merge_queue:
+            self._apply_merge_batch()
+            return True
+        return False
+
+    def apply_heavy_edge_both_batch(self) -> bool:
+        for u, v in list(self.instance.graph.edges()):
+            w = self.instance.get_weight(u, v)
+            if w > 0:
+                su = sum(self.instance.get_weight(u, wnb) for wnb in self.instance.graph.neighbors(u) if wnb != v)
+                sv = sum(self.instance.get_weight(v, wnb) for wnb in self.instance.graph.neighbors(v) if wnb != u)
+                if w >= su + sv:
+                    self.merge_queue.append((u, v))
+        if self.merge_queue:
+            self._apply_merge_batch()
+            return True
+        return False
+
+    def apply_almost_clique_advanced(self) -> bool:
+        if self.instance.graph.number_of_nodes() < 10:
+            return False
+        try:
+            lap = nx.laplacian_matrix(self.instance.graph).todense()
+            eigvals, eigvecs = np.linalg.eigh(lap)
+            fiedler = eigvecs[:, 1]
+            med = float(np.median(fiedler))
+            nodes = list(self.instance.graph.nodes())
+            part1 = [nodes[i] for i, val in enumerate(fiedler) if val < med]
+            part2 = [nodes[i] for i, val in enumerate(fiedler) if val >= med]
+
+            for part in (part1, part2):
+                if 3 <= len(part) <= 20 and self._check_almost_clique_fast(part):
+                    base = part[0]
+                    for v in part[1:]:
+                        self.merge_queue.append((base, v))
+
+            if self.merge_queue:
+                self._apply_merge_batch()
+                return True
+        except Exception as e:
+            logger.debug(f"Almost clique rule failed: {e}")
+        return False
+
+    def _check_almost_clique_fast(self, nodes: List[int]) -> bool:
+        sub = self.instance.graph.subgraph(nodes)
+        n = sub.number_of_nodes()
+        m = sub.number_of_edges()
+        density = 2 * m / (n * (n - 1)) if n > 1 else 0.0
+        if density > 0.8:
+            return True
+        edge_cost = 0.0
+        for i, u in enumerate(nodes):
+            for v in nodes[i+1:]:
+                if not sub.has_edge(u, v):
+                    edge_cost += abs(self.instance.get_weight(u, v))
+        cut_cost = 0.0
+        others = set(self.instance.graph.nodes()) - set(nodes)
+        for u in nodes:
+            for v in others:
+                if self.instance.graph.has_edge(u, v):
+                    cut_cost += abs(self.instance.get_weight(u, v))
+        return edge_cost < 0.5 * cut_cost
+
+    #merge_queue wird in mehreren Regeln gefüllt (heavy_edge_*, almost_clique, similar_neighboorhood)
+    #Union-Find liefert die Komponenten, die dann in _apply_merge_batch einmalig zusammengeführt werden
+    def _apply_merge_batch(self):
+        if not self.merge_queue:
+            return
+
+        # Alle Paare aus der Queue zunächst im Union-Find vereinigen
+        for u, v in self.merge_queue:
+            self.instance.union_find.union(u, v)
+
+        # Dann Komponenten bestimmen und je Komponente zu einem Basis-Knoten mergen
+        components = self.instance.union_find.get_components()
+        for comp in components:
+            if len(comp) > 1:
+                base = next(iter(comp))
+                for v in list(comp):
+                    if v != base and v in self.instance.graph:
+                        self._merge_vertices(base, v)
+        self.merge_queue.clear()
+
+        #cache clearen, um Methode robust zu machen: damit funktionieren auch merges aus preprocess() oder anderen Regeln, auch wenn dort kein union() aufgerufen wurde
+        self.instance.cache._cache.clear()
+
+
+    def _apply_forbid_batch(self):
+        if not self.forbid_queue:
+            return
+        G = self.instance.graph
+        changed_nodes = set()
+        for u, v in self.forbid_queue:
+            if G.has_edge(u, v):
+                G.remove_edge(u, v)
+                changed_nodes.add(u)
+                changed_nodes.add(v)
+            self.instance.weights[(min(u, v), max(u, v))] = FORBIDDEN_WEIGHT
+            self.stats['forbidden_edges'] += 1
+
+        # neighbor_sums für betroffene Knoten und deren Nachbarn neu berechnen
+        for x in list(changed_nodes):
+            # x selbst
+            self.instance._neighbor_sums[x] = sum(
+                self.instance.get_weight(x, w) for w in G.neighbors(x)
+            )
+            # Nachbarn von x
+            for w in G.neighbors(x):
+                self.instance._neighbor_sums[w] = sum(
+                    self.instance.get_weight(w, z) for z in G.neighbors(w)
+                )
+
+        # Cache leeren, weil Gewichte/Graph geändert wurden
+        self.instance.cache._cache.clear()
+        self.forbid_queue.clear()
+
+    def _merge_vertices(self, u: int, v: int):
+        if u == v or v not in self.instance.graph:
+            return
+        G = self.instance.graph
+
+        for nbr in list(G.neighbors(v)):
+            if nbr != u:
+                e_un = (min(u, nbr), max(u, nbr))
+                e_vn = (min(v, nbr), max(v, nbr))
+                new_w = float(self.instance.weights.get(e_un, 0.0))
+                new_w += float(self.instance.weights.get(e_vn, 0.0))
+                self.instance.weights[e_un] = new_w
+                if not G.has_edge(u, nbr):
+                    G.add_edge(u, nbr)
+
+        G.remove_node(v)
+        self.instance.weights = {e: w for e, w in self.instance.weights.items() if v not in e}
+
+        # neighbor_sums für u und seine Nachbarn aktualisieren
+        affected = set([u]) | set(G.neighbors(u))
+        for x in affected:
+            self.instance._neighbor_sums[x] = sum(
+                self.instance.get_weight(x, w) for w in G.neighbors(x)
+            )
+
+        self.stats['vertices_merged'] += 1
+        self.reduction_history.append(('merge', u, v))
+
+
+    def kernelize(self, max_iterations: int = 100, target_reduction: float = 0.9) -> AdvancedClusterEditingInstance:
+        initial = self.instance.graph.number_of_nodes()
+        self.stats['initial_nodes'] = int(initial)
+
+        if self.use_preprocessing:
+            logger.info("Running preprocessing...")
+            self.preprocess()
+
         iteration = 0
+        no_improve = 0
 
         while iteration < max_iterations:
-            applied = False
+            prev = self.instance.graph.number_of_nodes()
 
-            # Apply rules in order of effectiveness
-            if self.apply_critical_clique_reduction():
-                applied = True
+            if iteration % self.instance._checkpoint_interval == 0:
+                self.instance.create_checkpoint()
 
-            if self.apply_rule_1_heavy_non_edge():
-                applied = True
+            applied = self.apply_rules_smart_order() if self.use_smart_ordering else self.apply_rules_standard_order()
 
-            if self.apply_rule_2_heavy_edge_single():
-                applied = True
+            curr = self.instance.graph.number_of_nodes()
+            if curr == prev:
+                no_improve += 1
+                if no_improve >= 3:
+                    logger.info(f"Converged after {iteration} iterations")
+                    break
+            else:
+                no_improve = 0
 
-            if self.apply_rule_3_heavy_edge_both():
-                applied = True
+            red = 1.0 - (curr / float(initial))
+            if red >= target_reduction:
+                logger.info(f"Target reduction {target_reduction:.1%} achieved")
+                break
 
             if not applied:
                 break
@@ -440,201 +561,109 @@ class ClusterEditingKernelization:
             iteration += 1
 
         self.stats['iterations'] = iteration
+        self.stats['final_nodes'] = self.instance.graph.number_of_nodes()
+        self.stats['final_edges'] = self.instance.graph.number_of_edges()
         return self.instance
 
-    def get_kernel_statistics(self) -> Dict[str, Any]:
-        """
-        Get detailed statistics about the kernelization.
-
-        Returns:
-            Dictionary with kernelization statistics
-        """
-        current_size = (self.instance.graph.number_of_nodes(),
-                        self.instance.graph.number_of_edges())
-
+    def get_comprehensive_stats(self) -> Dict[str, Any]:
+        initial_nodes = self.stats.get('initial_nodes', 0)
+        final_nodes = self.instance.graph.number_of_nodes()
         return {
-            'initial_nodes': self.stats['initial_size'][0],
-            'initial_edges': self.stats['initial_size'][1],
-            'kernel_nodes': current_size[0],
-            'kernel_edges': current_size[1],
-            'reduction_ratio': 1 - (current_size[0] / self.stats['initial_size'][0])
-            if self.stats['initial_size'][0] > 0 else 0,
-            'rules_applied': dict(self.stats['rules_applied']),
-            'vertices_removed': self.stats['vertices_removed'],
-            'edges_modified': self.stats['edges_modified'],
+            'reduction_ratio': 1 - (final_nodes / initial_nodes) if initial_nodes > 0 else 0,
             'iterations': self.stats.get('iterations', 0),
-            'reduction_history_size': len(self.reduction_history)
+            'vertices_merged': self.stats.get('vertices_merged', 0),
+            'forbidden_edges': self.stats.get('forbidden_edges', 0),
+            'rule_effectiveness': {
+                rule.value: stats for rule, stats in self.rule_effectiveness.rule_stats.items()
+            },
+            'cache_stats': self.instance.cache.get_stats(),
+            'final_graph': {
+                'nodes': final_nodes,
+                'edges': self.instance.graph.number_of_edges(),
+                'density': nx.density(self.instance.graph),
+                'components': nx.number_connected_components(self.instance.graph)
+            }
         }
 
-
-class OptimizedClusterEditingKernelization(ClusterEditingKernelization):
-    """
-    Performance-optimized version with batch processing and better algorithms.
-
-    Improvements:
-    - Batch application of rules
-    - Union-find for merges
-    - Early termination
-    - Better caching
-    """
-
-    def apply_all_rules_batch(self) -> bool:
+    def apply_similar_neighborhood_advanced(self,
+                                            tau_merge: float = 0.92,
+                                            tau_forbid: float = 0.85,
+                                            max_pairs_per_round: int = 2000) -> bool:
         """
-        Apply all rules in batch mode for better performance.
+        Heuristik: Fasse Knoten mit sehr ähnlicher geschlossener Nachbarschaft zusammen
+        (Merge) oder verbiete sie (wenn starke negative Gewichtung und nur 'ähnlich').
 
-        Returns:
-            True if any modifications were made
+        - Jaccard(N[u], N[v]) >= tau_merge  -> merge_queue.append((u, v))
+        - sonst, wenn Jaccard >= tau_forbid und w(u,v) << 0 -> forbid_queue.append((u, v))
+
+        Rückgabe: True, wenn etwas in Queues gelegt wurde (und anschließend angewandt wird).
         """
-        modifications = {
-            'merges': [],
-            'forbidden_edges': []
-        }
-
-        # Collect all modifications
-        self._collect_heavy_non_edges(modifications)
-        self._collect_heavy_edges(modifications)
-
-        # Apply in optimal order
-        return self._apply_modifications_batch(modifications)
-
-    def _collect_heavy_non_edges(self, mods: Dict):
-        """Collect heavy non-edges to forbid."""
-        for u in self.instance.graph.nodes():
-            u_sum = self.instance.get_neighbor_sum(u)
-
-            if u_sum <= 0:
-                continue
-
-            for v in self.instance.graph.nodes():
-                if u < v:
-                    weight = self.instance.get_weight(u, v)
-                    if weight < 0 and abs(weight) >= u_sum:
-                        mods['forbidden_edges'].append((u, v))
-
-    def _collect_heavy_edges(self, mods: Dict):
-        """Collect heavy edges for merging (combines rules 2 and 3)."""
-        for u, v in self.instance.graph.edges():
-            weight = self.instance.get_weight(u, v)
-
-            if weight <= 0:
-                continue
-
-            # Check rule 2
-            nodes = set(self.instance.graph.nodes())
-            other_sum = sum(
-                abs(self.instance.get_weight(u, w)) +
-                abs(self.instance.get_weight(v, w))
-                for w in nodes if w != u and w != v
-            ) / 2
-
-            if weight >= other_sum:
-                mods['merges'].append((u, v, weight, 'rule2'))
-                continue
-
-            # Check rule 3
-            u_sum = sum(
-                self.instance.get_weight(u, w)
-                for w in self.instance.graph.neighbors(u)
-                if w != v
-            )
-            v_sum = sum(
-                self.instance.get_weight(v, w)
-                for w in self.instance.graph.neighbors(v)
-                if w != u
-            )
-
-            if weight >= u_sum + v_sum:
-                mods['merges'].append((u, v, weight, 'rule3'))
-
-    def _apply_modifications_batch(self, mods: Dict) -> bool:
-        """Apply collected modifications efficiently."""
-        applied = False
-
-        # Forbid edges
-        for u, v in mods['forbidden_edges']:
-            if self.instance.graph.has_edge(u, v):
-                self.instance.graph.remove_edge(u, v)
-            self.instance.set_weight(u, v, float('-inf'))
-            self.stats['rules_applied']['heavy_non_edge'] += 1
-            applied = True
-
-        # Apply merges using union-find
-        if mods['merges']:
-            self._apply_merges_unionfind(mods['merges'])
-            applied = True
-
-        return applied
-
-    def _apply_merges_unionfind(self, merges: List[Tuple]):
-        """Apply merges efficiently using union-find structure."""
-        # Sort by weight (highest first)
-        merges.sort(key=lambda x: x[2], reverse=True)
-
-        # Union-find structure
-        parent = {}
-
-        def find(x):
-            if x not in parent:
-                parent[x] = x
-            if parent[x] != x:
-                parent[x] = find(parent[x])
-            return parent[x]
-
-        def union(x, y):
-            px, py = find(x), find(y)
-            if px != py:
-                parent[py] = px
-                return True
+        G = self.instance.graph
+        if G.number_of_nodes() < 4:
             return False
 
-        # Apply merges
-        for merge_data in merges:
-            u, v = merge_data[0], merge_data[1]
-            rule = merge_data[3] if len(merge_data) > 3 else 'unknown'
+        added = 0
+        degrees = dict(G.degree())
+        # Kandidaten: Paare aus lokalen Umfeldern (reduziert O(n^2))
+        # Für jeden Knoten nur Nachbarn und 2-Hop-Umfeld prüfen.
+        for u in G.nodes():
+            Nu_closed = set(G.neighbors(u)) | {u}
+            # Grobes Degree-Matching zur Vorselektion
+            deg_u = degrees[u]
+            # Kandidaten: direkte Nachbarn + Knoten mit ähnlichem Grad (±2) in 2-Hop
+            candidates = set(G.neighbors(u))
+            for w in list(G.neighbors(u)):
+                candidates.update(G.neighbors(w))
+            # Entferne u selbst
+            candidates.discard(u)
 
-            if u in self.instance.graph and v in self.instance.graph:
-                if union(u, v):
-                    self._merge_vertices(u, v)
-                    self.stats['rules_applied'][f'heavy_edge_{rule}'] += 1
+            for v in candidates:
+                if u >= v:  # paare nur einmal
+                    continue
+                # schneller Degree-Check
+                if abs(deg_u - degrees[v]) > 2:
+                    continue
 
-    def kernelize(self, max_iterations: int = 50) -> ClusterEditingInstance:
-        """
-        Optimized kernelization with early termination.
+                Nv_closed = set(G.neighbors(v)) | {v}
+                inter = len(Nu_closed & Nv_closed)
+                union = len(Nu_closed | Nv_closed)
+                if union == 0:
+                    continue
+                jacc = inter / float(union)
 
-        Args:
-            max_iterations: Maximum iterations
+                if jacc >= tau_merge:
+                    self.instance.union_find.union(u, v)
+                    self.merge_queue.append((u, v))
+                    added += 1
+                elif jacc >= tau_forbid:
+                    w_uv = self.instance.get_weight(u, v)
+                    if w_uv < 0 and abs(w_uv) >= 1.0:
+                        self.forbid_queue.append((u, v))
+                        added += 1
 
-        Returns:
-            Kernelized instance
-        """
-        iteration = 0
-        last_size = (self.instance.graph.number_of_nodes(),
-                     self.instance.graph.number_of_edges())
-        no_change_count = 0
-
-        while iteration < max_iterations:
-            # Critical cliques first
-            cc_applied = self.apply_critical_clique_reduction()
-
-            # Batch application
-            rules_applied = self.apply_all_rules_batch()
-
-            current_size = (self.instance.graph.number_of_nodes(),
-                            self.instance.graph.number_of_edges())
-
-            # Check convergence
-            if not cc_applied and not rules_applied:
+                if added >= max_pairs_per_round:
+                    break
+            if added >= max_pairs_per_round:
                 break
 
-            if current_size == last_size:
-                no_change_count += 1
-                if no_change_count >= 2:
-                    break
-            else:
-                no_change_count = 0
-                last_size = current_size
+        if self.merge_queue:
+            self._apply_merge_batch()
+            return True
+        if self.forbid_queue:
+            self._apply_forbid_batch()
+            return True
+        return False
 
-            iteration += 1
 
-        self.stats['iterations'] = iteration
-        return self.instance
+def load_instance_from_txt(txt_path):
+    txt_path = Path(txt_path)
+    G = txt_to_networkx(str(txt_path))
+    nodes = list(G.nodes())
+    edgeset = set((min(u, v), max(u, v)) for u, v in G.edges())
+    weights: Dict[Tuple[int, int], float] = {}
+    for i, u in enumerate(nodes):
+        for v in nodes[i + 1:]:
+            e = (min(u, v), max(u, v))
+            weights[e] = 1.0 if e in edgeset else -1.0
+    return AdvancedClusterEditingInstance(G, weights)
+
