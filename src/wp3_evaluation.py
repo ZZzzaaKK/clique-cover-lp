@@ -6,7 +6,7 @@ WP3 Evaluation using existing test graphs from test_graphs/generated/perturbed
 import sys
 from pathlib import Path
 
-# sys.path früh erweitern, falls direkt gestartet
+# sys.path früh erweitern, falls direkt gestartetet
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
