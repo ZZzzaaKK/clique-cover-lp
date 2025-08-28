@@ -18,7 +18,10 @@ class TestRunner:
             if ground_truth is None:
                 continue
             else:
-                ground_truth = int(ground_truth)
+                try:
+                    ground_truth = int(ground_truth)
+                except ValueError as e:
+                    print(f"Error parsing ground truth for {txt_file}: {e}")
             start_time = time.time()
             predicted = algorithm_func(str(txt_file))
             end_time = time.time()
