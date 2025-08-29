@@ -670,7 +670,7 @@ class WP1cEvaluator:
 
         # Save as CSV
         if hasattr(self, 'df') and not self.df.empty:
-            csv_path = self.output_dir / f"evaluation_results_{self.timestamp}.csv"
+            csv_path = self.output_dir / f"evaluation_results_{self.timestamp}VCC.csv"
             self.df.to_csv(csv_path, index=False)
             print(f"Saved CSV to {csv_path}")
 
@@ -781,7 +781,7 @@ class WP1cEvaluator:
 class ExtendedWP1cEvaluator(WP1cEvaluator):
     """Extended evaluation class for WP1.c comparisons with all solver variants"""
 
-    def __init__(self, output_dir: str = "results/WP1_2", **kwargs):
+    def __init__(self, output_dir: str = "results/WP1and2", **kwargs):
         super().__init__(output_dir=output_dir, **kwargs)
 
     def evaluate_single_instance(self, filepath: str, timeout: int = 300) -> Dict:
@@ -1499,7 +1499,7 @@ class ExtendedWP1cEvaluator(WP1cEvaluator):
             df_stats["timeout_count_overall"] = timeout_count
             df_stats["timeout_rate_overall"] = timeout_rate
 
-        out_csv = self.output_dir / f"runtime_comparison_stats_{self.timestamp}.csv"
+        out_csv = self.output_dir / f"runtime_comparison_stats_{self.timestamp}_VCC.csv"
         df_stats.to_csv(out_csv, index=False)
         print(f"Saved runtime statistics to {out_csv}")
 
