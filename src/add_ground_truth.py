@@ -11,7 +11,6 @@ Ausgabezeile (exakt):
 Beispiel:
     python -m add_ground_truth path/to/graph.txt --overwrite
 
-
 Why this matters:
 - We solve Clique Cover by coloring the **complement graph** (θ(G) = χ(Ḡ)).
 - Writing the line as **"Clique Cover Number θ(G): …"** avoids the previous
