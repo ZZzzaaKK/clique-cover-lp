@@ -16,3 +16,4 @@ test_graphs/generated
 figures/*
 results/*
 !results/public
+!results/analyses
