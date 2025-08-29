@@ -7,14 +7,12 @@ import networkx as nx
 logging.basicConfig(level=logging.INFO, format='%(message)s')
 logger = logging.getLogger(__name__)
 
-def is_isolated_vertex(G, v: int) -> bool:
-    return G.degree(v) == 0
 
 def apply_isolated_vertex_reduction(G) -> Tuple[nx.Graph, bool, list]:
     changed = False
     removed = []
     for v in list(G.nodes()):
-        if is_isolated_vertex(G, v):
+        if G.degree(v) == 0:
             G.remove_node(v)
             removed.append(v)
             changed = True
@@ -85,55 +83,13 @@ def apply_degree_two_folding(G: nx.Graph) -> Tuple[nx.Graph, bool, List[Tuple[st
             folds.append((v, u, w))  # for reconstructing solution
             changed = True
             break  # fold one node at a time for safety
+            return G, changed, folds # Only one fold per call for consistency
 
     return G, changed, folds
 
 
-def apply_twin_removal(G: nx.Graph) -> Tuple[nx.Graph, bool, List[Tuple[str, str, set]]]:
-    """
-    Applies the Twin Removal Reduction.
-    Returns:
-        - Modified graph (in-place)
-        - Whether any change was made
-        - List of removed twin pairs with their neighborhood
-    """
-    changed = False
-    removed_info = []
 
-    nodes = list(G.nodes())
-    for i in range(len(nodes)):
-        u = nodes[i]
-        if G.degree(u) != 3:
-            continue
-        for j in range(i + 1, len(nodes)):
-            v = nodes[j]
-            if G.degree(v) != 3:
-                continue
-            if G.has_edge(u, v):
-                continue  # They must be false twins (non-adjacent)
-
-            Nu = set(G.neighbors(u))
-            Nv = set(G.neighbors(v))
-            if Nu != Nv:
-                continue
-
-            # Check if any edge exists between neighbors
-            has_internal_edge = any(
-                G.has_edge(x, y) for x in Nu for y in Nu if x != y
-            )
-
-            if has_internal_edge:
-                # Remove u, v, and their neighbors (N[u,v])
-                to_remove = Nu | {u, v}
-                G.remove_nodes_from(to_remove)
-                removed_info.append((u, v, Nu))
-                changed = True
-                return G, changed, removed_info  # Apply one reduction per call
-
-    return G, changed, removed_info
-
-
-def apply_twin_folding(G: nx.Graph) -> Tuple[nx.Graph, bool, List[Tuple[str, str, str, List[str]]]]:
+def apply_twin_folding_or_removal(G: nx.Graph) -> Tuple[nx.Graph, bool, List[Tuple[str, str, str, List[str]]]]:
     """
     Applies the Twin Folding Reduction for foldable twins (false twins with independent neighborhood).
     Returns:
@@ -150,8 +106,6 @@ def apply_twin_folding(G: nx.Graph) -> Tuple[nx.Graph, bool, List[Tuple[str, str
         if G.degree(u) != 3:
             continue
         w, x, y = set(G.neighbors(u))
-        if G.has_edge(w, x) or G.has_edge(w, y) or G.has_edge(x, y):
-            continue  # neighbors must be independent
         neighbours_to_check = set(G.neighbors(w))|set(G.neighbors(x))|set(G.neighbors(y)) - {u}
         for v in neighbours_to_check:
             if G.degree(v) == 3:
@@ -160,6 +114,16 @@ def apply_twin_folding(G: nx.Graph) -> Tuple[nx.Graph, bool, List[Tuple[str, str
 
         if not neighbourhood_is_crossing_independent(G, u):
             continue # Ensure the crossing independent condition
+
+        if G.has_edge(w, x) or G.has_edge(w, y) or G.has_edge(x, y):
+            G.remove_node(u)
+            G.remove_node(v)
+            G.remove_node(w)
+            G.remove_node(x)
+            G.remove_node(y)
+            folded_twins.append((u, v, w, x, y, None))  # Mark as removed, no folding
+            changed = True
+            return G, changed, folded_twins
 
         # Twin folding is safe
         new_node = f"{u}_{v}_twin_folded"
@@ -289,8 +253,7 @@ def apply_all_reductions(G, verbose: bool = True, timing: bool = True) -> Tuple[
     reductions = [
         apply_isolated_vertex_reduction,
         apply_degree_two_folding,
-        apply_twin_removal,
-        apply_twin_folding,
+        apply_twin_folding_or_removal,
         apply_domination_reduction,
         apply_crown_reduction
     ]
