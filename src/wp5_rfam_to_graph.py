@@ -9,6 +9,9 @@ df["shift_event"] = df["shifts"] > 0
 G = nx.Graph()
 # Iterate through the DataFrame and add edges
 for _, row in df.iterrows():
+    # Skip self-loops for now because it messes with ILP
+    if row["idA"] == row["idB"]:
+        continue
     G.add_edge(
         row["idA"],
         row["idB"],
