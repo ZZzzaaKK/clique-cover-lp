@@ -77,7 +77,7 @@ def solve_cluster_editing_ilp(
         m.Params.MIPGap = float(mip_gap)
     if threads is not None:
         m.Params.Threads = int(threads)
-    m.Params.OutputFlag = 1 #wirft Gurobi-Outputstatusmeldungen oder eben auch nicht
+    m.Params.OutputFlag = 1 #wirft Gurobi-Outputstatusmeldungen oder eben auch nicht (=0)
 
     # Apply additional parameters
     if gurobi_params:
