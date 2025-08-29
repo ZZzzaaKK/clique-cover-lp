@@ -18,7 +18,7 @@ def add_ground_truth_if_missing(directory):
             if chromatic_number is not None:
                 # Append to file
                 with open(txt_file, 'a') as f:
-                    f.write("# Calculated by ILP\n")
+                    f.write("\n# Calculated by ILP\n")
                     f.write(f"Chromatic Number: {chromatic_number}\n")
                 print(f"  Added: Chromatic Number: {chromatic_number}")
             else:
