@@ -21,6 +21,26 @@ def apply_isolated_vertex_reduction(G) -> Tuple[nx.Graph, bool, list]:
     return G, changed, removed
 
 
+def is_crossing_independent(G: nx.Graph, v) -> bool:
+    """
+    Checks if the neighbors of v (u, w) have independent external neighborhoods.
+    Returns True if for every a in N(u)\{v} and b in N(w)\{v}, there is an edge (a, b).
+    """
+    u, w = list(G.neighbors(v))
+
+    # external neighbors
+    u_ext = set(G.neighbors(u)) - {v}
+    w_ext = set(G.neighbors(w)) - {v}
+
+    # no edges between u_ext and w_ext (where a vertex is only in one of the sets)
+    for a in u_ext - w_ext:
+        for b in w_ext - u_ext:
+            if not G.has_edge(a, b):
+                return False
+
+    return True
+
+
 def apply_degree_two_folding(G: nx.Graph) -> Tuple[nx.Graph, bool, List[Tuple[str, str, str]]]:
     """
     Applies degree-2 folding reduction to the graph G.
@@ -39,6 +59,8 @@ def apply_degree_two_folding(G: nx.Graph) -> Tuple[nx.Graph, bool, List[Tuple[st
             u, w = neighbors
             if G.has_edge(u, w):
                 continue  # Folding only applies if u and w are not connected
+            if not is_crossing_independent(G, v):
+                continue  # Ensure the crossing independent condition
 
             # Get external neighbors of u and w (excluding v)
             u_neighbors = set(G.neighbors(u)) - {v}
