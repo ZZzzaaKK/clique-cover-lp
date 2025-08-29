@@ -391,13 +391,23 @@ def main():
 
     # Generate output filenames based on input
     results_path = Path(args.results_file)
-    base_name = results_path.stem
+    filename_no_ext = results_path.stem
 
-    # Ensure results directory exists
-    os.makedirs('results', exist_ok=True)
+    # Parse pattern: [directory]_[algorithm].txt to get algorithm name
+    parts = filename_no_ext.split('_')
+    if len(parts) >= 2:
+        algorithm_name = parts[-1]  # Last part is algorithm name
+        directory_name = '_'.join(parts[:-1])  # Everything else is directory
+    else:
+        algorithm_name = 'unknown'
+        directory_name = filename_no_ext
 
-    runtime_output = f'results/analyses/{base_name}_runtime_analysis.png'
-    problem_size_output = f'results/analyses/{base_name}_problem_size_analysis.png'
+    # Create algorithm-specific results directory
+    output_dir = f'results/analyses/{algorithm_name}'
+    os.makedirs(output_dir, exist_ok=True)
+
+    runtime_output = f'{output_dir}/{directory_name}_runtime_analysis.png'
+    problem_size_output = f'{output_dir}/{directory_name}_problem_size_analysis.png'
 
     # Create visualizations
     print(f"\nGenerating runtime analysis plots...")
