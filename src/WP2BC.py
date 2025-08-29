@@ -35,7 +35,7 @@ class WP2bcResultsAnalyzer:
 
     def load_latest_results(self) -> pd.DataFrame:
         """Load the most recent evaluation results CSV"""
-        csv_files = list(self.results_dir.glob("evaluation_results_*.csv"))
+        csv_files = list(self.results_dir.glob("evaluation_results_*_VCC.csv"))
         if not csv_files:
             raise FileNotFoundError(f"No evaluation results found in {self.results_dir} go get them whereelse")
 
