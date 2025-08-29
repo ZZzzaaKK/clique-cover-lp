@@ -21,24 +21,30 @@ def apply_isolated_vertex_reduction(G) -> Tuple[nx.Graph, bool, list]:
     return G, changed, removed
 
 
-def is_crossing_independent(G: nx.Graph, v) -> bool:
+def neighbourhood_is_crossing_independent(G: nx.Graph, v) -> bool:
     """
-    Checks if the neighbors of v (u, w) have independent external neighborhoods.
-    Returns True if for every a in N(u)\{v} and b in N(w)\{v}, there is an edge (a, b).
+    Checks if the external neighborhoods of all pairs of neighbors of v
+    are crossing-independent.
+
+    That is, for every pair of neighbors (u, w) of v, and for every
+    a ∈ N(u)\{v}, b ∈ N(w)\{v}, the edge (a, b) must exist.
     """
-    u, w = list(G.neighbors(v))
+    neighbors = list(G.neighbors(v))
 
-    # external neighbors
-    u_ext = set(G.neighbors(u)) - {v}
-    w_ext = set(G.neighbors(w)) - {v}
+    # check all unordered pairs of neighbors
+    for i, u in enumerate(neighbors):
+        u_ext = set(G.neighbors(u)) - {v}
+        for w in neighbors[i+1:]:
+            w_ext = set(G.neighbors(w)) - {v}
 
-    # no edges between u_ext and w_ext (where a vertex is only in one of the sets)
-    for a in u_ext - w_ext:
-        for b in w_ext - u_ext:
-            if not G.has_edge(a, b):
-                return False
+            # check crossing-independence condition
+            for a in u_ext - w_ext:
+                for b in w_ext - u_ext:
+                    if not G.has_edge(a, b):
+                        return False
 
     return True
+
 
 
 def apply_degree_two_folding(G: nx.Graph) -> Tuple[nx.Graph, bool, List[Tuple[str, str, str]]]:
@@ -59,7 +65,7 @@ def apply_degree_two_folding(G: nx.Graph) -> Tuple[nx.Graph, bool, List[Tuple[st
             u, w = neighbors
             if G.has_edge(u, w):
                 continue  # Folding only applies if u and w are not connected
-            if not is_crossing_independent(G, v):
+            if not neighbourhood_is_crossing_independent(G, v):
                 continue  # Ensure the crossing independent condition
 
             # Get external neighbors of u and w (excluding v)
@@ -143,32 +149,31 @@ def apply_twin_folding(G: nx.Graph) -> Tuple[nx.Graph, bool, List[Tuple[str, str
         u = nodes[i]
         if G.degree(u) != 3:
             continue
-        for j in range(i + 1, len(nodes)):
-            v = nodes[j]
-            if G.degree(v) != 3:
-                continue
-            if G.has_edge(u, v):
-                continue  # must be false twins
+        w, x, y = set(G.neighbors(u))
+        if G.has_edge(w, x) or G.has_edge(w, y) or G.has_edge(x, y):
+            continue  # neighbors must be independent
+        neighbours_to_check = set(G.neighbors(w))|set(G.neighbors(x))|set(G.neighbors(y)) - {u}
+        for v in neighbours_to_check:
+            if G.degree(v) == 3:
+                break
+        else: continue
 
-            neighbors_u = set(G.neighbors(u))
-            neighbors_v = set(G.neighbors(v))
-            if neighbors_u != neighbors_v:
-                continue
+        if not neighbourhood_is_crossing_independent(G, u):
+            continue # Ensure the crossing independent condition
 
-            N = list(neighbors_u)
-            if any(G.has_edge(x, y) for i, x in enumerate(N) for y in N[i + 1:]):
-                continue  # neighbors are not independent
-
-            # Twin folding is safe
-            new_node = f"{u}_{v}_folded"
-            G.add_node(new_node)
-            for neighbor in N:
-                G.add_edge(new_node, neighbor)
-            G.remove_node(u)
-            G.remove_node(v)
-            folded_twins.append((u, v, new_node, N))
-            changed = True
-            return G, changed, folded_twins  # Only apply one per call for consistency
+        # Twin folding is safe
+        new_node = f"{u}_{v}_twin_folded"
+        G.add_node(new_node)
+        for neighbor in set(G.neighbors(w)) + set(G.neighbors(x)) + set(G.neighbors(y)) - {u, v}:
+            G.add_edge(new_node, neighbor)
+        G.remove_node(u)
+        G.remove_node(v)
+        G.remove_node(w)
+        G.remove_node(x)
+        G.remove_node(y)
+        folded_twins.append((u, v, w, x, y, new_node))
+        changed = True
+        return G, changed, folded_twins  # Only apply one per call for consistency
 
     return G, changed, folded_twins
 
@@ -292,8 +297,8 @@ def apply_all_reductions(G, verbose: bool = True, timing: bool = True) -> Tuple[
     trace = []
     round_number = 1
     for reduction in reductions:
-        changed = True
-        while changed:
+        did_change = True
+        while did_change:
             if verbose:
                 logger.info(f"\n--- Reduction Round {round_number} ({reduction.__name__}) ---")
             start = time.time() if timing else None
@@ -307,5 +312,4 @@ def apply_all_reductions(G, verbose: bool = True, timing: bool = True) -> Tuple[
                             logger.info(f"Time: {end - start:.4f}s")
                 trace.append((reduction.__name__, details))
                 round_number += 1
-            changed = did_change
     return G, trace
