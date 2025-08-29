@@ -39,7 +39,7 @@ class TestRunner:
 def save_summary(results, name):
     correct = sum(1 for r in results if r['correct'])
     total = len(results)
-    output_file = f"results/{name}.txt"
+    output_file = f"results/raw/{name}.txt"
     with open(output_file, 'w') as f:
         f.write(f"Test Results for {name}\n")
         f.write("=" * 50 + "\n\n")
