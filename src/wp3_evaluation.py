@@ -1,4 +1,4 @@
-# src/wp3_evaluation_enhanced.py
+# src/wp3_evaluation.py
 """
 Enhanced WP3 Evaluation with Statistical Testing and VCC Comparison
 """
@@ -323,56 +323,70 @@ class WP3EnhancedEvaluator:
             return df
         return None
 
-    def _validate_runtime_complexity(self, graphs: Dict[str, nx.Graph]) -> Dict[str, float]:
-        """Validate runtime complexity against theoretical bounds."""
-        # Group graphs by size
+    def _validate_runtime_complexity(self, graphs):
+        # 1) Bucketing (mindestens 10, um log(0) zu vermeiden)
         size_groups = {}
         for name, graph in graphs.items():
             n = graph.number_of_nodes()
-            size_bucket = (n // 10) * 10  # Round to nearest 10
-            if size_bucket not in size_groups:
-                size_groups[size_bucket] = []
-            size_groups[size_bucket].append((name, graph))
+            size_bucket = max(10, (n // 10) * 10)
+            size_groups.setdefault(size_bucket, []).append((name, graph))
 
-        # Measure runtime for different sizes
-        size_data = []
-        time_data = []
-
+        # 2) Messung pro Bucket
+        size_data, time_data = [], []
         for size, group_graphs in sorted(size_groups.items()):
             if not group_graphs:
                 continue
-
             times = []
-            for name, graph in group_graphs[:5]:  # Limit to 5 per size
+            for name, graph in group_graphs[:5]:  # höchstens 5 pro Bucket
                 solver = ClusterEditingSolver(graph)
                 start = time.time()
                 solver.solve(use_kernelization=True)
-                times.append(time.time() - start)
-
+                elapsed = time.time() - start
+                # Timer-Granularität absichern (niemals 0)
+                if elapsed <= 0:
+                    elapsed = 1e-6
+                times.append(elapsed)
             if times:
                 size_data.append(size)
-                time_data.append(np.mean(times))
+                time_data.append(float(np.mean(times)))  # alternativ: np.median(times)
 
-        if len(size_data) < 2:
-            return {'complexity_estimate': 'insufficient_data'}
+        # 3) Strikte Positivität und Finite-Werte prüfen
+        sizes = np.asarray(size_data, dtype=float)
+        times = np.asarray(time_data, dtype=float)
+        mask = (sizes > 0) & (times > 0) & np.isfinite(sizes) & np.isfinite(times)
+        sizes = sizes[mask]
+        times = times[mask]
 
-        # Fit power law: time = c * n^alpha
-        log_sizes = np.log(size_data)
-        log_times = np.log(time_data)
+        # 4) Fallback bei unzureichenden Daten
+        if sizes.size < 2 or np.allclose(sizes, sizes[0]) or np.allclose(times, times[0]):
+            return {
+                'complexity_estimate': 'insufficient_data',
+                'sizes_tested': sizes.tolist(),
+                'mean_times': times.tolist()
+            }
 
-        # Linear regression in log-log space
-        coeffs = np.polyfit(log_sizes, log_times, 1)
-        alpha = coeffs[0]
+        # 5) Regressions-Fit in log-log
+        log_sizes = np.log(sizes)
+        log_times = np.log(times)
+        try:
+            coeffs = np.polyfit(log_sizes, log_times, 1)
+        except Exception:
+            return {
+                'complexity_estimate': 'insufficient_data',
+                'sizes_tested': sizes.tolist(),
+                'mean_times': times.tolist()
+            }
+        alpha, beta = float(coeffs[0]), float(coeffs[1])
 
-        # Create complexity plot
-        self._plot_complexity_analysis(size_data, time_data, alpha)
+        # 6) Plot mit Interzept
+        self._plot_complexity_analysis(sizes.tolist(), times.tolist(), alpha, beta)
 
         return {
             'estimated_complexity': f"O(n^{alpha:.2f})",
             'alpha': alpha,
-            'theoretical_bound': "O(n^3)" if alpha < 3 else "O(n^{alpha:.1f})",
-            'sizes_tested': size_data,
-            'mean_times': time_data
+            'theoretical_bound': "O(n^3)" if alpha < 3 else f"O(n^{alpha:.1f})",
+            'sizes_tested': sizes.tolist(),
+            'mean_times': times.tolist()
         }
 
     def _create_weights(self, graph: nx.Graph) -> Dict[Tuple[int, int], float]:
@@ -458,21 +472,19 @@ class WP3EnhancedEvaluator:
         plt.savefig(self.output_dir / "statistical_analysis.png", dpi=150)
         plt.close()
 
-    def _plot_complexity_analysis(self, sizes: List[int], times: List[float], alpha: float):
-        """Plot runtime complexity analysis."""
+    def _plot_complexity_analysis(self, sizes: List[int], times: List[float], alpha: float, beta: float):
+        """Plot runtime complexity analysis"""
         fig, ax = plt.subplots(figsize=(10, 6))
 
-        # Plot actual data
+        # Daten
         ax.scatter(sizes, times, alpha=0.7, label='Measured')
 
-        # Plot fitted curve
+        # Fit-Kurve: y = exp(beta) * x^alpha
         x_fit = np.linspace(min(sizes), max(sizes), 100)
-        c = np.exp(np.log(times[0]) - alpha * np.log(sizes[0]))
-        y_fit = c * x_fit ** alpha
-        ax.plot(x_fit, y_fit, 'r-', alpha=0.5,
-                label=f'Fitted: O(n^{alpha:.2f})')
+        y_fit = np.exp(beta) * x_fit ** alpha
+        ax.plot(x_fit, y_fit, 'r-', alpha=0.5, label=f'Fitted: O(n^{alpha:.2f})')
 
-        # Log scale
+        # Log-Skalen
         ax.set_xscale('log')
         ax.set_yscale('log')
         ax.set_xlabel('Graph Size (nodes)')
@@ -545,7 +557,7 @@ def main():
     )
     parser.add_argument('--test-dir', default='test_graphs/generated/perturbed',
                         help='Directory with test graphs')
-    parser.add_argument('--output-dir', default='results/wp3_enhanced',
+    parser.add_argument('--output-dir', default='results/wp3',
                         help='Output directory')
     parser.add_argument('--vcc-command', help='Command to run VCC tool')
     parser.add_argument('--n-bootstrap', type=int, default=1000,
