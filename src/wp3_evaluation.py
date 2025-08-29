@@ -179,7 +179,7 @@ class WP3EnhancedEvaluator:
                 })
 
         df = pd.DataFrame(results)
-        df.to_csv(self.output_dir / "effectiveness_results.csv", index=False)
+        df.to_csv(self.output_dir / "effectiveness_results_CE.csv", index=False)
         return df
 
     def _evaluate_improvements_statistical(self,
@@ -248,7 +248,7 @@ class WP3EnhancedEvaluator:
             })
 
         df = pd.DataFrame(results)
-        df.to_csv(self.output_dir / "statistical_improvements.csv", index=False)
+        df.to_csv(self.output_dir / "statistical_improvements_CE.csv", index=False)
 
         # Create visualization
         self._plot_statistical_results(df)
