@@ -2,6 +2,7 @@ from typing import Tuple, List, Union, Any
 import time
 import logging
 import networkx as nx
+from collections import deque
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(message)s')
@@ -164,12 +165,9 @@ def apply_domination_reduction(G: nx.Graph) -> Tuple[nx.Graph, bool, List[Tuple[
 
     for i in range(len(nodes)):
         u = nodes[i]
-        Nu_closed = set(G.neighbors(u)) | {u}
-        for j in range(len(nodes)):
-            if i == j:
-                continue
-            v = nodes[j]
-            Nv_closed = set(G.neighbors(v)) | {v}
+        Nu_closed = (set(G.neighbors(u)) | {u})
+        for v in set(G.neighbors(u)):
+            Nv_closed = (set(G.neighbors(v)) | {v})
             if Nu_closed.issubset(Nv_closed):
                 # v dominates u, so remove v
                 G.remove_node(v)
@@ -181,21 +179,22 @@ def apply_domination_reduction(G: nx.Graph) -> Tuple[nx.Graph, bool, List[Tuple[
 
 
 def maximal_independent_set_from_matching(G: nx.Graph) -> set:
-    # 1. Maximal Matching
     M = nx.max_weight_matching(G, maxcardinality=True)
     matched_nodes = {u for edge in M for u in edge}
 
-    # 2. Startmenge: alle ungematchten Knoten
     I = set(G.nodes()) - matched_nodes
+    remaining = deque(G.nodes())
+    seen = set(I)  # schon verarbeitet oder in I
 
-    # 3. Greedy-Erweiterung zu maximaler unabhängiger Menge
-    remaining = set(G.nodes()) - I
     while remaining:
-        v = remaining.pop()
-        if not any((nbr in I) for nbr in G.neighbors(v)):
+        v = remaining.popleft()
+        if v in seen:
+            continue
+        if not any(nbr in I for nbr in G.neighbors(v)):
             I.add(v)
-            remaining -= set(G.neighbors(v))
-
+            seen.add(v)
+            for nbr in G.neighbors(v):
+                seen.add(nbr)  # Nachbarn blockieren
     return I
 
 
@@ -217,10 +216,10 @@ def apply_crown_reduction(G: nx.Graph) -> Tuple[nx.Graph, bool, List[Any], int]:
         if not I:
             return G, False, [], VCC_addition
 
-        H = set(G.neighbors(n) for n in I)
-        # Flatten neighbors
-        H = {h for nbrs in H for h in (nbrs if isinstance(nbrs, set) else [nbrs])}
-        H -= I  # Sicherheit
+        H = set()
+        for n in I:
+            H.update(G.neighbors(n))
+        H -= I  # to be on the save side
 
         if not H:
             return G, False, [], VCC_addition
@@ -248,6 +247,7 @@ def apply_crown_reduction(G: nx.Graph) -> Tuple[nx.Graph, bool, List[Any], int]:
             G.remove_nodes_from(I)
 
             crown_sets.append((list(I), list(H), matched_pairs, list(unmatched_I)))
+            VCC_addition += len(I)
             changed = True
 
     except Exception as e:

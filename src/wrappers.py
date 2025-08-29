@@ -18,7 +18,7 @@ def reduced_ilp_wrapper(txt_filepath):
         # chalupa = ChalupaHeuristic(nx.complement(G))
         # best_clique_covering = chalupa.iterated_greedy_clique_covering()
         # upper_bound = len(best_clique_covering) if best_clique_covering else float('inf')
-        G_reduced, trace = apply_all_reductions(G)
+        G_reduced, trace, VCC_addition_total = apply_all_reductions(G)
         result = solve_ilp_clique_cover(G_reduced)
         if 'error' in result:
             print(f"ILP failed on {txt_filepath}: {result['error']}")
@@ -47,7 +47,7 @@ def interactive_reduced_ilp_wrapper(txt_filepath):
             best_clique_covering = chalupa.iterated_greedy_clique_covering()
             upper_bound = current_upper_bound
             current_upper_bound = len(best_clique_covering) if best_clique_covering else float('inf')
-            G, trace = apply_all_reductions(G)
+            G, trace, VCC_addition_total = apply_all_reductions(G)
         result = solve_ilp_clique_cover(G)
         if 'error' in result:
             print(f"ILP failed on {txt_filepath}: {result['error']}")
