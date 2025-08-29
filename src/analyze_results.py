@@ -396,8 +396,8 @@ def main():
     # Ensure results directory exists
     os.makedirs('results', exist_ok=True)
 
-    runtime_output = f'results/{base_name}_runtime_analysis.png'
-    problem_size_output = f'results/{base_name}_problem_size_analysis.png'
+    runtime_output = f'results/analyses/{base_name}_runtime_analysis.png'
+    problem_size_output = f'results/analyses/{base_name}_problem_size_analysis.png'
 
     # Create visualizations
     print(f"\nGenerating runtime analysis plots...")

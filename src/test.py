@@ -102,7 +102,7 @@ def main():
         results = runner.run_tests(wrapper, "Chromatic Number")
         output_name = f"{Path(args.path).name}_{name}"
         save_summary(results, output_name)
-        print(f"Results saved to results/{output_name}.txt")
+        print(f"Results saved to results/raw/{output_name}.txt")
 
 if __name__ == "__main__":
     main()
