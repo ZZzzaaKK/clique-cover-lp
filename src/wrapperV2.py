@@ -367,12 +367,15 @@ def reduced_ilp_wrapper(txt_filepath: str, use_warmstart: bool = False, validate
         print(f"Original: {G.number_of_nodes()} nodes, {G.number_of_edges()} edges")
         print(f"Complement: {Gc.number_of_nodes()} nodes, {Gc.number_of_edges()} edges")
 
-    # Apply reductions on complement
-    Gc_red, _meta = apply_all_reductions(Gc, verbose=verbose, timing=verbose)
+    # Apply reductions (returns now 3 values)
+    Gc_red, _meta, VCC_addition = apply_all_reductions(Gc, verbose=verbose, timing=verbose)
     Gc_red = _compact_int_labels(Gc_red)
+
 
     if verbose:
         print(f"After reductions: {Gc_red.number_of_nodes()} nodes, {Gc_red.number_of_edges()} edges")
+
+
 
     # Generate warmstart for coloring Gc_red
     warm = _chalupa_warmstart_for_coloring(Gc_red) if use_warmstart else None
@@ -398,38 +401,6 @@ def reduced_ilp_wrapper(txt_filepath: str, use_warmstart: bool = False, validate
     res['kernel_nodes'] = Gc_red.number_of_nodes()
     res['kernel_edges'] = Gc_red.number_of_edges()
     return res
-
-""" gibt Zeit und UB direkt in den ILP weiter
-def reduced_ilp_wrapper(..., **kwargs) -> Dict[str, Any]:
-    ...
-    # optional: UB aus kwargs extrahieren und an Solver geben
-    solver_kwargs = dict(kwargs)  # copy
-    # Beispiel:
-    # if 'theta_ub' in solver_kwargs: pass
-    # (sonst unmodifiziert lassen)
-
-    t0 = time.time()
-    res = solve_ilp_clique_cover(Gc_red, is_already_complement=True,
-                                 warmstart=warm, **solver_kwargs)
-    if isinstance(res, dict):
-        res.setdefault('time', time.time() - t0)
-    else:
-        res = {'theta': res, 'time': time.time() - t0}
-
-    res.setdefault('status', 'optimal')
-    res['kernel_nodes'] = Gc_red.number_of_nodes()
-    res['kernel_edges'] = Gc_red.number_of_edges()
-
-    if validate and isinstance(res, dict):
-        res['validation'] = {
-            'note': 'No assignment validation on reduced/complement kernel',
-            'reduced_nodes': Gc_red.number_of_nodes(),
-            'original_nodes': G_original.number_of_nodes(),
-            'reduction_efficiency': f"{G_original.number_of_nodes() - Gc_red.number_of_nodes()} nodes removed"
-        }
-    return res
-"""
-
 
 def interactive_reduced_ilp_wrapper(
         txt_filepath: str,
@@ -524,7 +495,7 @@ def interactive_reduced_ilp_wrapper(
         nodes_before = Gc_curr.number_of_nodes()
         edges_before = Gc_curr.number_of_edges()
 
-        Gc_next, _meta = apply_all_reductions(Gc_curr, verbose=False, timing=False)
+        Gc_next, _meta, VCC_addition = apply_all_reductions(Gc_curr, verbose=False, timing=False)
         Gc_next = _compact_int_labels(Gc_next)
 
         nodes_after = Gc_next.number_of_nodes()
