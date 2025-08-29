@@ -368,7 +368,7 @@ def reduced_ilp_wrapper(txt_filepath: str, use_warmstart: bool = False, validate
         print(f"Complement: {Gc.number_of_nodes()} nodes, {Gc.number_of_edges()} edges")
 
     # Apply reductions on complement
-    Gc_red, _meta = apply_all_reductions(Gc, verbose=verbose, timing=verbose)
+    Gc_red, _meta, VCC_addition_total = apply_all_reductions(Gc, verbose=verbose, timing=verbose)
     Gc_red = _compact_int_labels(Gc_red)
 
     if verbose:
@@ -524,7 +524,7 @@ def interactive_reduced_ilp_wrapper(
         nodes_before = Gc_curr.number_of_nodes()
         edges_before = Gc_curr.number_of_edges()
 
-        Gc_next, _meta = apply_all_reductions(Gc_curr, verbose=False, timing=False)
+        Gc_next, _meta, VCC_addition_total = apply_all_reductions(Gc_curr, verbose=False, timing=False)
         Gc_next = _compact_int_labels(Gc_next)
 
         nodes_after = Gc_next.number_of_nodes()
