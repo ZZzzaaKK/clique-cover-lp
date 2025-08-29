@@ -83,7 +83,7 @@ def apply_degree_two_folding(G: nx.Graph) -> Tuple[nx.Graph, bool, List[Tuple[st
             # Remove v, u, w
             G.remove_nodes_from([v, u, w])
 
-            folds.append((v, u, w))  # for reconstructing solution
+            folds.append((v, u, w))
             VCC_addition = 1
             changed = True
             return G, changed, folds, VCC_addition # Only one fold per call for consistency
@@ -111,21 +111,22 @@ def apply_twin_folding_or_removal(G: nx.Graph) -> Tuple[nx.Graph, bool, List[Tup
         if G.degree(u) != 3:
             continue
         w, x, y = set(G.neighbors(u))
-        neighbours_to_check = set(G.neighbors(w))|set(G.neighbors(x))|set(G.neighbors(y)) - {u}
+        neighbours_to_check = (set(G.neighbors(w)) & set(G.neighbors(x)) & set(G.neighbors(y))) - {u}
+        v_found = None
         for v in neighbours_to_check:
             if G.degree(v) == 3:
+                v_found = v
                 break
-        else: continue
+        if v_found is None:
+            continue
+        v = v_found
 
         if not neighbourhood_is_crossing_independent(G, u):
             continue # Ensure the crossing independent condition
 
         if G.has_edge(w, x) or G.has_edge(w, y) or G.has_edge(x, y):
-            G.remove_node(u)
-            G.remove_node(v)
-            G.remove_node(w)
-            G.remove_node(x)
-            G.remove_node(y)
+            nodes_to_remove = {u, v, w, x, y}
+            G.remove_nodes_from(nodes_to_remove)
             folded_twins.append((u, v, w, x, y, None))  # Mark as removed, no folding
             VCC_addition = 2
             changed = True
@@ -134,13 +135,10 @@ def apply_twin_folding_or_removal(G: nx.Graph) -> Tuple[nx.Graph, bool, List[Tup
         # Twin folding is safe
         new_node = f"{u}_{v}_twin_folded"
         G.add_node(new_node)
-        for neighbor in set(G.neighbors(w)) + set(G.neighbors(x)) + set(G.neighbors(y)) - {u, v}:
+        for neighbor in (set(G.neighbors(w)) | set(G.neighbors(x)) | set(G.neighbors(y))) - {u, v}:
             G.add_edge(new_node, neighbor)
-        G.remove_node(u)
-        G.remove_node(v)
-        G.remove_node(w)
-        G.remove_node(x)
-        G.remove_node(y)
+        nodes_to_remove = {u, v, w, x, y}
+        G.remove_nodes_from(nodes_to_remove)
         folded_twins.append((u, v, w, x, y, new_node))
         VCC_addition = 2
         changed = True
