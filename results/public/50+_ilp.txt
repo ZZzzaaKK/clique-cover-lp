@@ -1,0 +1,252 @@
+Test Results for large_ilp
+==================================================
+
+File: graph_53752.txt
+Predicted: 2
+Actual: 2
+Deviation: 0
+Correct: True
+Time taken: 0.28684425354003906
+------------------------------
+File: graph_53696.txt
+Predicted: 4
+Actual: 4
+Deviation: 0
+Correct: True
+Time taken: 0.09941625595092773
+------------------------------
+File: graph_53982.txt
+Predicted: 3
+Actual: 3
+Deviation: 0
+Correct: True
+Time taken: 0.2510082721710205
+------------------------------
+File: graph_53957.txt
+Predicted: 3
+Actual: 3
+Deviation: 0
+Correct: True
+Time taken: 1.3189630508422852
+------------------------------
+File: graph_53999.txt
+Predicted: 4
+Actual: 4
+Deviation: 0
+Correct: True
+Time taken: 0.04528045654296875
+------------------------------
+File: graph_54006.txt
+Predicted: 2
+Actual: 2
+Deviation: 0
+Correct: True
+Time taken: 0.06505107879638672
+------------------------------
+File: graph_53995.txt
+Predicted: 2
+Actual: 2
+Deviation: 0
+Correct: True
+Time taken: 0.2970576286315918
+------------------------------
+File: graph_54009.txt
+Predicted: 3
+Actual: 3
+Deviation: 0
+Correct: True
+Time taken: 0.202239990234375
+------------------------------
+File: graph_1175.txt
+Predicted: 7
+Actual: 7
+Deviation: 0
+Correct: True
+Time taken: 944.82781457901
+------------------------------
+File: graph_1142.txt
+Predicted: 4
+Actual: 4
+Deviation: 0
+Correct: True
+Time taken: 1.2750694751739502
+------------------------------
+File: graph_1136.txt
+Predicted: 3
+Actual: 3
+Deviation: 0
+Correct: True
+Time taken: 3.479921817779541
+------------------------------
+File: graph_1163.txt
+Predicted: 2
+Actual: 2
+Deviation: 0
+Correct: True
+Time taken: 7.29381537437439
+------------------------------
+File: graph_1128.txt
+Predicted: 3
+Actual: 3
+Deviation: 0
+Correct: True
+Time taken: 0.19452500343322754
+------------------------------
+File: graph_1122.txt
+Predicted: 2
+Actual: 2
+Deviation: 0
+Correct: True
+Time taken: 0.7684063911437988
+------------------------------
+File: graph_1108.txt
+Predicted: 3
+Actual: 3
+Deviation: 0
+Correct: True
+Time taken: 0.23465919494628906
+------------------------------
+File: graph_1106.txt
+Predicted: 3
+Actual: 3
+Deviation: 0
+Correct: True
+Time taken: 0.11598849296569824
+------------------------------
+File: graph_1098.txt
+Predicted: 2
+Actual: 2
+Deviation: 0
+Correct: True
+Time taken: 1.1325066089630127
+------------------------------
+File: graph_1096.txt
+Predicted: 2
+Actual: 2
+Deviation: 0
+Correct: True
+Time taken: 0.09655284881591797
+------------------------------
+File: graph_1092.txt
+Predicted: 3
+Actual: 3
+Deviation: 0
+Correct: True
+Time taken: 26.41148066520691
+------------------------------
+File: graph_1068.txt
+Predicted: 3
+Actual: 3
+Deviation: 0
+Correct: True
+Time taken: 0.18720602989196777
+------------------------------
+File: graph_1066.txt
+Predicted: 3
+Actual: 3
+Deviation: 0
+Correct: True
+Time taken: 0.21518564224243164
+------------------------------
+File: graph_1061.txt
+Predicted: 2
+Actual: 2
+Deviation: 0
+Correct: True
+Time taken: 0.2687876224517822
+------------------------------
+File: graph_1059.txt
+Predicted: 2
+Actual: 2
+Deviation: 0
+Correct: True
+Time taken: 0.12405061721801758
+------------------------------
+File: graph_1051.txt
+Predicted: 3
+Actual: 3
+Deviation: 0
+Correct: True
+Time taken: 0.06732344627380371
+------------------------------
+File: graph_1047.txt
+Predicted: 5
+Actual: 5
+Deviation: 0
+Correct: True
+Time taken: 10.421422004699707
+------------------------------
+File: graph_1041.txt
+Predicted: 3
+Actual: 3
+Deviation: 0
+Correct: True
+Time taken: 5.149980306625366
+------------------------------
+File: graph_1039.txt
+Predicted: 3
+Actual: 3
+Deviation: 0
+Correct: True
+Time taken: 0.05478692054748535
+------------------------------
+File: graph_1030.txt
+Predicted: 2
+Actual: 2
+Deviation: 0
+Correct: True
+Time taken: 0.176497220993042
+------------------------------
+File: graph_979.txt
+Predicted: 5
+Actual: 5
+Deviation: 0
+Correct: True
+Time taken: 8.262529134750366
+------------------------------
+File: graph_977.txt
+Predicted: 4
+Actual: 4
+Deviation: 0
+Correct: True
+Time taken: 1.301924705505371
+------------------------------
+File: graph_962.txt
+Predicted: 7
+Actual: 7
+Deviation: 0
+Correct: True
+Time taken: 289.5388836860657
+------------------------------
+File: graph_956.txt
+Predicted: 3
+Actual: 3
+Deviation: 0
+Correct: True
+Time taken: 1.3051178455352783
+------------------------------
+File: graph_951.txt
+Predicted: 3
+Actual: 3
+Deviation: 0
+Correct: True
+Time taken: 1.6740391254425049
+------------------------------
+File: graph_949.txt
+Predicted: 2
+Actual: 2
+Deviation: 0
+Correct: True
+Time taken: 0.20911264419555664
+------------------------------
+File: graph_954.txt
+Predicted: 3
+Actual: 3
+Deviation: 0
+Correct: True
+Time taken: 0.15671133995056152
+------------------------------
+
+Summary:
+Correct: 35/35 (100.0%)
+Average Deviation: 0.00

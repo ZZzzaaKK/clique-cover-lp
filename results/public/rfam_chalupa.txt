@@ -1,0 +1,14 @@
+Test Results for rfam_chalupa
+==================================================
+
+File: RF02246_graph.txt
+Predicted: 9
+Actual: 9
+Deviation: 0
+Correct: True
+Time taken: 0.0631415843963623
+------------------------------
+
+Summary:
+Correct: 1/1 (100.0%)
+Average Deviation: 0.00
