@@ -35,7 +35,7 @@ class WP2bcResultsAnalyzer:
 
     def load_latest_results(self) -> pd.DataFrame:
         """Load the most recent evaluation results CSV"""
-        csv_files = list(self.results_dir.glob("evaluation_results_*.csv"))
+        csv_files = list(self.results_dir.glob("evaluation_results_*_VCC.csv"))
         if not csv_files:
             raise FileNotFoundError(f"No evaluation results found in {self.results_dir} go get them whereelse")
 
@@ -444,16 +444,21 @@ class WP2bcResultsAnalyzer:
             if valid.any():
                 speedup = self.df.loc[valid, 'reduced_ilp_time'] / self.df.loc[valid, 'interactive_ilp_time']
 
-                ax.hist(speedup, bins=30, edgecolor='black', alpha=0.7, color='purple')
-                ax.axvline(x=1.0, color='red', linestyle='--', linewidth=2, label='No speedup')
-                ax.axvline(x=speedup.mean(), color='green', linestyle=':', linewidth=2,
-                          label=f'Mean = {speedup.mean():.2f}')
-                ax.set_xlabel('Speedup Factor (Single-pass / Interactive)')
-                ax.set_ylabel('Frequency')
-                ax.set_title('Interactive Speedup Distribution')
-                ax.legend()
-                ax.grid(True, alpha=0.3)
+                speedup = speedup[np.isfinite(speedup)]
 
+                if not speedup.empty:
+                    ax.hist(speedup, bins=30, edgecolor='black', alpha=0.7, color='purple')
+                    ax.axvline(x=1.0, color='red', linestyle='--', linewidth=2, label='No speedup')
+                    ax.axvline(x=speedup.mean(), color='green', linestyle=':', linewidth=2,
+                               label=f'Mean = {speedup.mean():.2f}')
+                    ax.set_xlabel('Speedup Factor (Single-pass / Interactive)')
+                    ax.set_ylabel('Frequency')
+                    ax.set_title('Interactive Speedup Distribution')
+                    ax.legend()
+                    ax.grid(True, alpha=0.3)
+                else:
+                    ax.text(0.5, 0.5, "No valid speedup data",
+                            transform=ax.transAxes, ha='center', va='center')
         # 3. Effectiveness by problem characteristics
         ax = axes[1, 0]
         if 'density' in self.df.columns and all(col in self.df.columns for col in
