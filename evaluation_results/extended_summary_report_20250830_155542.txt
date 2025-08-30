@@ -1,0 +1,135 @@
+================================================================================
+EXTENDED WP1.c EVALUATION SUMMARY REPORT
+Generated: 2025-08-30 15:58:40
+================================================================================
+
+OVERALL STATISTICS
+------------------------------------------------------------
+Total number of instances evaluated properly: 87
+
+RUNTIME PERFORMANCE (ALL METHODS)
+------------------------------------------------------------
+
+Chalupa Heuristic:
+  Mean: 0.131s
+  Median: 0.064s
+  Min: 0.012s
+  Max: 1.375s
+  Std Dev: 0.207s
+
+Standard ILP:
+  Mean: 0.061s
+  Median: 0.013s
+  Min: 0.000s
+  Max: 1.135s
+  Std Dev: 0.148s
+
+ILP with Warmstart:
+  Mean: 0.187s
+  Median: 0.068s
+  Min: 0.000s
+  Max: 3.490s
+  Std Dev: 0.432s
+
+Reduced ILP:
+  Mean: 0.180s
+  Median: 0.078s
+  Min: 0.012s
+  Max: 2.437s
+  Std Dev: 0.333s
+
+Interactive Reduced ILP:
+  Mean: 0.219s
+  Median: 0.005s
+  Min: 0.000s
+  Max: 4.476s
+  Std Dev: 0.537s
+
+
+SPEEDUP ANALYSIS (vs Standard ILP)
+------------------------------------------------------------
+calculated by: speedup(method) = ilp_time / method_time------------------------------------------------------------
+
+Chalupa:
+  Mean speedup        : 0.25x
+  Median speedup      : 0.23x
+  Geometric mean      : 0.16x
+  Trimmed mean (10%)  : 0.23x
+  Paired instances    : 87
+
+Ilp Warmstart:
+  Mean speedup        : 0.66x
+  Median speedup      : 0.39x
+  Geometric mean      : 0.49x
+  Trimmed mean (10%)  : 0.61x
+  Paired instances    : 87
+
+Reduced Ilp:
+  Mean speedup        : 0.20x
+  Median speedup      : 0.18x
+  Geometric mean      : 0.13x
+  Trimmed mean (10%)  : 0.19x
+  Paired instances    : 87
+
+Interactive Ilp:
+  Mean speedup        : 1.81x
+  Median speedup      : 0.36x
+  Geometric mean      : 0.68x
+  Trimmed mean (10%)  : 1.10x
+  Paired instances    : 64
+
+
+SOLUTION QUALITY (vs Standard ILP)
+----------------------------------------
+
+Chalupa Heuristic:
+  Mean Ratio: 1.0000
+  Median Ratio: 1.0000
+  Min Ratio: 1.0000
+  Max Ratio: 1.0000
+  Std Dev: 0.0000
+  Optimal solutions: 100.0%
+  Within 5% of optimal: 100.0%
+  Within 10% of optimal: 100.0%
+
+ILP with Warmstart:
+  Mean Ratio: 1.0000
+  Median Ratio: 1.0000
+  Min Ratio: 1.0000
+  Max Ratio: 1.0000
+  Std Dev: 0.0000
+  Optimal solutions: 100.0%
+  Within 5% of optimal: 100.0%
+  Within 10% of optimal: 100.0%
+
+Reduced ILP:
+  Mean Ratio: 0.3727
+  Median Ratio: 0.4000
+  Min Ratio: 0.0000
+  Max Ratio: 1.0000
+  Std Dev: 0.2761
+  Optimal solutions: 2.6%
+  Within 5% of optimal: 100.0%
+  Within 10% of optimal: 100.0%
+
+Interactive Reduced ILP:
+  Mean Ratio: 0.2683
+  Median Ratio: 0.0000
+  Min Ratio: 0.0000
+  Max Ratio: 1.0000
+  Std Dev: 0.3234
+  Optimal solutions: 2.6%
+  Within 5% of optimal: 100.0%
+  Within 10% of optimal: 100.0%
+
+ITERATIVE REDUCTION (WP2c)
+------------------------------------------------------------
+  Avg rounds: 1.99 (median 2)
+  Mean speedup vs single-pass: infx
+
+================================================================================
+END OF EXTENDED REPORT
+================================================================================
+
+# Calculated by ILP on complement graph
+Vertex Clique Cover Number: 0

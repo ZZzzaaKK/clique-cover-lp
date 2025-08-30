@@ -75,3 +75,6 @@ Vertex Cover Number: 13
 
 
 
+
+# Calculated by ILP on complement graph
+Vertex Clique Cover Number: 12

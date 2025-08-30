@@ -4,16 +4,16 @@ from utils import get_value
 import sys
 
 def add_ground_truth_if_missing(directory):
-    """Add ground truth only to files that don't already have it"""
+    """Add chromatic number only to files that don't already have it"""
     path = Path(graph_dir)
 
     for txt_file in path.glob("**/*.txt"):
-        # Check if ground truth already exists
+        # Check if chromatic number already exists
         existing_ground_truth = get_value(txt_file, "Chromatic Number")
 
         if existing_ground_truth is None:
-            print(f"Computing ground truth for {txt_file.name}...")
-            chromatic_number = ilp_wrapper(str(txt_file))
+            print(f"Computing chromatic number for {txt_file.name}...")
+            chromatic_number = ilp_wrapper(str(txt_file), require_optimal=True, time_limit=300)
 
             if chromatic_number is not None:
                 # Append to file
@@ -24,7 +24,7 @@ def add_ground_truth_if_missing(directory):
             else:
                 print(f"  Failed to compute for {txt_file.name}")
         else:
-            print(f"Ground truth already exists for {txt_file.name}: {existing_ground_truth}")
+            print(f"Chromatic Number already exists for {txt_file.name}: {existing_ground_truth}")
 
 if __name__ == "__main__":
     graph_dir = sys.argv[1] if len(sys.argv) > 1 else "test_graphs/generated/perturbed"

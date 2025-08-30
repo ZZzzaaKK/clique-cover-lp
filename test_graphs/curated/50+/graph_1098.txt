@@ -165,3 +165,6 @@ Vertex Cover Number: 56
 
 
 
+
+# Calculated by ILP on complement graph
+Vertex Clique Cover Number: 56

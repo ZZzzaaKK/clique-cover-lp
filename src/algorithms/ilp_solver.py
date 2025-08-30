@@ -13,7 +13,7 @@ from utils import txt_to_networkx
 # Hauptfunktion: Löse Vertex Clique Coloring mit ILP
 # (Assignment Model gemäß Mutzel, Folie 24)
 # ----------------------------------------------------------
-def solve_ilp_clique_cover(G):
+def solve_ilp_clique_cover(G, time_limit=10, require_optimal=False):
     V = list(G.nodes())           # Liste aller Knoten
     E = list(G.edges())           # Liste aller Kanten
     n = len(V)                    # Anzahl Knoten
@@ -21,7 +21,8 @@ def solve_ilp_clique_cover(G):
 
     # Neues Gurobi-Modell erstellen
     model = gp.Model("clique_coloring")
-    model.setParam("OutputFlag", 0)  # Keine Konsolenausgabe von Gurobi
+    model.setParam("OutputFlag", 0)
+    model.setParam("TimeLimit", time_limit)
 
     # Binärvariablen: x[v, i] = 1, wenn Knoten v Farbe i erhält
     x = model.addVars(V, range(H), vtype=GRB.BINARY)
@@ -52,12 +53,12 @@ def solve_ilp_clique_cover(G):
     # Optimierung starten
     model.optimize()
 
-    # Wenn optimale Lösung gefunden, extrahiere Resultat
-    if model.status == GRB.OPTIMAL:
-        # chromatic_number = Anzahl verwendeter Farben (d.h. Cliquen)
-        chromatic_number = int(sum(w[i].X for i in range(H)))
+    # Resultat auswerten
+    solution_found = model.solCount > 0
+    is_optimal = model.status == GRB.OPTIMAL
 
-        # Zuweisung der Farbe (bzw. Clique) für jeden Knoten
+    if is_optimal or (solution_found and not require_optimal):
+        chromatic_number = int(round(model.ObjVal))
         coloring = {v: [i for i in range(H) if x[v, i].X > 0.5][0] for v in V}
 
         return {
@@ -65,9 +66,10 @@ def solve_ilp_clique_cover(G):
             "coloring": coloring,
             "n_nodes": len(V),
             "n_edges": len(E),
+            "optimal": is_optimal
         }
     else:
-        return {"error": "Keine optimale Lösung gefunden."}
+        return {"error": f"Solver finished with status {model.status} and found {model.solCount} solutions."}
 
 # ----------------------------------------------------------
 # Beispiel: Graph laden und ILP lösen

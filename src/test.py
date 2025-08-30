@@ -4,7 +4,7 @@ import sys
 import time
 from pathlib import Path
 from wrappers import chalupa_wrapper, ilp_wrapper, reduced_ilp_wrapper, interactive_reduced_ilp_wrapper
-from utils import get_value
+from src.utils import get_value
 
 class TestRunner:
     def __init__(self, test_data_dir="data"):
@@ -25,20 +25,32 @@ class TestRunner:
             start_time = time.time()
             predicted = algorithm_func(str(txt_file))
             end_time = time.time()
-            results.append({
-                'file': txt_file.name,
-                'predicted': predicted,
-                'actual': ground_truth,
-                'deviation': predicted - ground_truth,
-                'correct': predicted == ground_truth,
-                'time_taken': end_time - start_time
-            })
+            if predicted is not None:
+                results.append({
+                    'file': txt_file.name,
+                    'predicted': predicted,
+                    'actual': ground_truth,
+                    'deviation': predicted - ground_truth,
+                    'correct': predicted == ground_truth,
+                    'time_taken': end_time - start_time
+                })
+            else:
+                results.append({
+                    'file': txt_file.name,
+                    'predicted': "Calculation timed out",
+                    'actual': ground_truth,
+                    'correct': False,
+                    'time_taken': end_time - start_time
+                })
 
         return results
 
 def save_summary(results, name):
     correct = sum(1 for r in results if r['correct'])
     total = len(results)
+    successful_results = [r for r in results if r.get('deviation') is not None]
+    timed_out_results = len(results) - len(successful_results)
+
     output_file = f"results/raw/{name}.txt"
     with open(output_file, 'w') as f:
         f.write(f"Test Results for {name}\n")
@@ -47,18 +59,23 @@ def save_summary(results, name):
             f.write(f"File: {result['file']}\n")
             f.write(f"Predicted: {result['predicted']}\n")
             f.write(f"Actual: {result['actual']}\n")
-            f.write(f"Deviation: {result['deviation']}\n")
+            f.write(f"Deviation: {result.get('deviation', 'N/A')}\n")
             f.write(f"Correct: {result['correct']}\n")
             f.write(f"Time taken: {result['time_taken']}\n")
             f.write("-" * 30 + "\n")
 
         f.write("\nSummary:\n")
-        f.write(f"Correct: {correct}/{total}")
+        f.write(f"Total tests: {total}\n")
+        f.write(f"Successful: {len(successful_results)}\n")
+        f.write(f"Timed out: {timed_out_results}\n")
+        f.write(f"Correct predictions (overall): {correct}/{total} ({correct/total*100:.1f}%)\n")
 
-        if total > 0:
-            f.write(f" ({correct/total*100:.1f}%)\n")
-            deviation_sum = sum(r['deviation'] for r in results)
-            f.write(f"Average Deviation: {deviation_sum / total:.2f}\n")
+        if len(successful_results) > 0:
+            correct_successful = sum(1 for r in successful_results if r['correct'])
+            f.write(f"Accuracy (on successful): {correct_successful/len(successful_results)*100:.1f}%")
+            deviation_sum = sum(r['deviation'] for r in successful_results)
+            f.write(f"\nAverage Deviation (on successful): {deviation_sum / len(successful_results):.2f}\n")
+
 
 def main():
     parser = argparse.ArgumentParser(description='Run graph coloring algorithm tests')
@@ -67,6 +84,7 @@ def main():
     parser.add_argument('--reduced-ilp', action='store_true', help='Run reduced ILP solver')
     parser.add_argument('--interactive-reduced-ilp', action='store_true', help='Run interactive reduced ILP solver')
     parser.add_argument('--all', action='store_true', help='Run all algorithms')
+    parser.add_argument('--chromatic-number', action='store_true', help='Test against Chromatic Number instead of Vertex Clique Cover Number')
     parser.add_argument('path', nargs='?', default='test_graphs/generated/perturbed',
                        help='Path to test data directory (default: test_graphs/generated/perturbed)')
 
@@ -97,9 +115,13 @@ def main():
         if args.interactive_reduced_ilp:
             algorithms.append(('interactive_reduced_ilp', interactive_reduced_ilp_wrapper))
 
+    attribute_name = "Vertex Clique Cover Number"
+    if args.chromatic_number:
+        attribute_name = "Chromatic Number"
+
     for name, wrapper in algorithms:
-        print(f"\nTesting {name.replace('_', ' ').title()} Algorithm:")
-        results = runner.run_tests(wrapper, "Chromatic Number")
+        print(f"\nTesting {name.replace('_', ' ').title()} Algorithm against {attribute_name}:")
+        results = runner.run_tests(wrapper, attribute_name)
         output_name = f"{Path(args.path).name}_{name}"
         save_summary(results, output_name)
         print(f"Results saved to results/raw/{output_name}.txt")

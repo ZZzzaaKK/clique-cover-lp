@@ -215,3 +215,6 @@ Time taken: 0.0037953853607177734
 Summary:
 Correct: 30/30 (100.0%)
 Average Deviation: 0.00
+
+# Calculated by ILP on complement graph
+Vertex Clique Cover Number: 0

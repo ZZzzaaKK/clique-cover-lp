@@ -98,3 +98,6 @@ Vertex Cover Number: 30
 
 
 
+
+# Calculated by ILP on complement graph
+Vertex Clique Cover Number: 15
