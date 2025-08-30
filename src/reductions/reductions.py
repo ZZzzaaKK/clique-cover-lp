@@ -10,6 +10,14 @@ logger = logging.getLogger(__name__)
 
 
 def apply_isolated_vertex_reduction(G) -> Tuple[nx.Graph, bool, list, int]:
+    """
+    Removes isolated vertices from the graph G.
+    Returns:
+        - Modified graph (in-place)
+        - Boolean indicating if any change occurred
+        - List of removed isolated vertices
+        - Addition to the vertex clique cover count due to this reduction
+    """
     changed = False
     VCC_addition = 0
     removed = []
@@ -55,6 +63,7 @@ def apply_degree_two_folding(G: nx.Graph) -> Tuple[nx.Graph, bool, List[Tuple[st
         - Reduced graph G
         - Boolean flag indicating if any folding happened
         - A list of folds: (v, u, w) tuples to help with solution reconstruction
+        - Addition to the vertex clique cover count due to this reduction
     """
     VCC_addition = 0
     changed = False
@@ -101,6 +110,7 @@ def apply_twin_folding_or_removal(G: nx.Graph) -> Tuple[nx.Graph, bool, List[Tup
         - Modified graph
         - Boolean indicating if any change occurred
         - List of (u, v, w, x, y, new_node/None (in case of removal)) tuples for reconstruction
+        - Addition to the vertex clique cover count due to this reduction
     """
     VCC_addition = 0
     changed = False
@@ -128,7 +138,7 @@ def apply_twin_folding_or_removal(G: nx.Graph) -> Tuple[nx.Graph, bool, List[Tup
         if G.has_edge(w, x) or G.has_edge(w, y) or G.has_edge(x, y):
             nodes_to_remove = {u, v, w, x, y}
             G.remove_nodes_from(nodes_to_remove)
-            folded_twins.append((u, v, w, x, y, None))  # Mark as removed, no folding
+            folded_twins.append((u, v, w, x, y, "removal"))  # Mark as removed, no folding
             VCC_addition = 2
             changed = True
             return G, changed, folded_twins, VCC_addition # Only apply one per call for consistency
@@ -156,7 +166,8 @@ def apply_domination_reduction(G: nx.Graph) -> Tuple[nx.Graph, bool, List[Tuple[
     Returns:
         - Modified graph (in-place)
         - Whether any change occurred
-        - List of (dominated, dominator) pairs removed
+        - List of (dominator, dominated) pairs removed
+        - Addition to the vertex clique cover count due to this reduction
     """
     VCC_addition = 0
     changed = False
@@ -171,7 +182,7 @@ def apply_domination_reduction(G: nx.Graph) -> Tuple[nx.Graph, bool, List[Tuple[
             if Nu_closed.issubset(Nv_closed):
                 # v dominates u, so remove v
                 G.remove_node(v)
-                dominated.append((u, v))  # v dominates u
+                dominated.append((v, u))  # v dominates u
                 changed = True
                 return G, changed, dominated, VCC_addition  # Only one per call for safety
 
@@ -184,7 +195,7 @@ def maximal_independent_set_from_matching(G: nx.Graph) -> set:
 
     I = set(G.nodes()) - matched_nodes
     remaining = deque(G.nodes())
-    seen = set(I)  # schon verarbeitet oder in I
+    seen = set(I)  # nodes already in I or blocked
 
     while remaining:
         v = remaining.popleft()
@@ -194,7 +205,7 @@ def maximal_independent_set_from_matching(G: nx.Graph) -> set:
             I.add(v)
             seen.add(v)
             for nbr in G.neighbors(v):
-                seen.add(nbr)  # Nachbarn blockieren
+                seen.add(nbr)  # block neighbors
     return I
 
 
@@ -206,6 +217,7 @@ def apply_crown_reduction(G: nx.Graph) -> Tuple[nx.Graph, bool, List[Any], int]:
         - Modified graph (in-place)
         - Whether a reduction was applied
         - List of tuples (I, H, M, unmatched_I)
+        - Addition to the vertex clique cover count due to this reduction
     """
     VCC_addition = 0
     changed = False
@@ -224,7 +236,7 @@ def apply_crown_reduction(G: nx.Graph) -> Tuple[nx.Graph, bool, List[Any], int]:
         if not H:
             return G, False, [], VCC_addition
 
-        # Baue bipartiten Graph
+        # build bipartite graph B=(H ∪ I, E')
         B = nx.Graph()
         B.add_nodes_from(H, bipartite=0)
         B.add_nodes_from(I, bipartite=1)
@@ -233,16 +245,16 @@ def apply_crown_reduction(G: nx.Graph) -> Tuple[nx.Graph, bool, List[Any], int]:
                 if G.has_edge(h, i):
                     B.add_edge(h, i)
 
-        # Maximales Matching zwischen H und I
+        # maximum matching in between H and I
         M = nx.bipartite.maximum_matching(B, top_nodes=H)
         matched_pairs = [(u, v) for u, v in M.items() if u in H and v in I]
 
-        # Check Perfektes Matching von H
+        # check if all vertices in H are matched
         if len(matched_pairs) == len(H):
             matched_I = {v for _, v in matched_pairs}
             unmatched_I = I - matched_I
 
-            # Entferne Knoten
+            # Remove H and I from G
             G.remove_nodes_from(H)
             G.remove_nodes_from(I)
 
@@ -257,6 +269,14 @@ def apply_crown_reduction(G: nx.Graph) -> Tuple[nx.Graph, bool, List[Any], int]:
 
 
 def apply_all_reductions(G, verbose: bool = True, timing: bool = True) -> Tuple[nx.Graph, List[Tuple[str, Union[list, str]]], int]:
+    """
+    Applies all reductions iteratively until no further reductions can be applied.
+    Returns:
+        - Reduced graph G
+        - Trace of applied reductions
+        - Total addition to the vertex clique cover count due to reductions
+    """
+
     reductions = [
         apply_isolated_vertex_reduction,
         apply_degree_two_folding,

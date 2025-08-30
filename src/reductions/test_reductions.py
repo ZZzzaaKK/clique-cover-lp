@@ -266,7 +266,7 @@ class TestAllReductions(unittest.TestCase):
         self.G.add_edges_from([(30, 40), (31, 40), (30, 41), (31, 41)])
 
         # Domination: node 50 dominates 51 (superset of neighbors)
-        self.G.add_edges_from([(50, 60), (50, 61), (51, 60)])
+        self.G.add_edges_from([(50, 60), (50, 61), (51, 60), (50, 51)])
 
         # Crown reduction: crown structure with 3 + 3 bipartite graph
         self.G.add_edges_from([
@@ -276,7 +276,8 @@ class TestAllReductions(unittest.TestCase):
 
     def test_all_reductions(self):
         G_reduced, trace, VCC_addition_total = apply_all_reductions(self.G.copy(), verbose=False, timing=False)
-
+        
+        print(f"VCC addition total: {VCC_addition_total}")
         for name, detail in trace:
             print(f"Applied: {name}, Details: {detail}")
 
