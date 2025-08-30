@@ -191,7 +191,6 @@ class WP1cEvaluator:
         result = {'filepath': filepath}
 
         # Load graph and get basic properties
-        # Load graph and get basic properties
         try:
             G = txt_to_networkx(filepath)
             result['n_nodes'] = G.number_of_nodes()
@@ -200,22 +199,13 @@ class WP1cEvaluator:
 
             # Extract perturbation level from filename if available
             stem = Path(filepath).stem
-            # tries: ..._pXYZ..., ..._rXX..., ...perturbationXX...
             m = (re.search(r'[pP](\d{2,3})', stem) or
                  re.search(r'[rR](\d{1,3})', stem) or
                  re.search(r'perturbation(\d{1,3})', stem))
             result['perturbation'] = (int(m.group(1)) / 100) if m else None
-
         except Exception as e:
             print(f"Error loading {filepath}: {e}")
             return None
-
-           # match = re.search(r'r(\d+)', Path(filepath).stem)
-           # if match:
-           #     result['perturbation'] = int(match.group(1)) / 100
-           # else:
-           #     result['perturbation'] = None
-
 
         # Run Chalupa heuristic
         try:
@@ -223,8 +213,13 @@ class WP1cEvaluator:
             chalupa_result = chalupa_wrapper(filepath)
             chalupa_time = time.time() - start
 
-            result['chalupa_theta'] = chalupa_result if chalupa_result is not None else None
-            result['chalupa_time'] = chalupa_time
+            # Handle dict return from chalupa_wrapper
+            if isinstance(chalupa_result, dict):
+                result['chalupa_theta'] = chalupa_result.get('theta')
+                result['chalupa_time'] = chalupa_result.get('time', chalupa_time)
+            else:
+                result['chalupa_theta'] = chalupa_result
+                result['chalupa_time'] = chalupa_time
         except Exception as e:
             print(f"Chalupa failed on {filepath}: {e}")
             result['chalupa_theta'] = None
@@ -234,7 +229,7 @@ class WP1cEvaluator:
         try:
             ilp_res = ilp_wrapper(
                 filepath,
-                use_warmstart=False,  # Fair comparison
+                use_warmstart=False,
                 time_limit=timeout,
                 mip_gap=0.01,
                 verbose=False,
