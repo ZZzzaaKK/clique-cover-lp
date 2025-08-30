@@ -98,12 +98,11 @@ src/
 
 ## Walkthrough (per IDE)
 1. **WP0** – Testgraphen erzeugen (`src/generate_test_graphs.py`, `src/generate_testgraphs_extended.py`)
-2. **WP0** - per ILP Ground Truth berechnen + an die Testgraphen-Dateien anhängen (`src/add_ground_truth.py`)
-3. **WP1** – VCC: Heuristik/ILP (`src/comparison_chalupa_ilp_evaluation_all_wrappers.py --extended`) 
-4. **WP2** – VCC-Reduktionen + Evaluation (`src/reductions/test_reductions.py`, `WP2BC.py`)
-5. **WP3** – CE Experimente (`src/wp3_evaluation.py`) 
-6. **WP4** – Vergleich VCC vs CE (`src/WP4_comparison_VCC_CE.py --verbose`) # unfinished
-7. **WP5** – Rfam Analyse (Baustelle) (`src/WP5_constructionsite.py`) #unfinished
+2. **WP1** – VCC: Heuristik/ILP (`src/comparison_chalupa_ilp_evaluation_all_wrappers.py --extended`) 
+3. **WP2** – VCC-Reduktionen + Evaluation (`src/reductions/test_reductions.py`, `WP2BC.py`)
+4. **WP3** – CE Experimente (`src/wp3_evaluation.py`) 
+5. **WP4** – Vergleich VCC vs CE (`src/WP4_comparison_VCC_CE.py --verbose`) # unfinished
+6. **WP5** – Rfam Analyse (Baustelle) (`src/WP5_constructionsite.py`) #unfinished
 
 **Hinweise**
 - Reproduzierbarkeit: `utils_metrics.set_global_seeds()` 
@@ -111,12 +110,6 @@ src/
 - Pfade: immer aus der Projektwurzel starten
 
 ## Details zu den wichtigsten Skripten
-
-### src/add_ground_truth.py
-- Kurzbeschreibung: Rekursives Annotieren von Graph-Instanzen mit Ground Truth θ(G), exakt berechnet per ILP auf Ḡ (Kaltstart).
-- Integration: Aufruf als Modul: python -m src.add_ground_truth <dir> (Optional: --overwrite via argparse ergänzen.)
-- Schlüsselzeile: Clique Cover Number θ(G): K (Calculated by ILP on complement graph Ḡ). Dies unterscheidet das Sktip von `src/algorithms/add_ground_truth_initial`, wo Ground Truth über G ausgewiesen wird
-- zugehöriges Arbeitspaket: WP1/WP2
 
 ### src/algorithms/chalupa.py
 - Kurzbeschreibung: Implementation of Chalupa's heuristic algorithm for clique coloring.  References: [4] David Chalupa. On the effectiveness of the genetic algorithm for the     clique coloring problem. Communications in Mathematics and Computer     Science 1(1), 2023.  [8] David Chalupa. A genetic algorithm with neighborhood search for the     generalized graph coloring problem. Information Sciences, 602:     91-108, 2022.
