@@ -20,1390 +20,541 @@ Options:
     --verbose            Enable verbose output
     --skip-visualizations   Skip generating plots (faster execution)
 """
+# src/wp4_comparison_csv.py
+"""
+WP4: Comparison of VCC and CE using existing CSV results
+Compares θ(G) from VCC with C(G) from CE without re-running solvers
+"""
 
-import os
-import sys
-import time
-import json
-import argparse
-from pathlib import Path
-from typing import Dict, List, Set, Any, Optional, Tuple, Union
-from dataclasses import dataclass, field
 import pandas as pd
 import numpy as np
-import networkx as nx
 import matplotlib.pyplot as plt
 import seaborn as sns
-from collections import defaultdict
+from pathlib import Path
 from scipy import stats
-from sklearn.metrics import adjusted_rand_score, normalized_mutual_info_score #needs to be updated in uv / requirements
-import warnings
+import argparse
+from typing import Dict, List, Tuple, Optional
+from datetime import datetime
 
-warnings.filterwarnings('ignore')
-
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
-
-# VCC (Clique Cover)
-from src.algorithms.ilp_solver import solve_ilp_clique_cover
-from src.algorithms.chalupa import ChalupaHeuristic
-
-# CE (Cluster Editing)
-from src.algorithms.cluster_editing_solver import ClusterEditingSolver
-from src.algorithms.cluster_editing_kernelization import (
-    ClusterEditingInstance,
-    ClusterEditingKernelization,
-    OptimizedClusterEditingKernelization,
-)
-
-# Utilities & Generators
-from src.utils import txt_to_networkx
-from src.simulator import GraphGenerator, GraphConfig
-
-# central helpers
-from src.utils_metrics import (
-    set_global_seeds, safe_ratio, rel_change,
-    clean_for_plot, nanmean, safe_idxmax,
-    should_kernelize, estimate_loglog_slope
-)
-
-set_global_seeds(33)
-
-# ==================== Data Structures ====================
-
-@dataclass
-class ClusteringResult:
-    """Unified format for both VCC and CE solutions."""
-    graph: nx.Graph
-    clusters: List[Set[int]]  # List of node sets
-    num_clusters: int
-    method: str  # "vcc", "ce", "vcc_heuristic", etc.
-    metadata: Dict = field(default_factory=dict)
-
-    def validate(self) -> bool:
-        """Validate mathematical correctness of the solution."""
-        if self.method in ["vcc", "vcc_heuristic"]:
-            return self._validate_clique_cover()
-        elif self.method in ["ce", "ce_kernelized", "ce_from_vcc", "vcc_from_ce"]:
-            return self._validate_cluster_editing()
-        return False
-
-    def _validate_clique_cover(self) -> bool:
-        """Validate VCC solution: all nodes covered, each cluster is a clique."""
-        # Check coverage
-        covered = set().union(*self.clusters) if self.clusters else set()
-        if covered != set(self.graph.nodes()):
-            print(f"VCC validation failed: not all nodes covered")
-            return False
-
-        # Check that each cluster is a clique
-        for cluster in self.clusters:
-            if not self._is_clique(cluster):
-                print(f"VCC validation failed: cluster {cluster} is not a clique")
-                return False
-        return True
-
-    def _validate_cluster_editing(self) -> bool:
-        """Validate CE solution: disjoint clusters, each is a clique."""
-        # Check disjointness
-        all_nodes = set()
-        for cluster in self.clusters:
-            if all_nodes & cluster:
-                print(f"CE validation failed: clusters not disjoint")
-                return False
-            all_nodes.update(cluster)
-
-        # Check coverage
-        if all_nodes != set(self.graph.nodes()):
-            print(f"CE validation failed: not all nodes covered")
-            return False
-
-        # Check that each cluster is a clique
-        for cluster in self.clusters:
-            if not self._is_clique(cluster):
-                print(f"CE validation failed: cluster {cluster} is not a clique")
-                return False
-        return True
-
-    def _is_clique(self, nodes: Set[int]) -> bool:
-        """Check if a set of nodes forms a clique."""
-        if len(nodes) <= 1:
-            return True
-        subgraph = self.graph.subgraph(nodes)
-        n = len(nodes)
-        return subgraph.number_of_edges() == n * (n - 1) // 2
+plt.style.use('seaborn-v0_8-darkgrid')
+sns.set_palette("husl")
 
 
-@dataclass
-class ComparisonResult:
-    """Result of comparing VCC and CE solutions."""
-    graph_name: str
-    graph_stats: Dict
-    vcc_result: ClusteringResult
-    ce_result: ClusteringResult
-    theta: int  # θ(G)
-    C: int  # C(G)
-    ratio: float  # C/θ
-    overlap_metrics: Dict
-    quality_metrics: Dict
-    heuristic_improvements: Dict = field(default_factory=dict)
-    runtime_comparison: Dict = field(default_factory=dict)
+class WP4CSVComparison:
+    """Compare VCC and CE results from existing CSV files."""
 
+    def __init__(self, output_dir: str = "results/wp4"):
+        self.output_dir = Path(output_dir)
+        self.output_dir.mkdir(parents=True, exist_ok=True)
+        self.timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
-# ==================== Solver Adapters ====================
+    def load_and_match_results(self,
+                               vcc_csv: str = "results/WP1and2/evaluation_results_20250829_153937_VCC.csv",
+                               ce_stats_csv: str = "results/wp3/statistical_improvements_CE.csv",
+                               ce_eff_csv: str = "results/wp3/effectiveness_results_CE.csv") -> pd.DataFrame:
+        """Load CSV files and match graphs between VCC and CE results."""
 
-class SolverAdapter:
-    """Unified adapter for both VCC and CE solvers."""
+        print("Loading CSV files...")
+        vcc_df = pd.read_csv(vcc_csv)
+        ce_stats_df = pd.read_csv(ce_stats_csv) if Path(ce_stats_csv).exists() else None
+        ce_eff_df = pd.read_csv(ce_eff_csv) if Path(ce_eff_csv).exists() else None
 
-    def __init__(self):
-        self.vcc_exact_solver = None
-        self.vcc_heuristic_solver = None
-        self.ce_solver = None
+        # Extract best theta from VCC (prioritize exact methods)
+        vcc_df['best_theta'], vcc_df['vcc_method'] = zip(*vcc_df.apply(self._get_best_theta, axis=1))
+        vcc_df['best_vcc_time'] = vcc_df.apply(self._get_corresponding_time, axis=1)
 
-    def solve_vcc(self, graph: nx.Graph, method: str = 'exact', **kwargs) -> ClusteringResult:
-        """
-        Solve VCC using specified method.
+        # Extract graph identifiers
+        vcc_df['graph_id'] = vcc_df['filepath'].apply(self._extract_graph_id)
 
-        Args:
-            graph: Input graph
-            method: 'exact' for ILP, 'heuristic' for Chalupa
-        """
-        if method == 'exact':
-            return self._solve_vcc_exact(graph, **kwargs)
-        elif method == 'heuristic':
-            return self._solve_vcc_heuristic(graph, **kwargs)
-        else:
-            raise ValueError(f"Unknown VCC method: {method}")
+        # Prepare comparison dataframe
+        comparison_results = []
 
-    def _solve_vcc_exact(self, graph: nx.Graph, time_limit: int = 300) -> ClusteringResult:
-        """Solve VCC exactly using ILP."""
-        start_time = time.time()
+        # Match with CE results
+        if ce_stats_df is not None and 'C_G' in ce_stats_df.columns:
+            # Use statistical results (has C_G)
+            for _, ce_row in ce_stats_df.iterrows():
+                graph_id = ce_row['graph']
+                matching_vcc = vcc_df[vcc_df['graph_id'] == graph_id]
 
-        try:
-            result = solve_ilp_clique_cover(
-                graph,
-                time_limit=time_limit,
-                return_assignment=True
-            )
-            elapsed_time = time.time() - start_time
+                if not matching_vcc.empty:
+                    vcc_row = matching_vcc.iloc[0]
+                    comparison_results.append({
+                        'graph': graph_id,
+                        'n_nodes': ce_row['n_nodes'],
+                        'n_edges': ce_row.get('n_edges', vcc_row['n_edges']),
+                        'density': vcc_row['density'],
+                        'theta': vcc_row['best_theta'],
+                        'C_G': ce_row['C_G'],
+                        'ratio': ce_row['C_G'] / vcc_row['best_theta'] if vcc_row['best_theta'] > 0 else np.inf,
+                        'vcc_method': vcc_row['vcc_method'],
+                        'vcc_time': vcc_row['best_vcc_time'],
+                        'ce_time': ce_row['mean_time_with_kernel'],
+                        'theta_minus_C': vcc_row['best_theta'] - ce_row['C_G']
+                    })
 
-            # Extract clusters from coloring
-            clusters = self._extract_vcc_clusters(result.get('assignment', {}))
+        elif ce_eff_df is not None and 'n_clusters' in ce_eff_df.columns:
+            # Use effectiveness results (has n_clusters)
+            # Group by graph and take best config
+            ce_grouped = ce_eff_df.groupby('graph').agg({
+                'n_nodes': 'first',
+                'n_edges': 'first',
+                'n_clusters': 'min',  # Take minimum C(G)
+                'time_seconds': 'min'
+            }).reset_index()
 
-            return ClusteringResult(
-                graph=graph,
-                clusters=clusters,
-                num_clusters=result.get('theta', len(clusters)),
-                method="vcc",
-                metadata={
-                    'time': elapsed_time,
-                    'algorithm': 'ILP',
-                    'status': result.get('status', 'unknown'),
-                    'gap': result.get('gap', 0.0)
-                }
-            )
-        except Exception as e:
-            print(f"VCC exact solver failed: {e}")
-            # Fallback to heuristic
-            return self._solve_vcc_heuristic(graph)
+            for _, ce_row in ce_grouped.iterrows():
+                graph_id = ce_row['graph']
+                matching_vcc = vcc_df[vcc_df['graph_id'] == graph_id]
 
-    def _solve_vcc_heuristic(self, graph: nx.Graph, iterations: int = 1000) -> ClusteringResult:
-        """Solve VCC using Chalupa heuristic."""
-        start_time = time.time()
+                if not matching_vcc.empty:
+                    vcc_row = matching_vcc.iloc[0]
+                    comparison_results.append({
+                        'graph': graph_id,
+                        'n_nodes': ce_row['n_nodes'],
+                        'n_edges': ce_row['n_edges'],
+                        'density': vcc_row['density'],
+                        'theta': vcc_row['best_theta'],
+                        'C_G': ce_row['n_clusters'],
+                        'ratio': ce_row['n_clusters'] / vcc_row['best_theta'] if vcc_row['best_theta'] > 0 else np.inf,
+                        'vcc_method': vcc_row['vcc_method'],
+                        'vcc_time': vcc_row['best_vcc_time'],
+                        'ce_time': ce_row['time_seconds'],
+                        'theta_minus_C': vcc_row['best_theta'] - ce_row['n_clusters']
+                    })
 
-        try:
-            # Use Chalupa on complement graph
-            complement = nx.complement(graph)
-            heuristic = ChalupaHeuristic(complement)
-            coloring = heuristic.iterated_greedy_clique_covering(iterations=iterations)
+        comparison_df = pd.DataFrame(comparison_results)
 
-            elapsed_time = time.time() - start_time
+        # Filter out invalid entries
+        comparison_df = comparison_df[
+            (comparison_df['theta'] > 0) &
+            (comparison_df['C_G'] > 0) &
+            np.isfinite(comparison_df['ratio'])
+            ]
 
-            # Extract clusters
-            clusters = self._extract_vcc_clusters(coloring)
+        print(f"Matched {len(comparison_df)} graphs between VCC and CE results")
 
-            return ClusteringResult(
-                graph=graph,
-                clusters=clusters,
-                num_clusters=len(clusters),
-                method="vcc_heuristic",
-                metadata={
-                    'time': elapsed_time,
-                    'algorithm': 'Chalupa',
-                    'iterations': iterations
-                }
-            )
-        except Exception as e:
-            print(f"VCC heuristic solver failed: {e}")
-            # Return empty result
-            return ClusteringResult(
-                graph=graph,
-                clusters=[],
-                num_clusters=0,
-                method="vcc_heuristic",
-                metadata={'error': str(e)}
-            )
+        # Save comparison data
+        comparison_df.to_csv(self.output_dir / f"wp4_comparison_{self.timestamp}.csv", index=False)
 
-    def solve_ce(self, graph: nx.Graph,
-                 use_kernelization: bool = True,
-                 kernelization_type: str = 'optimized',
-                 algorithm: str = 'greedy_improved') -> ClusteringResult:
-        """Solve CE with optional kernelization."""
-        start_time = time.time()
+        return comparison_df
 
-        try:
-            solver = ClusterEditingSolver(graph)
-            result = solver.solve(
-                use_kernelization=use_kernelization,
-                kernelization_type=kernelization_type,
-                clustering_algorithm=algorithm
-            )
+    def _get_best_theta(self, row) -> Tuple[int, str]:
+        """Get best theta value from VCC results, prioritizing exact methods."""
+        if pd.notna(row.get('interactive_ilp_theta')):
+            return int(row['interactive_ilp_theta']), 'interactive_ilp'
+        elif pd.notna(row.get('reduced_ilp_theta')):
+            return int(row['reduced_ilp_theta']), 'reduced_ilp'
+        elif pd.notna(row.get('ilp_warmstart_theta')):
+            return int(row['ilp_warmstart_theta']), 'ilp_warmstart'
+        elif pd.notna(row.get('ilp_theta')):
+            return int(row['ilp_theta']), 'ilp'
+        elif pd.notna(row.get('chalupa_theta')):
+            return int(row['chalupa_theta']), 'chalupa'
+        return 0, 'none'
 
-            elapsed_time = time.time() - start_time
+    def _get_corresponding_time(self, row) -> float:
+        """Get runtime corresponding to best theta method."""
+        _, method = self._get_best_theta(row)
+        time_col = f"{method}_time"
+        return row.get(time_col, 0.0) if time_col in row else 0.0
 
-            # Extract clusters
-            clusters = [set(cluster) for cluster in result.get('clusters', [])]
+    def _extract_graph_id(self, filepath: str) -> str:
+        """Extract graph identifier from filepath."""
+        # Extract filename without extension
+        path = Path(filepath)
+        return path.stem
 
-            method = "ce_kernelized" if use_kernelization else "ce"
+    def analyze_results(self, df: pd.DataFrame) -> Dict:
+        """Perform statistical analysis on comparison results."""
 
-            return ClusteringResult(
-                graph=graph,
-                clusters=clusters,
-                num_clusters=len(clusters),
-                method=method,
-                metadata={
-                    'time': elapsed_time,
-                    'algorithm': algorithm,
-                    'kernelization': kernelization_type if use_kernelization else None,
-                    'editing_cost': result.get('cost', 0),
-                    'kernel_size': result.get('kernel_size', graph.number_of_nodes())
-                }
-            )
-        except Exception as e:
-            print(f"CE solver failed: {e}")
-            return ClusteringResult(
-                graph=graph,
-                clusters=[],
-                num_clusters=0,
-                method="ce",
-                metadata={'error': str(e)}
-            )
-
-    def _extract_vcc_clusters(self, coloring: Dict) -> List[Set[int]]:
-        """Convert coloring to list of clusters."""
-        if not coloring:
-            return []
-
-        clusters_dict = defaultdict(set)
-
-        # Handle different coloring formats
-        if isinstance(coloring, dict):
-            first_key = next(iter(coloring.keys())) if coloring else None
-            if first_key and isinstance(coloring[first_key], (list, set)):
-                # Format: {color: [nodes]}
-                for color, nodes in coloring.items():
-                    clusters_dict[color] = set(nodes)
-            else:
-                # Format: {node: color}
-                for node, color in coloring.items():
-                    clusters_dict[color].add(node)
-
-        return list(clusters_dict.values())
-
-
-# ==================== Comparison Framework ====================
-
-class ComparisonFramework:
-    """Main framework for comparing VCC and CE solutions."""
-
-    def __init__(self, adapter: SolverAdapter):
-        self.adapter = adapter
-        self.results = []
-
-    def compare_solutions(self, graph: nx.Graph, graph_name: str = "unnamed") -> ComparisonResult:
-        """
-        Core comparison function: Compare VCC and CE solutions.
-
-        Args:
-            graph: Input graph
-            graph_name: Name for identification
-
-        Returns:
-            ComparisonResult with all metrics
-        """
-        print(f"\nComparing solutions for {graph_name}...")
-
-        # Solve both problems
-        vcc_result = self.adapter.solve_vcc(graph, method='exact')
-        if vcc_result.num_clusters == 0:  # Fallback to heuristic if exact failed
-            vcc_result = self.adapter.solve_vcc(graph, method='heuristic')
-
-        ce_result = self.adapter.solve_ce(graph)
-
-        # Validate solutions
-        if not vcc_result.validate():
-            print(f"Warning: VCC solution invalid for {graph_name}")
-        if not ce_result.validate():
-            print(f"Warning: CE solution invalid for {graph_name}")
-
-        # Compute metrics
-        comparison = ComparisonResult(
-            graph_name=graph_name,
-            graph_stats=self._compute_graph_stats(graph),
-            vcc_result=vcc_result,
-            ce_result=ce_result,
-            theta=vcc_result.num_clusters,
-            C=ce_result.num_clusters,
-            ratio=ce_result.num_clusters / vcc_result.num_clusters if vcc_result.num_clusters > 0 else float('inf'),
-            overlap_metrics=self._analyze_overlaps(vcc_result, ce_result),
-            quality_metrics=self._compute_quality_metrics(graph, vcc_result, ce_result),
-            runtime_comparison={
-                'vcc_time': vcc_result.metadata.get('time', 0),
-                'ce_time': ce_result.metadata.get('time', 0),
-                'speedup': vcc_result.metadata.get('time', 1) / ce_result.metadata.get('time', 1)
+        analysis = {
+            'basic_stats': {
+                'n_graphs': len(df),
+                'mean_theta': df['theta'].mean(),
+                'mean_C_G': df['C_G'].mean(),
+                'mean_ratio': df['ratio'].mean(),
+                'median_ratio': df['ratio'].median(),
+                'std_ratio': df['ratio'].std(),
+                'min_ratio': df['ratio'].min(),
+                'max_ratio': df['ratio'].max()
             }
-        )
-
-        # Check mathematical invariant
-        if comparison.theta > comparison.C:
-            print(f"WARNING: Invariant violated! θ(G)={comparison.theta} > C(G)={comparison.C}")
-
-        self.results.append(comparison)
-        return comparison
-
-    def _compute_graph_stats(self, graph: nx.Graph) -> Dict:
-        """Compute basic graph statistics."""
-        return {
-            'nodes': graph.number_of_nodes(),
-            'edges': graph.number_of_edges(),
-            'density': nx.density(graph),
-            'avg_degree': 2 * graph.number_of_edges() / graph.number_of_nodes() if graph.number_of_nodes() > 0 else 0,
-            'components': nx.number_connected_components(graph),
-            'avg_clustering': nx.average_clustering(graph)
         }
 
-    def _analyze_overlaps(self, vcc: ClusteringResult, ce: ClusteringResult) -> Dict:
-        """Analyze structural differences between solutions."""
-        # VCC cluster overlaps (only for VCC, as CE clusters are disjoint)
-        vcc_overlap_matrix = np.zeros((len(vcc.clusters), len(vcc.clusters)))
-        for i, c1 in enumerate(vcc.clusters):
-            for j, c2 in enumerate(vcc.clusters):
-                if i != j and len(c1) > 0 and len(c2) > 0:
-                    vcc_overlap_matrix[i, j] = len(c1 & c2) / min(len(c1), len(c2))
-
-        # Compute clustering agreement metrics
-        vcc_labels = self._clusters_to_labels(vcc.clusters, vcc.graph.nodes())
-        ce_labels = self._clusters_to_labels(ce.clusters, ce.graph.nodes())
-
-        return {
-            'vcc_avg_overlap': np.mean(vcc_overlap_matrix[vcc_overlap_matrix > 0]) if np.any(
-                vcc_overlap_matrix > 0) else 0,
-            'vcc_max_overlap': np.max(vcc_overlap_matrix),
-            'adjusted_rand_index': adjusted_rand_score(vcc_labels, ce_labels),
-            'nmi_score': normalized_mutual_info_score(vcc_labels, ce_labels),
-            'jaccard_similarity': self._compute_jaccard_similarity(vcc.clusters, ce.clusters)
+        # Check mathematical invariant θ(G) ≤ C(G)
+        violations = df[df['theta'] > df['C_G']]
+        analysis['invariant'] = {
+            'satisfied': len(violations) == 0,
+            'violations': len(violations),
+            'violation_rate': len(violations) / len(df) * 100
         }
 
-    def _compute_quality_metrics(self, graph: nx.Graph,
-                                 vcc: ClusteringResult,
-                                 ce: ClusteringResult) -> Dict:
-        """Compute clustering quality metrics."""
-        metrics = {}
-
-        # Modularity
-        vcc_communities = [list(c) for c in vcc.clusters]
-        ce_communities = [list(c) for c in ce.clusters]
-
-        try:
-            metrics['vcc_modularity'] = nx.algorithms.community.modularity(graph, vcc_communities)
-            metrics['ce_modularity'] = nx.algorithms.community.modularity(graph, ce_communities)
-        except:
-            metrics['vcc_modularity'] = 0
-            metrics['ce_modularity'] = 0
-
-        # Conductance and density for each method
-        metrics['vcc_avg_density'] = self._compute_avg_cluster_density(graph, vcc.clusters)
-        metrics['ce_avg_density'] = self._compute_avg_cluster_density(graph, ce.clusters)
-
-        metrics['vcc_avg_conductance'] = self._compute_avg_conductance(graph, vcc.clusters)
-        metrics['ce_avg_conductance'] = self._compute_avg_conductance(graph, ce.clusters)
-
-        # Silhouette coefficient (if applicable)
-        if graph.number_of_nodes() > 2:
-            metrics['vcc_silhouette'] = self._compute_silhouette(graph, vcc.clusters)
-            metrics['ce_silhouette'] = self._compute_silhouette(graph, ce.clusters)
-
-        return metrics
-
-    def _clusters_to_labels(self, clusters: List[Set[int]], nodes: List) -> np.ndarray:
-        """Convert cluster assignment to label array."""
-        label_dict = {}
-        for i, cluster in enumerate(clusters):
-            for node in cluster:
-                label_dict[node] = i
-
-        return np.array([label_dict.get(node, -1) for node in nodes])
-
-    def _compute_jaccard_similarity(self, clusters1: List[Set], clusters2: List[Set]) -> float:
-        """Compute average Jaccard similarity between best-matching clusters."""
-        if not clusters1 or not clusters2:
-            return 0.0
-
-        similarities = []
-        for c1 in clusters1:
-            best_sim = 0
-            for c2 in clusters2:
-                if len(c1 | c2) > 0:
-                    sim = len(c1 & c2) / len(c1 | c2)
-                    best_sim = max(best_sim, sim)
-            similarities.append(best_sim)
-
-        return np.mean(similarities)
-
-    def _compute_avg_cluster_density(self, graph: nx.Graph, clusters: List[Set]) -> float:
-        """Compute average density of clusters."""
-        densities = []
-        for cluster in clusters:
-            if len(cluster) > 1:
-                subgraph = graph.subgraph(cluster)
-                densities.append(nx.density(subgraph))
-        return np.mean(densities) if densities else 0
-
-    def _compute_avg_conductance(self, graph: nx.Graph, clusters: List[Set]) -> float:
-        """Compute average conductance of clusters."""
-        conductances = []
-        for cluster in clusters:
-            if len(cluster) > 0 and len(cluster) < graph.number_of_nodes():
-                conductance = nx.algorithms.cuts.conductance(graph, cluster)
-                if conductance is not None:
-                    conductances.append(conductance)
-        return np.mean(conductances) if conductances else 0
-
-    def _compute_silhouette(self, graph: nx.Graph, clusters: List[Set]) -> float:
-        """Compute silhouette coefficient based on shortest paths."""
-        # Simplified silhouette using graph distances
-        try:
-            if len(clusters) < 2:
-                return 0
-
-            # Compute distance matrix (using shortest paths)
-            nodes = list(graph.nodes())
-            n = len(nodes)
-            if n > 100:  # Skip for large graphs
-                return 0
-
-            dist_matrix = np.full((n, n), np.inf)
-            for i, u in enumerate(nodes):
-                lengths = nx.single_source_shortest_path_length(graph, u)
-                for j, v in enumerate(nodes):
-                    if v in lengths:
-                        dist_matrix[i][j] = lengths[v]
-
-            # Compute silhouette for each node
-            silhouettes = []
-            node_to_cluster = {}
-            for c_idx, cluster in enumerate(clusters):
-                for node in cluster:
-                    node_to_cluster[node] = c_idx
-
-            for i, node in enumerate(nodes):
-                if node not in node_to_cluster:
-                    continue
-
-                cluster_idx = node_to_cluster[node]
-
-                # Average distance to nodes in same cluster
-                same_cluster = [j for j, n in enumerate(nodes)
-                                if n in clusters[cluster_idx] and j != i]
-                if not same_cluster:
-                    continue
-                a = np.mean([dist_matrix[i][j] for j in same_cluster])
-
-                # Minimum average distance to other clusters
-                b = np.inf
-                for other_idx, other_cluster in enumerate(clusters):
-                    if other_idx != cluster_idx and len(other_cluster) > 0:
-                        other_nodes = [j for j, n in enumerate(nodes) if n in other_cluster]
-                        if other_nodes:
-                            avg_dist = np.mean([dist_matrix[i][j] for j in other_nodes])
-                            b = min(b, avg_dist)
-
-                if b != np.inf:
-                    silhouettes.append((b - a) / max(a, b))
-
-            return np.mean(silhouettes) if silhouettes else 0
-
-        except Exception as e:
-            print(f"Silhouette computation failed: {e}")
-            return 0
-
-
-# ==================== Cross-Optimization Heuristics (Bonus) ====================
-
-class CrossOptimizationHeuristic:
-    """Heuristics to improve one solution using the other."""
-
-    def improve_ce_from_vcc(self, graph: nx.Graph,
-                            vcc_solution: ClusteringResult) -> ClusteringResult:
-        """
-        Use VCC solution to initialize CE.
-
-        Strategy:
-        1. Start with VCC cliques
-        2. Resolve overlaps by assigning nodes to best cluster
-        3. Apply local improvements
-        """
-        print("  Improving CE using VCC solution...")
-
-        # Find overlapping nodes
-        overlapping_nodes = self._find_overlapping_nodes(vcc_solution.clusters)
-
-        # Create initial disjoint clustering
-        disjoint_clusters = []
-        assigned = set()
-
-        # First, keep non-overlapping parts
-        for cluster in vcc_solution.clusters:
-            non_overlapping = cluster - overlapping_nodes
-            if non_overlapping and non_overlapping not in disjoint_clusters:
-                disjoint_clusters.append(non_overlapping)
-                assigned.update(non_overlapping)
-
-        # Assign overlapping nodes to best cluster
-        for node in overlapping_nodes:
-            best_cluster_idx = self._find_best_cluster_assignment(
-                node, disjoint_clusters, graph
-            )
-            if best_cluster_idx >= 0:
-                disjoint_clusters[best_cluster_idx].add(node)
-            else:
-                # Create new singleton cluster
-                disjoint_clusters.append({node})
-
-        # Apply local improvements
-        improved_clusters = self._local_search_improvement(disjoint_clusters, graph)
-
-        return ClusteringResult(
-            graph=graph,
-            clusters=improved_clusters,
-            num_clusters=len(improved_clusters),
-            method="ce_from_vcc",
-            metadata={'source': 'vcc_based_heuristic'}
-        )
-
-    def improve_vcc_from_ce(self, graph: nx.Graph,
-                            ce_solution: ClusteringResult) -> ClusteringResult:
-        """
-        Use CE solution to initialize VCC.
-
-        Strategy:
-        1. Start with CE clusters (already disjoint cliques)
-        2. Try to merge clusters that form cliques
-        3. Allow controlled overlaps for better coverage
-        """
-        print("  Improving VCC using CE solution...")
-
-        # Start with CE clusters
-        vcc_clusters = [set(c) for c in ce_solution.clusters]
-
-        # Try to merge compatible clusters
-        merged = True
-        while merged:
-            merged = False
-            for i in range(len(vcc_clusters)):
-                if i >= len(vcc_clusters):
-                    break
-                for j in range(i + 1, len(vcc_clusters)):
-                    if j >= len(vcc_clusters):
-                        break
-                    # Check if union forms a clique
-                    union = vcc_clusters[i] | vcc_clusters[j]
-                    if self._is_clique(graph, union):
-                        vcc_clusters[i] = union
-                        vcc_clusters.pop(j)
-                        merged = True
-                        break
-
-        # Allow strategic overlaps to reduce cluster count
-        vcc_clusters = self._add_strategic_overlaps(graph, vcc_clusters)
-
-        return ClusteringResult(
-            graph=graph,
-            clusters=vcc_clusters,
-            num_clusters=len(vcc_clusters),
-            method="vcc_from_ce",
-            metadata={'source': 'ce_based_heuristic'}
-        )
-
-    def bidirectional_improvement(self, graph: nx.Graph,
-                                  vcc_solution: ClusteringResult,
-                                  ce_solution: ClusteringResult,
-                                  max_iterations: int = 5) -> Tuple[ClusteringResult, ClusteringResult]:
-        """
-        Iteratively improve both solutions using each other.
-        """
-        print(f"  Bidirectional improvement (max {max_iterations} iterations)...")
-
-        best_vcc = vcc_solution
-        best_ce = ce_solution
-
-        for iteration in range(max_iterations):
-            # Improve CE using VCC
-            new_ce = self.improve_ce_from_vcc(graph, best_vcc)
-            if new_ce.num_clusters < best_ce.num_clusters:
-                best_ce = new_ce
-
-            # Improve VCC using CE
-            new_vcc = self.improve_vcc_from_ce(graph, best_ce)
-            if new_vcc.num_clusters < best_vcc.num_clusters:
-                best_vcc = new_vcc
-
-            # Check convergence
-            if (new_ce.num_clusters == best_ce.num_clusters and
-                    new_vcc.num_clusters == best_vcc.num_clusters):
-                print(f"    Converged after {iteration + 1} iterations")
-                break
-
-        return best_vcc, best_ce
-
-    def _find_overlapping_nodes(self, clusters: List[Set]) -> Set:
-        """Find nodes that appear in multiple clusters."""
-        node_counts = defaultdict(int)
-        for cluster in clusters:
-            for node in cluster:
-                node_counts[node] += 1
-        return {node for node, count in node_counts.items() if count > 1}
-
-    def _find_best_cluster_assignment(self, node: int,
-                                      clusters: List[Set],
-                                      graph: nx.Graph) -> int:
-        """Assign node to cluster with most connections."""
-        best_score = -1
-        best_idx = -1
-
-        for idx, cluster in enumerate(clusters):
-            # Count edges to cluster
-            edges_to_cluster = sum(1 for n in cluster if graph.has_edge(node, n))
-            # Normalize by cluster size
-            score = edges_to_cluster / len(cluster) if len(cluster) > 0 else 0
-
-            if score > best_score:
-                best_score = score
-                best_idx = idx
-
-        return best_idx
-
-    def _local_search_improvement(self, clusters: List[Set], graph: nx.Graph) -> List[Set]:
-        """Apply local search to improve clustering."""
-        improved = True
-        iterations = 0
-        max_iterations = 10
-
-        while improved and iterations < max_iterations:
-            improved = False
-            iterations += 1
-
-            # Try moving each node to a better cluster
-            for i, cluster in enumerate(clusters):
-                for node in list(cluster):
-                    # Calculate current cost
-                    current_cost = self._calculate_node_cost(node, cluster, graph)
-
-                    # Try other clusters
-                    for j, other_cluster in enumerate(clusters):
-                        if i != j:
-                            new_cost = self._calculate_node_cost(node, other_cluster, graph)
-                            if new_cost < current_cost:
-                                cluster.remove(node)
-                                other_cluster.add(node)
-                                improved = True
-                                break
-
-        # Remove empty clusters
-        return [c for c in clusters if len(c) > 0]
-
-    def _calculate_node_cost(self, node: int, cluster: Set, graph: nx.Graph) -> int:
-        """Calculate cost of node in cluster (missing edges)."""
-        missing_edges = 0
-        for other in cluster:
-            if other != node and not graph.has_edge(node, other):
-                missing_edges += 1
-        return missing_edges
-
-    def _is_clique(self, graph: nx.Graph, nodes: Set) -> bool:
-        """Check if nodes form a clique."""
-        for u in nodes:
-            for v in nodes:
-                if u != v and not graph.has_edge(u, v):
-                    return False
-        return True
-
-    def _add_strategic_overlaps(self, graph: nx.Graph, clusters: List[Set]) -> List[Set]:
-        """Add strategic overlaps to reduce total cluster count."""
-        # This is a simplified version - could be made more sophisticated
-        new_clusters = []
-
-        for cluster in clusters:
-            # Check if cluster can be covered by existing new_clusters
-            covered = False
-            for new_cluster in new_clusters:
-                if cluster.issubset(new_cluster):
-                    covered = True
-                    break
-
-            if not covered:
-                # Try to extend with neighboring nodes
-                extended = set(cluster)
-                for node in list(cluster):
-                    for neighbor in graph.neighbors(node):
-                        if neighbor not in extended:
-                            # Check if adding neighbor maintains clique property
-                            forms_clique = all(
-                                graph.has_edge(neighbor, other)
-                                for other in extended
-                            )
-                            if forms_clique:
-                                extended.add(neighbor)
-
-                new_clusters.append(extended)
-
-        return new_clusters
-
-
-# ==================== Statistical Analysis ====================
-
-class StatisticalAnalyzer:
-    """Statistical analysis of comparison results."""
-
-    def __init__(self, results: List[ComparisonResult]):
-        self.results = results
-        self.df = self._results_to_dataframe(results)
-
-    def _results_to_dataframe(self, results: List[ComparisonResult]) -> pd.DataFrame:
-        """Convert results to pandas DataFrame."""
-        data = []
-        for r in results:
-            row = {
-                'graph_name': r.graph_name,
-                'nodes': r.graph_stats['nodes'],
-                'edges': r.graph_stats['edges'],
-                'density': r.graph_stats['density'],
-                'theta': r.theta,
-                'C': r.C,
-                'ratio': r.ratio,
-                'vcc_time': r.runtime_comparison.get('vcc_time', 0),
-                'ce_time': r.runtime_comparison.get('ce_time', 0),
-                'speedup': r.runtime_comparison.get('speedup', 1),
-                'adjusted_rand_index': r.overlap_metrics.get('adjusted_rand_index', 0),
-                'nmi_score': r.overlap_metrics.get('nmi_score', 0),
-                'vcc_modularity': r.quality_metrics.get('vcc_modularity', 0),
-                'ce_modularity': r.quality_metrics.get('ce_modularity', 0),
-                'vcc_avg_density': r.quality_metrics.get('vcc_avg_density', 0),
-                'ce_avg_density': r.quality_metrics.get('ce_avg_density', 0)
-            }
-
-            # Add heuristic improvements if available
-            if r.heuristic_improvements:
-                row.update({
-                    'ce_from_vcc_clusters': r.heuristic_improvements.get('ce_from_vcc', 0),
-                    'vcc_from_ce_clusters': r.heuristic_improvements.get('vcc_from_ce', 0),
-                    'bidirectional_vcc': r.heuristic_improvements.get('bidirectional_vcc', 0),
-                    'bidirectional_ce': r.heuristic_improvements.get('bidirectional_ce', 0)
-                })
-
-            data.append(row)
-
-        return pd.DataFrame(data)
-
-    def analyze_correlations(self) -> Dict:
-        """Analyze correlations between graph properties and θ/C ratio."""
-        correlations = {}
-
-        if not self.df.empty:
-            # Correlation with graph properties
-            for prop in ['nodes', 'edges', 'density']:
-                if prop in self.df.columns:
-                    corr, p_value = stats.pearsonr(self.df[prop], self.df['ratio'])
-                    correlations[f'{prop}_ratio_correlation'] = {
-                        'correlation': corr,
-                        'p_value': p_value,
-                        'significant': p_value < 0.05
-                    }
-
-            # Spearman correlation for non-linear relationships
-            spearman_corr, spearman_p = stats.spearmanr(self.df['density'], self.df['ratio'])
-            correlations['density_ratio_spearman'] = {
-                'correlation': spearman_corr,
-                'p_value': spearman_p
-            }
-
-        return correlations
-
-    def test_significance(self) -> Dict:
-        """Test if θ is significantly smaller than C."""
-        results = {}
-
-        if not self.df.empty and len(self.df) > 1:
+        if len(violations) > 0:
+            print(f"WARNING: Found {len(violations)} violations of θ(G) ≤ C(G)!")
+            print(violations[['graph', 'theta', 'C_G', 'ratio']])
+
+        # Statistical tests
+        if len(df) > 1:
             # Wilcoxon signed-rank test
             try:
-                statistic, p_value = stats.wilcoxon(self.df['theta'], self.df['C'])
-                results['wilcoxon'] = {
-                    'statistic': statistic,
+                stat, p_value = stats.wilcoxon(df['theta'], df['C_G'])
+                analysis['wilcoxon'] = {
+                    'statistic': stat,
                     'p_value': p_value,
-                    'theta_smaller': self.df['theta'].mean() < self.df['C'].mean(),
                     'significant': p_value < 0.05
                 }
             except:
-                results['wilcoxon'] = {'error': 'Not enough data for test'}
+                analysis['wilcoxon'] = {'error': 'Could not perform test'}
 
             # Paired t-test
             try:
-                t_stat, t_p = stats.ttest_rel(self.df['theta'], self.df['C'])
-                results['paired_ttest'] = {
+                t_stat, t_p = stats.ttest_rel(df['theta'], df['C_G'])
+                analysis['ttest'] = {
                     't_statistic': t_stat,
                     'p_value': t_p,
                     'significant': t_p < 0.05
                 }
             except:
-                results['paired_ttest'] = {'error': 'Not enough data for test'}
+                analysis['ttest'] = {'error': 'Could not perform test'}
 
-            # Confidence interval for ratio
-            ratios = self.df['ratio'].values
-            results['ratio_ci'] = {
-                'mean': np.mean(ratios),
-                'std': np.std(ratios),
-                'ci_95': (np.percentile(ratios, 2.5), np.percentile(ratios, 97.5))
+            # Correlation analysis
+            analysis['correlations'] = {
+                'theta_C_pearson': stats.pearsonr(df['theta'], df['C_G'])[0],
+                'density_ratio_pearson': stats.pearsonr(df['density'], df['ratio'])[0] if 'density' in df else None,
+                'size_ratio_pearson': stats.pearsonr(df['n_nodes'], df['ratio'])[0]
             }
 
-        return results
+        # Group analysis
+        if 'density' in df:
+            # By density
+            df['density_cat'] = pd.cut(df['density'], bins=[0, 0.2, 0.4, 0.6, 0.8, 1.0],
+                                       labels=['very_sparse', 'sparse', 'medium', 'dense', 'very_dense'])
+            density_analysis = df.groupby('density_cat').agg({
+                'ratio': ['mean', 'std', 'count'],
+                'theta': 'mean',
+                'C_G': 'mean'
+            })
+            analysis['by_density'] = density_analysis.to_dict()
 
-    def analyze_by_graph_type(self) -> Dict:
-        """Analyze results by graph characteristics."""
-        analysis = {}
-
-        if not self.df.empty:
-            # Categorize by size
-            self.df['size_category'] = pd.cut(
-                self.df['nodes'],
-                bins=[0, 50, 100, 200, float('inf')],
-                labels=['small', 'medium', 'large', 'very_large']
-            )
-
-            # Categorize by density
-            self.df['density_category'] = pd.cut(
-                self.df['density'],
-                bins=[0, 0.1, 0.3, 0.5, 1.0],
-                labels=['sparse', 'medium_sparse', 'medium_dense', 'dense']
-            )
-
-            # Analyze by categories
-            for category in ['size_category', 'density_category']:
-                if category in self.df.columns:
-                    grouped = self.df.groupby(category)
-                    analysis[category] = {
-                        'mean_ratio': grouped['ratio'].mean().to_dict(),
-                        'mean_theta': grouped['theta'].mean().to_dict(),
-                        'mean_C': grouped['C'].mean().to_dict(),
-                        'count': grouped.size().to_dict()
-                    }
+        # By size
+        df['size_cat'] = pd.cut(df['n_nodes'], bins=[0, 20, 50, 100, np.inf],
+                                labels=['tiny', 'small', 'medium', 'large'])
+        size_analysis = df.groupby('size_cat').agg({
+            'ratio': ['mean', 'std', 'count'],
+            'theta': 'mean',
+            'C_G': 'mean'
+        })
+        analysis['by_size'] = size_analysis.to_dict()
 
         return analysis
 
-    def sensitivity_analysis(self) -> pd.DataFrame:
-        """Analyze sensitivity to perturbation (if available in graph names)."""
-        # Extract perturbation level from graph names if possible
-        perturbation_data = []
+    def create_visualizations(self, df: pd.DataFrame, analysis: Dict):
+        """Create comprehensive visualizations."""
 
-        for _, row in self.df.iterrows():
-            if 'perturbation' in row['graph_name'] or '_r' in row['graph_name']:
-                # Try to extract perturbation level
-                import re
-                match = re.search(r'(?:perturbation|_r)(\d+)', row['graph_name'])
-                if match:
-                    pert_level = int(match.group(1)) / 100  # Convert to percentage
-                    perturbation_data.append({
-                        'perturbation': pert_level,
-                        'ratio': row['ratio'],
-                        'theta': row['theta'],
-                        'C': row['C']
-                    })
+        # 1. Main comparison plot
+        fig, axes = plt.subplots(2, 3, figsize=(15, 10))
 
-        return pd.DataFrame(perturbation_data) if perturbation_data else pd.DataFrame()
-
-
-# ==================== Visualization ====================
-
-class Visualizer:
-    """Create visualizations for WP4 results."""
-
-    def __init__(self, output_dir: str = "results/wp4/figures"):
-        self.output_dir = Path(output_dir)
-        self.output_dir.mkdir(parents=True, exist_ok=True)
-        plt.style.use('seaborn-v0_8-darkgrid')
-        sns.set_palette("husl")
-
-    def plot_theta_vs_c_scatter(self, df: pd.DataFrame):
-        """Scatter plot of θ vs C with ideal line."""
-        fig, ax = plt.subplots(figsize=(10, 8))
-
-        # Color by density if available
-        if 'density' in df.columns:
-            scatter = ax.scatter(df['theta'], df['C'],
-                                 c=df['density'],
-                                 cmap='viridis',
-                                 s=100, alpha=0.6)
-            plt.colorbar(scatter, label='Graph Density')
-        else:
-            ax.scatter(df['theta'], df['C'], s=100, alpha=0.6)
-
-        # Add diagonal line (θ = C)
-        max_val = max(df['theta'].max(), df['C'].max())
-        ax.plot([0, max_val], [0, max_val], 'r--', alpha=0.5, label='θ = C')
-
-        # Add trend line
-        z = np.polyfit(df['theta'], df['C'], 1)
-        p = np.poly1d(z)
-        ax.plot(df['theta'], p(df['theta']), 'g-', alpha=0.5,
-                label=f'Trend: C = {z[0]:.2f}θ + {z[1]:.2f}')
-
-        ax.set_xlabel('θ(G) - Vertex Clique Cover Number', fontsize=12)
-        ax.set_ylabel('C(G) - Cluster Editing Number', fontsize=12)
-        ax.set_title('Comparison of VCC and CE Solutions', fontsize=14, fontweight='bold')
-        ax.legend()
-        ax.grid(True, alpha=0.3)
-
-        plt.tight_layout()
-        plt.savefig(self.output_dir / 'theta_vs_c_scatter.png', dpi=300, bbox_inches='tight')
-        plt.close()
-
-    def plot_ratio_distribution(self, df: pd.DataFrame):
-        """Distribution of C/θ ratios."""
-        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6))
-
-        # Histogram
-        ax1.hist(df['ratio'], bins=20, edgecolor='black', alpha=0.7)
-        ax1.axvline(1.0, color='r', linestyle='--', label='Ideal (C/θ = 1)')
-        ax1.axvline(df['ratio'].mean(), color='g', linestyle='-',
-                    label=f'Mean = {df["ratio"].mean():.2f}')
-        ax1.set_xlabel('C/θ Ratio', fontsize=12)
-        ax1.set_ylabel('Frequency', fontsize=12)
-        ax1.set_title('Distribution of C/θ Ratios', fontsize=14)
-        ax1.legend()
-
-        # Box plot by graph size category
-        if 'nodes' in df.columns:
-            df['size_cat'] = pd.cut(df['nodes'], bins=[0, 50, 100, 200, float('inf')],
-                                    labels=['<50', '50-100', '100-200', '>200'])
-            df.boxplot(column='ratio', by='size_cat', ax=ax2)
-            ax2.set_xlabel('Graph Size (nodes)', fontsize=12)
-            ax2.set_ylabel('C/θ Ratio', fontsize=12)
-            ax2.set_title('C/θ Ratio by Graph Size', fontsize=14)
-            plt.sca(ax2)
-            plt.xticks(rotation=0)
-
-        plt.tight_layout()
-        plt.savefig(self.output_dir / 'ratio_distribution.png', dpi=300, bbox_inches='tight')
-        plt.close()
-
-    def plot_runtime_comparison(self, df: pd.DataFrame):
-        """Compare runtimes of VCC and CE."""
-        if 'vcc_time' not in df.columns or 'ce_time' not in df.columns:
-            return
-
-        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6))
-
-        # Scatter plot of runtimes
-        ax1.scatter(df['vcc_time'], df['ce_time'], alpha=0.6, s=50)
+        # θ vs C scatter
+        ax = axes[0, 0]
+        scatter = ax.scatter(df['theta'], df['C_G'],
+                             c=df['density'] if 'density' in df else 'blue',
+                             cmap='viridis', s=50, alpha=0.7)
 
         # Add diagonal line
-        max_time = max(df['vcc_time'].max(), df['ce_time'].max())
-        ax1.plot([0, max_time], [0, max_time], 'r--', alpha=0.5, label='Equal time')
+        max_val = max(df['theta'].max(), df['C_G'].max())
+        ax.plot([0, max_val], [0, max_val], 'r--', alpha=0.5, label='θ = C')
 
-        ax1.set_xlabel('VCC Time (s)', fontsize=12)
-        ax1.set_ylabel('CE Time (s)', fontsize=12)
-        ax1.set_title('Runtime Comparison', fontsize=14)
-        ax1.legend()
-        ax1.set_xscale('log')
-        ax1.set_yscale('log')
+        # Add regression line
+        z = np.polyfit(df['theta'], df['C_G'], 1)
+        p = np.poly1d(z)
+        ax.plot(df['theta'], p(df['theta']), 'g-', alpha=0.5,
+                label=f'Fit: C = {z[0]:.2f}θ + {z[1]:.2f}')
 
-        # Speedup distribution
-        speedups = df['vcc_time'] / df['ce_time'].replace(0, np.nan)
-        ax2.hist(speedups.dropna(), bins=20, edgecolor='black', alpha=0.7)
-        ax2.axvline(1.0, color='r', linestyle='--', label='No speedup')
-        ax2.axvline(speedups.mean(), color='g', linestyle='-',
-                    label=f'Mean = {speedups.mean():.2f}')
-        ax2.set_xlabel('Speedup (VCC time / CE time)', fontsize=12)
-        ax2.set_ylabel('Frequency', fontsize=12)
-        ax2.set_title('Speedup Distribution', fontsize=14)
-        ax2.legend()
-
-        plt.tight_layout()
-        plt.savefig(self.output_dir / 'runtime_comparison.png', dpi=300, bbox_inches='tight')
-        plt.close()
-
-    def plot_quality_metrics(self, df: pd.DataFrame):
-        """Compare quality metrics between VCC and CE."""
-        metrics = ['modularity', 'avg_density']
-        fig, axes = plt.subplots(1, len(metrics), figsize=(14, 6))
-
-        for idx, metric in enumerate(metrics):
-            vcc_col = f'vcc_{metric}'
-            ce_col = f'ce_{metric}'
-
-            if vcc_col in df.columns and ce_col in df.columns:
-                ax = axes[idx] if len(metrics) > 1 else axes
-
-                # Create paired plot
-                x = range(len(df))
-                ax.scatter(x, df[vcc_col], label='VCC', alpha=0.6, s=30)
-                ax.scatter(x, df[ce_col], label='CE', alpha=0.6, s=30)
-
-                # Connect pairs
-                for i in x:
-                    ax.plot([i, i], [df.iloc[i][vcc_col], df.iloc[i][ce_col]],
-                            'k-', alpha=0.2)
-
-                ax.set_xlabel('Graph Instance', fontsize=12)
-                ax.set_ylabel(metric.replace('_', ' ').title(), fontsize=12)
-                ax.set_title(f'{metric.replace("_", " ").title()} Comparison', fontsize=14)
-                ax.legend()
-
-        plt.tight_layout()
-        plt.savefig(self.output_dir / 'quality_metrics.png', dpi=300, bbox_inches='tight')
-        plt.close()
-
-    def plot_heatmap_overlap(self, overlap_matrix: np.ndarray, title: str = "Cluster Overlap"):
-        """Plot heatmap of cluster overlaps."""
-        fig, ax = plt.subplots(figsize=(10, 8))
-
-        sns.heatmap(overlap_matrix, annot=True, fmt='.2f', cmap='YlOrRd',
-                    cbar_kws={'label': 'Overlap Ratio'},
-                    ax=ax)
-
-        ax.set_title(title, fontsize=14, fontweight='bold')
-        ax.set_xlabel('Cluster Index', fontsize=12)
-        ax.set_ylabel('Cluster Index', fontsize=12)
-
-        plt.tight_layout()
-        plt.savefig(self.output_dir / f'{title.lower().replace(" ", "_")}.png',
-                    dpi=300, bbox_inches='tight')
-        plt.close()
-
-    def plot_sensitivity_analysis(self, sensitivity_df: pd.DataFrame):
-        """Plot sensitivity to perturbation strength."""
-        if sensitivity_df.empty:
-            return
-
-        fig, ax = plt.subplots(figsize=(10, 6))
-
-        # Group by perturbation level
-        grouped = sensitivity_df.groupby('perturbation').agg({
-            'ratio': ['mean', 'std'],
-            'theta': 'mean',
-            'C': 'mean'
-        })
-
-        # Plot ratio vs perturbation
-        ax.errorbar(grouped.index, grouped['ratio']['mean'],
-                    yerr=grouped['ratio']['std'],
-                    marker='o', capsize=5, label='C/θ Ratio')
-
-        ax.set_xlabel('Perturbation Strength', fontsize=12)
-        ax.set_ylabel('C/θ Ratio', fontsize=12)
-        ax.set_title('Sensitivity to Perturbation', fontsize=14, fontweight='bold')
-        ax.grid(True, alpha=0.3)
+        ax.set_xlabel('θ(G) - Vertex Clique Cover', fontsize=11)
+        ax.set_ylabel('C(G) - Cluster Editing', fontsize=11)
+        ax.set_title('VCC vs CE Comparison', fontsize=12, fontweight='bold')
         ax.legend()
+        ax.grid(True, alpha=0.3)
+
+        if 'density' in df:
+            plt.colorbar(scatter, ax=ax, label='Density')
+
+        # Ratio distribution
+        ax = axes[0, 1]
+        ax.hist(df['ratio'], bins=20, edgecolor='black', alpha=0.7, color='skyblue')
+        ax.axvline(1.0, color='red', linestyle='--', label='Ideal (C/θ = 1)')
+        ax.axvline(df['ratio'].mean(), color='green', linestyle='-',
+                   label=f'Mean = {df["ratio"].mean():.2f}')
+        ax.set_xlabel('C(G)/θ(G) Ratio', fontsize=11)
+        ax.set_ylabel('Frequency', fontsize=11)
+        ax.set_title('Ratio Distribution', fontsize=12, fontweight='bold')
+        ax.legend()
+        ax.grid(True, alpha=0.3)
+
+        # Difference histogram
+        ax = axes[0, 2]
+        differences = df['C_G'] - df['theta']
+        ax.hist(differences, bins=20, edgecolor='black', alpha=0.7, color='coral')
+        ax.axvline(0, color='red', linestyle='--', label='No difference')
+        ax.axvline(differences.mean(), color='green', linestyle='-',
+                   label=f'Mean = {differences.mean():.1f}')
+        ax.set_xlabel('C(G) - θ(G)', fontsize=11)
+        ax.set_ylabel('Frequency', fontsize=11)
+        ax.set_title('Absolute Difference', fontsize=12, fontweight='bold')
+        ax.legend()
+        ax.grid(True, alpha=0.3)
+
+        # Ratio by size
+        ax = axes[1, 0]
+        df.boxplot(column='ratio', by='size_cat', ax=ax)
+        ax.set_xlabel('Graph Size Category', fontsize=11)
+        ax.set_ylabel('C(G)/θ(G) Ratio', fontsize=11)
+        ax.set_title('Ratio by Graph Size', fontsize=12, fontweight='bold')
+        plt.sca(ax)
+        plt.xticks(rotation=45)
+
+        # Ratio by density
+        ax = axes[1, 1]
+        if 'density_cat' in df:
+            df.boxplot(column='ratio', by='density_cat', ax=ax)
+            ax.set_xlabel('Density Category', fontsize=11)
+            ax.set_ylabel('C(G)/θ(G) Ratio', fontsize=11)
+            ax.set_title('Ratio by Graph Density', fontsize=12, fontweight='bold')
+            plt.sca(ax)
+            plt.xticks(rotation=45)
+
+        # Runtime comparison
+        ax = axes[1, 2]
+        if 'vcc_time' in df and 'ce_time' in df:
+            ax.scatter(df['vcc_time'], df['ce_time'], alpha=0.7, s=30)
+            max_time = max(df['vcc_time'].max(), df['ce_time'].max())
+            ax.plot([0, max_time], [0, max_time], 'r--', alpha=0.5, label='Equal time')
+            ax.set_xlabel('VCC Time (s)', fontsize=11)
+            ax.set_ylabel('CE Time (s)', fontsize=11)
+            ax.set_title('Runtime Comparison', fontsize=12, fontweight='bold')
+            ax.set_xscale('log')
+            ax.set_yscale('log')
+            ax.legend()
+            ax.grid(True, alpha=0.3)
+
+        plt.suptitle('WP4: VCC vs CE Comprehensive Comparison', fontsize=14, fontweight='bold')
+        plt.tight_layout()
+        plt.savefig(self.output_dir / f"wp4_analysis_{self.timestamp}.png", dpi=300, bbox_inches='tight')
+        plt.show()
+
+        # 2. Additional analysis plot
+        fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+
+        # Correlation heatmap
+        ax = axes[0]
+        corr_matrix = df[['theta', 'C_G', 'ratio', 'n_nodes', 'density']].corr() if 'density' in df else \
+            df[['theta', 'C_G', 'ratio', 'n_nodes']].corr()
+        sns.heatmap(corr_matrix, annot=True, fmt='.2f', cmap='coolwarm',
+                    center=0, ax=ax, cbar_kws={'label': 'Correlation'})
+        ax.set_title('Correlation Matrix', fontsize=12, fontweight='bold')
+
+        # Summary statistics
+        ax = axes[1]
+        ax.axis('off')
+
+        # Format p-values correctly
+        wilcoxon_p = 'N/A'
+        if 'wilcoxon' in analysis and 'p_value' in analysis['wilcoxon']:
+            wilcoxon_p = f"{analysis['wilcoxon']['p_value']:.4f}"
+
+        ttest_p = 'N/A'
+        if 'ttest' in analysis and 'p_value' in analysis['ttest']:
+            ttest_p = f"{analysis['ttest']['p_value']:.4f}"
+
+        summary_text = f"""
+    SUMMARY STATISTICS
+    {'=' * 30}
+
+    Graphs analyzed: {analysis['basic_stats']['n_graphs']}
+
+    θ(G) Statistics:
+      Mean: {analysis['basic_stats']['mean_theta']:.2f}
+
+    C(G) Statistics:
+      Mean: {analysis['basic_stats']['mean_C_G']:.2f}
+
+    C/θ Ratio:
+      Mean: {analysis['basic_stats']['mean_ratio']:.3f}
+      Median: {analysis['basic_stats']['median_ratio']:.3f}
+      Std Dev: {analysis['basic_stats']['std_ratio']:.3f}
+      Range: [{analysis['basic_stats']['min_ratio']:.3f}, {analysis['basic_stats']['max_ratio']:.3f}]
+
+    Invariant θ ≤ C:
+      Satisfied: {'✓' if analysis['invariant']['satisfied'] else '✗'}
+      Violations: {analysis['invariant']['violations']}
+
+    Statistical Tests:
+      Wilcoxon p-value: {wilcoxon_p}
+      Paired t-test p: {ttest_p}
+    """
+
+        ax.text(0.1, 0.9, summary_text, transform=ax.transAxes,
+                fontsize=10, fontfamily='monospace', verticalalignment='top')
 
         plt.tight_layout()
-        plt.savefig(self.output_dir / 'sensitivity_analysis.png', dpi=300, bbox_inches='tight')
-        plt.close()
+        plt.savefig(self.output_dir / f"wp4_summary_{self.timestamp}.png", dpi=300, bbox_inches='tight')
+        plt.show()
 
+    def generate_report(self, df: pd.DataFrame, analysis: Dict):
+        """Generate markdown report."""
 
-# ==================== Report Generation ====================
-
-class ReportGenerator:
-    """Generate comprehensive reports for WP4 results."""
-
-    def __init__(self, output_dir: str = "results/wp4"):
-        self.output_dir = Path(output_dir)
-        self.output_dir.mkdir(parents=True, exist_ok=True)
-
-    def generate_markdown_report(self,
-                                 results: List[ComparisonResult],
-                                 stats_results: Dict,
-                                 timestamp: str) -> str:
-        """Generate comprehensive markdown report."""
-        report_path = self.output_dir / f"wp4_report_{timestamp}.md"
+        report_path = self.output_dir / f"wp4_report_{self.timestamp}.md"
 
         with open(report_path, 'w') as f:
-            f.write("# WP4 Analysis Report: VCC vs CE Comparison\n\n")
-            f.write(f"**Generated:** {timestamp}\n\n")
+            f.write("# WP4: VCC vs CE Comparison Report\n\n")
+            f.write(f"Generated: {self.timestamp}\n\n")
 
-            # Executive Summary
             f.write("## Executive Summary\n\n")
+            f.write(f"- **Graphs analyzed**: {analysis['basic_stats']['n_graphs']}\n")
+            f.write(f"- **Mean C/θ ratio**: {analysis['basic_stats']['mean_ratio']:.3f}\n")
+            f.write(
+                f"- **Invariant θ ≤ C satisfied**: {'Yes' if analysis['invariant']['satisfied'] else f'No ({analysis["invariant"]["violations"]} violations)'}\n\n")
 
-            if results:
-                avg_ratio = np.mean([r.ratio for r in results])
-                f.write(f"- **Average C/θ ratio:** {avg_ratio:.3f}\n")
-                f.write(f"- **Total instances analyzed:** {len(results)}\n")
+            f.write("## Key Findings\n\n")
 
-                # Check invariant
-                violations = sum(1 for r in results if r.theta > r.C)
-                if violations > 0:
-                    f.write(f"- ⚠️ **Invariant violations:** {violations} instances where θ > C\n")
+            # Main finding
+            if analysis['basic_stats']['mean_ratio'] > 1:
+                f.write(
+                    f"1. **Cluster Editing requires more clusters**: On average, C(G) = {analysis['basic_stats']['mean_ratio']:.2f} × θ(G)\n")
+            else:
+                f.write(
+                    f"1. **Methods produce similar results**: C(G) ≈ θ(G) with ratio {analysis['basic_stats']['mean_ratio']:.2f}\n")
+
+            # Statistical significance
+            if 'wilcoxon' in analysis:
+                if analysis['wilcoxon'].get('significant'):
+                    f.write("2. **Statistically significant difference**: Wilcoxon test confirms θ < C (p < 0.05)\n")
                 else:
-                    f.write("- ✅ **Invariant satisfied:** θ ≤ C for all instances\n")
-
-            # Statistical Significance
-            f.write("\n## Statistical Analysis\n\n")
-            if 'significance' in stats_results:
-                sig = stats_results['significance']
-                if 'wilcoxon' in sig:
-                    f.write(f"### Wilcoxon Test\n")
-                    f.write(f"- p-value: {sig['wilcoxon'].get('p_value', 'N/A'):.4f}\n")
-                    f.write(f"- Significant: {'Yes' if sig['wilcoxon'].get('significant') else 'No'}\n\n")
+                    f.write("2. **No significant difference**: Statistical tests show θ ≈ C\n")
 
             # Correlations
-            if 'correlations' in stats_results:
-                f.write("### Correlations with Graph Properties\n\n")
-                f.write("| Property | Correlation with C/θ | p-value | Significant |\n")
-                f.write("|----------|---------------------|---------|-------------|\n")
+            if 'correlations' in analysis:
+                corr = analysis['correlations']
+                f.write(
+                    f"3. **Strong correlation**: θ and C are highly correlated (r = {corr['theta_C_pearson']:.3f})\n")
 
-                for key, val in stats_results['correlations'].items():
-                    if isinstance(val, dict) and 'correlation' in val:
-                        f.write(f"| {key.replace('_', ' ')} | {val['correlation']:.3f} | ")
-                        f.write(f"{val.get('p_value', 0):.4f} | ")
-                        f.write(f"{'Yes' if val.get('significant') else 'No'} |\n")
+            f.write("\n## Detailed Statistics\n\n")
 
-            # Instance-specific analysis
-            f.write("\n## Instance-Specific Results\n\n")
-            if results:
-                f.write("| Graph | Nodes | Edges | θ(G) | C(G) | C/θ | VCC Time | CE Time |\n")
-                f.write("|-------|-------|-------|------|------|-----|----------|----------|\n")
+            # Table of results by category
+            f.write("### By Graph Size\n\n")
+            f.write("| Size Category | Mean θ | Mean C | Mean C/θ | Count |\n")
+            f.write("|--------------|--------|--------|----------|-------|\n")
 
-                for r in results[:20]:  # Show first 20
-                    f.write(f"| {r.graph_name[:20]} | {r.graph_stats['nodes']} | ")
-                    f.write(f"{r.graph_stats['edges']} | {r.theta} | {r.C} | ")
-                    f.write(f"{r.ratio:.2f} | {r.runtime_comparison.get('vcc_time', 0):.3f}s | ")
-                    f.write(f"{r.runtime_comparison.get('ce_time', 0):.3f}s |\n")
+            size_groups = df.groupby('size_cat').agg({
+                'theta': 'mean',
+                'C_G': 'mean',
+                'ratio': 'mean',
+                'graph': 'count'
+            })
 
-                if len(results) > 20:
-                    f.write(f"\n*... and {len(results) - 20} more instances*\n")
+            for cat, row in size_groups.iterrows():
+                f.write(f"| {cat} | {row['theta']:.1f} | {row['C_G']:.1f} | {row['ratio']:.3f} | {row['graph']} |\n")
 
-            # Recommendations
+            if 'density_cat' in df:
+                f.write("\n### By Graph Density\n\n")
+                f.write("| Density Category | Mean θ | Mean C | Mean C/θ | Count |\n")
+                f.write("|-----------------|--------|--------|----------|-------|\n")
+
+                density_groups = df.groupby('density_cat').agg({
+                    'theta': 'mean',
+                    'C_G': 'mean',
+                    'ratio': 'mean',
+                    'graph': 'count'
+                })
+
+                for cat, row in density_groups.iterrows():
+                    f.write(
+                        f"| {cat} | {row['theta']:.1f} | {row['C_G']:.1f} | {row['ratio']:.3f} | {row['graph']} |\n")
+
             f.write("\n## Recommendations\n\n")
-            f.write(self._generate_recommendations(results, stats_results))
 
-            f.write("\n---\n")
-            f.write(f"*Report generated by WP4 Comparison Framework*\n")
-
-        print(f"Report saved to {report_path}")
-        return str(report_path)
-
-    def generate_csv_export(self, df: pd.DataFrame, timestamp: str):
-        """Export results to CSV."""
-        csv_path = self.output_dir / f"wp4_results_{timestamp}.csv"
-        df.to_csv(csv_path, index=False)
-        print(f"CSV exported to {csv_path}")
-        return str(csv_path)
-
-    def _generate_recommendations(self, results: List[ComparisonResult], stats: Dict) -> str:
-        """Generate recommendations based on analysis."""
-        recommendations = []
-
-        if results:
-            avg_ratio = np.mean([r.ratio for r in results])
-
-            if avg_ratio < 1.1:
-                recommendations.append(
-                    "- **Strong agreement**: VCC and CE produce very similar results. "
-                    "Consider using CE for guaranteed disjoint clusters."
-                )
-            elif avg_ratio < 1.5:
-                recommendations.append(
-                    "- **Moderate agreement**: CE requires moderately more clusters. "
-                    "Use VCC when overlaps are acceptable for better compression."
-                )
+            if analysis['basic_stats']['mean_ratio'] < 1.1:
+                f.write(
+                    "- **Strong agreement between methods**: Consider using CE when disjoint clusters are required\n")
+            elif analysis['basic_stats']['mean_ratio'] < 1.5:
+                f.write("- **Moderate difference**: VCC provides better compression when overlaps are acceptable\n")
             else:
-                recommendations.append(
-                    "- **Weak agreement**: Significant difference between methods. "
-                    "Graph structure may not be well-suited for disjoint clustering."
-                )
+                f.write("- **Significant difference**: Graph structure may not be suitable for disjoint clustering\n")
 
-            # Runtime recommendations
-            avg_speedup = np.mean([r.runtime_comparison.get('speedup', 1) for r in results])
-            if avg_speedup > 2:
-                recommendations.append(
-                    "- **Performance**: CE is significantly faster than VCC. "
-                    "Prefer CE for large-scale applications."
-                )
-            elif avg_speedup < 0.5:
-                recommendations.append(
-                    "- **Performance**: VCC is faster than CE. "
-                    "Consider VCC heuristics for time-critical applications."
-                )
+            f.write("\n## Files Generated\n\n")
+            f.write(f"- Comparison data: `wp4_comparison_{self.timestamp}.csv`\n")
+            f.write(f"- Analysis plots: `wp4_analysis_{self.timestamp}.png`\n")
+            f.write(f"- Summary plot: `wp4_summary_{self.timestamp}.png`\n")
 
-        return "\n".join(recommendations) if recommendations else "No specific recommendations."
+        print(f"Report saved to: {report_path}")
 
-
-# ==================== Main Execution ====================
 
 def main():
-    """Main execution function for WP4."""
-    parser = argparse.ArgumentParser(description='WP4: Compare VCC and CE solutions')
-    parser.add_argument('--test-dir', type=str, default='test_graphs/generated',
-                        help='Directory containing test graphs')
+    """Main execution function."""
+    parser = argparse.ArgumentParser(description='WP4: Compare VCC and CE from CSV results')
+    parser.add_argument('--vcc-csv', type=str,
+                        default='results/WP1and2/evaluation_results_20250829_153937_VCC.csv',
+                        help='Path to VCC results CSV')
+    parser.add_argument('--ce-stats-csv', type=str,
+                        default='results/wp3/statistical_improvements_CE.csv',
+                        help='Path to CE statistical results CSV')
+    parser.add_argument('--ce-eff-csv', type=str,
+                        default='results/wp3/effectiveness_results_CE.csv',
+                        help='Path to CE effectiveness results CSV')
     parser.add_argument('--output-dir', type=str, default='results/wp4',
                         help='Output directory for results')
-    parser.add_argument('--quick', action='store_true',
-                        help='Run quick test with fewer instances')
-    parser.add_argument('--verbose', action='store_true',
-                        help='Enable verbose output')
-    parser.add_argument('--skip-visualizations', action='store_true',
-                        help='Skip generating visualizations')
 
     args = parser.parse_args()
 
-    # Setup
-    timestamp = pd.Timestamp.now().strftime("%Y%m%d_%H%M%S")
-    print(f"\n{'=' * 80}")
-    print(f"WP4: Comparison of Vertex Clique Cover and Cluster Editing")
-    print(f"{'=' * 80}\n")
+    print("=" * 80)
+    print("WP4: COMPARISON OF VCC AND CE SOLUTIONS")
+    print("=" * 80)
 
-    # Initialize components
-    adapter = SolverAdapter()
-    framework = ComparisonFramework(adapter)
-    heuristic = CrossOptimizationHeuristic()
+    # Initialize comparison framework
+    comparator = WP4CSVComparison(args.output_dir)
 
-    # Load test graphs
-    test_graphs = load_test_graphs(args.test_dir, quick=args.quick)
+    # Load and match results
+    print("\nLoading and matching results from CSV files...")
+    df = comparator.load_and_match_results(
+        vcc_csv=args.vcc_csv,
+        ce_stats_csv=args.ce_stats_csv,
+        ce_eff_csv=args.ce_eff_csv
+    )
 
-    if not test_graphs:
-        print("No test graphs found!")
+    if df.empty:
+        print("ERROR: No matching graphs found between VCC and CE results!")
         return
 
-    print(f"Loaded {len(test_graphs)} test graphs\n")
+    # Analyze results
+    print("\nAnalyzing comparison results...")
+    analysis = comparator.analyze_results(df)
 
-    # Run comparisons
-    all_results = []
-    for graph_name, graph in test_graphs:
-        try:
-            # Basic comparison
-            result = framework.compare_solutions(graph, graph_name)
+    # Print summary
+    print("\n" + "=" * 60)
+    print("SUMMARY")
+    print("=" * 60)
+    print(f"Graphs compared: {len(df)}")
+    print(f"Mean θ(G): {analysis['basic_stats']['mean_theta']:.2f}")
+    print(f"Mean C(G): {analysis['basic_stats']['mean_C_G']:.2f}")
+    print(f"Mean C/θ ratio: {analysis['basic_stats']['mean_ratio']:.3f}")
+    print(
+        f"Invariant θ ≤ C satisfied: {'Yes' if analysis['invariant']['satisfied'] else f'No ({analysis["invariant"]["violations"]} violations)'}")
 
-            # Test heuristic improvements
-            print("  Testing cross-optimization heuristics...")
-            ce_improved = heuristic.improve_ce_from_vcc(graph, result.vcc_result)
-            vcc_improved = heuristic.improve_vcc_from_ce(graph, result.ce_result)
+    # Create visualizations
+    print("\nGenerating visualizations...")
+    comparator.create_visualizations(df, analysis)
 
-            # Bidirectional improvement
-            vcc_best, ce_best = heuristic.bidirectional_improvement(
-                graph, result.vcc_result, result.ce_result
-            )
+    # Generate report
+    print("\nGenerating report...")
+    comparator.generate_report(df, analysis)
 
-            # Store improvement results
-            result.heuristic_improvements = {
-                'ce_from_vcc': ce_improved.num_clusters,
-                'vcc_from_ce': vcc_improved.num_clusters,
-                'bidirectional_vcc': vcc_best.num_clusters,
-                'bidirectional_ce': ce_best.num_clusters
-            }
-
-            all_results.append(result)
-
-            # Progress update
-            print(f"  Completed: θ={result.theta}, C={result.C}, ratio={result.ratio:.3f}")
-            print(f"  Improvements: CE from VCC={ce_improved.num_clusters}, "
-                  f"VCC from CE={vcc_improved.num_clusters}\n")
-
-        except Exception as e:
-            print(f"  Error processing {graph_name}: {e}\n")
-            continue
-
-    # Statistical analysis
-    print("\n" + "=" * 80)
-    print("Statistical Analysis")
-    print("=" * 80 + "\n")
-
-    analyzer = StatisticalAnalyzer(all_results)
-    stats_results = {
-        'correlations': analyzer.analyze_correlations(),
-        'significance': analyzer.test_significance(),
-        'by_graph_type': analyzer.analyze_by_graph_type()
-    }
-
-    # Print summary statistics
-    print(f"Summary Statistics:")
-    print(f"  Average θ: {analyzer.df['theta'].mean():.2f}")
-    print(f"  Average C: {analyzer.df['C'].mean():.2f}")
-    print(f"  Average C/θ ratio: {analyzer.df['ratio'].mean():.3f}")
-    print(f"  Ratio std dev: {analyzer.df['ratio'].std():.3f}")
-
-    # Visualizations
-    if not args.skip_visualizations:
-        print("\nGenerating visualizations...")
-        visualizer = Visualizer(f"{args.output_dir}/figures")
-        visualizer.plot_theta_vs_c_scatter(analyzer.df)
-        visualizer.plot_ratio_distribution(analyzer.df)
-        visualizer.plot_runtime_comparison(analyzer.df)
-        visualizer.plot_quality_metrics(analyzer.df)
-
-        # Sensitivity analysis if applicable
-        sensitivity_df = analyzer.sensitivity_analysis()
-        if not sensitivity_df.empty:
-            visualizer.plot_sensitivity_analysis(sensitivity_df)
-
-    # Generate reports
-    print("\nGenerating reports...")
-    reporter = ReportGenerator(args.output_dir)
-    report_path = reporter.generate_markdown_report(all_results, stats_results, timestamp)
-    csv_path = reporter.generate_csv_export(analyzer.df, timestamp)
-
-    # Final summary
-    print("\n" + "=" * 80)
-    print("WP4 Analysis Complete!")
-    print("=" * 80)
-    print(f"  Total instances analyzed: {len(all_results)}")
-    print(f"  Report saved to: {report_path}")
-    print(f"  CSV data saved to: {csv_path}")
-    if not args.skip_visualizations:
-        print(f"  Visualizations saved to: {args.output_dir}/figures/")
-    print("=" * 80 + "\n")
-
-
-def load_test_graphs(directory: str, quick: bool = False) -> List[Tuple[str, nx.Graph]]:
-    """Load test graphs from directory."""
-    graphs = []
-    dir_path = Path(directory)
-
-    if not dir_path.exists():
-        print(f"Directory {directory} not found!")
-        return graphs
-
-    # Find all .txt files
-    txt_files = list(dir_path.glob("**/*.txt"))
-
-    if quick:
-        # For quick test, use subset
-        txt_files = txt_files[:10]
-
-    for file_path in txt_files:
-        try:
-            graph = txt_to_networkx(str(file_path))
-            graph_name = file_path.stem
-            graphs.append((graph_name, graph))
-        except Exception as e:
-            print(f"Could not load {file_path}: {e}")
-            continue
-
-    return graphs
+    print("\n" + "=" * 60)
+    print("WP4 ANALYSIS COMPLETE")
+    print("=" * 60)
+    print(f"Results saved to: {args.output_dir}")
 
 
 if __name__ == "__main__":
     main()
-
-
 """
 Pre-Thoughts 120825
 Main objective: Compare the solutions from the two conceptually similar problems - Vertex Clique Cover and Cluster Editing.
