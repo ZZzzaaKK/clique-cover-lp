@@ -4,7 +4,7 @@ import sys
 import time
 from pathlib import Path
 from wrappers import chalupa_wrapper, ilp_wrapper, reduced_ilp_wrapper, interactive_reduced_ilp_wrapper
-from src.utils import get_value
+from utils import get_value
 
 class TestRunner:
     def __init__(self, test_data_dir="data"):
@@ -23,7 +23,8 @@ class TestRunner:
                 except ValueError as e:
                     print(f"Error parsing ground truth for {txt_file}: {e}")
             start_time = time.time()
-            predicted = algorithm_func(str(txt_file))
+            predicted = algorithm_func(str(txt_file))[0]
+            is_optimal = algorithm_func(str(txt_file))[1]
             end_time = time.time()
             if predicted is not None:
                 results.append({
@@ -32,7 +33,8 @@ class TestRunner:
                     'actual': ground_truth,
                     'deviation': predicted - ground_truth,
                     'correct': predicted == ground_truth,
-                    'time_taken': end_time - start_time
+                    'time_taken': end_time - start_time,
+                    'is_optimal': is_optimal
                 })
             else:
                 results.append({
@@ -40,7 +42,8 @@ class TestRunner:
                     'predicted': "Calculation timed out",
                     'actual': ground_truth,
                     'correct': False,
-                    'time_taken': end_time - start_time
+                    'time_taken': end_time - start_time,
+                    'is_optimal': False
                 })
 
         return results
@@ -58,6 +61,7 @@ def save_summary(results, name):
         for result in results:
             f.write(f"File: {result['file']}\n")
             f.write(f"Predicted: {result['predicted']}\n")
+            f.write(f"Optimal solution found: {result.get('optimal', False)}\n")
             f.write(f"Actual: {result['actual']}\n")
             f.write(f"Deviation: {result.get('deviation', 'N/A')}\n")
             f.write(f"Correct: {result['correct']}\n")
