@@ -2,8 +2,7 @@ import os
 import re
 import matplotlib.pyplot as plt
 import numpy as np
-from typing import Dict, List, Tuple, Optional
-import seaborn as sns
+from typing import Dict, List
 import sys
 import argparse
 from pathlib import Path
@@ -26,7 +25,7 @@ class GraphAnalyzer:
         for entry in entries:
             if 'File:' in entry and 'Time taken:' in entry:
                 # Extract filename
-                filename_match = re.search(r'File: (graph_\d+\.txt)', entry)
+                filename_match = re.search(r'File: ([^/\n]+\.txt)', entry)
                 if not filename_match:
                     continue
                 filename = filename_match.group(1)
