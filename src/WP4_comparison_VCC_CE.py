@@ -223,29 +223,29 @@ class WP4CSVComparison:
                 'size_ratio_pearson': stats.pearsonr(df['n_nodes'], df['ratio'])[0]
             }
 
-        # Group analysis
-        if 'density' in df:
-            # By density
-            df['density_cat'] = pd.cut(df['density'], bins=[0, 0.2, 0.4, 0.6, 0.8, 1.0],
-                                       labels=['very_sparse', 'sparse', 'medium', 'dense', 'very_dense'])
-            density_analysis = df.groupby('density_cat').agg({
+            # Group analysis
+            if 'density' in df:
+                # By density
+                df['density_cat'] = pd.cut(df['density'], bins=[0, 0.2, 0.4, 0.6, 0.8, 1.0],
+                                           labels=['very_sparse', 'sparse', 'medium', 'dense', 'very_dense'])
+                density_analysis = df.groupby('density_cat', observed=False).agg({
+                    'ratio': ['mean', 'std', 'count'],
+                    'theta': 'mean',
+                    'C_G': 'mean'
+                })
+                analysis['by_density'] = density_analysis.to_dict()
+
+            # By size
+            df['size_cat'] = pd.cut(df['n_nodes'], bins=[0, 20, 50, 100, np.inf],
+                                    labels=['tiny', 'small', 'medium', 'large'])
+            size_analysis = df.groupby('size_cat', observed=False).agg({
                 'ratio': ['mean', 'std', 'count'],
                 'theta': 'mean',
                 'C_G': 'mean'
             })
-            analysis['by_density'] = density_analysis.to_dict()
+            analysis['by_size'] = size_analysis.to_dict()
 
-        # By size
-        df['size_cat'] = pd.cut(df['n_nodes'], bins=[0, 20, 50, 100, np.inf],
-                                labels=['tiny', 'small', 'medium', 'large'])
-        size_analysis = df.groupby('size_cat').agg({
-            'ratio': ['mean', 'std', 'count'],
-            'theta': 'mean',
-            'C_G': 'mean'
-        })
-        analysis['by_size'] = size_analysis.to_dict()
-
-        return analysis
+            return analysis
 
     def create_visualizations(self, df: pd.DataFrame, analysis: Dict):
         """Create comprehensive visualizations."""
@@ -469,16 +469,6 @@ class WP4CSVComparison:
                 for cat, row in density_groups.iterrows():
                     f.write(
                         f"| {cat} | {row['theta']:.1f} | {row['C_G']:.1f} | {row['ratio']:.3f} | {row['graph']} |\n")
-
-            f.write("\n## Recommendations\n\n")
-
-            if analysis['basic_stats']['mean_ratio'] < 1.1:
-                f.write(
-                    "- **Strong agreement between methods**: Consider using CE when disjoint clusters are required\n")
-            elif analysis['basic_stats']['mean_ratio'] < 1.5:
-                f.write("- **Moderate difference**: VCC provides better compression when overlaps are acceptable\n")
-            else:
-                f.write("- **Significant difference**: Graph structure may not be suitable for disjoint clustering\n")
 
             f.write("\n## Files Generated\n\n")
             f.write(f"- Comparison data: `wp4_comparison_{self.timestamp}.csv`\n")
