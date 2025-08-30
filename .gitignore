@@ -16,3 +16,5 @@ test_graphs/generated
 figures/*
 results/*
 !results/public
+
+.idea/
