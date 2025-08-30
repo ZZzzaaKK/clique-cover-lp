@@ -191,77 +191,86 @@ class WP1cEvaluator:
         result = {'filepath': filepath}
 
         # Load graph and get basic properties
-        # Load graph and get basic properties
         try:
             G = txt_to_networkx(filepath)
             result['n_nodes'] = G.number_of_nodes()
             result['n_edges'] = G.number_of_edges()
             result['density'] = nx.density(G)
 
-            # Extract perturbation level from filename if available
             stem = Path(filepath).stem
             # tries: ..._pXYZ..., ..._rXX..., ...perturbationXX...
             m = (re.search(r'[pP](\d{2,3})', stem) or
                  re.search(r'[rR](\d{1,3})', stem) or
                  re.search(r'perturbation(\d{1,3})', stem))
             result['perturbation'] = (int(m.group(1)) / 100) if m else None
-
         except Exception as e:
             print(f"Error loading {filepath}: {e}")
             return None
 
-           # match = re.search(r'r(\d+)', Path(filepath).stem)
-           # if match:
-           #     result['perturbation'] = int(match.group(1)) / 100
-           # else:
-           #     result['perturbation'] = None
-
-
         # Run Chalupa heuristic
         try:
-            start = time.time()
-            chalupa_result = chalupa_wrapper(filepath)
-            chalupa_time = time.time() - start
+            t0 = time.time()
+            ch_res = chalupa_wrapper(filepath)
+            ch_dt = time.time() - t0
 
-            result['chalupa_theta'] = chalupa_result if chalupa_result is not None else None
-            result['chalupa_time'] = chalupa_time
+            ch_meta = _normalize_wrapper_result(ch_res)
+            if ch_meta['time'] is None:
+                ch_meta['time'] = ch_dt
+
+            result['chalupa_theta'] = ch_meta['theta']
+            result['chalupa_time'] = ch_meta['time']
+            result['chalupa_status'] = ch_meta.get('status', None)
+            result['chalupa_gap'] = ch_meta.get('gap', None)
         except Exception as e:
             print(f"Chalupa failed on {filepath}: {e}")
             result['chalupa_theta'] = None
             result['chalupa_time'] = None
+            result['chalupa_status'] = 'failed'
+            result['chalupa_gap'] = None
 
         # Run ILP solver (with timeout)
         try:
+            t0 = time.time()
             ilp_res = ilp_wrapper(
                 filepath,
-                use_warmstart=False,  # Fair comparison
+                use_warmstart=False,
                 time_limit=timeout,
                 mip_gap=0.01,
                 verbose=False,
                 return_assignment=False
             )
+            ilp_dt = time.time() - t0
 
-            if isinstance(ilp_res, dict):
-                result['ilp_theta'] = ilp_res.get('theta')
-                result['ilp_time'] = ilp_res.get('time', None)
-                result['ilp_status'] = ilp_res.get('status', 'unknown')
-                result['ilp_gap'] = ilp_res.get('gap', None)
-            else:
-                result['ilp_theta'] = ilp_res
-                result['ilp_time'] = None
-                result['ilp_status'] = 'solved'
-                result['ilp_gap'] = 0.0
+            ilp_meta = _normalize_wrapper_result(ilp_res)
+            if ilp_meta['time'] is None:
+                ilp_meta['time'] = ilp_dt
 
+            result['ilp_theta'] = ilp_meta['theta']
+            result['ilp_time'] = ilp_meta['time']
+            result['ilp_status'] = ilp_meta['status'] or 'solved'
+            result['ilp_gap'] = ilp_meta['gap']
         except Exception as e:
             print(f"ILP failed on {filepath}: {e}")
             result['ilp_theta'] = None
             result['ilp_time'] = None
             result['ilp_status'] = 'failed'
+            result['ilp_gap'] = None
 
         # Calculate quality metrics
-        if (result.get('chalupa_theta') is not None) and (result.get('ilp_theta') is not None):
-            result['quality_ratio'] = result['chalupa_theta'] / result['ilp_theta']
-            result['absolute_gap'] = result['chalupa_theta'] - result['ilp_theta']
+        ch = result.get('chalupa_theta')
+        ilp = result.get('ilp_theta')
+
+        if (ch is not None) and (ilp is not None):
+            try:
+                if ilp != 0:
+                    result['quality_ratio'] = ch / ilp
+                else:
+                    result['quality_ratio'] = None
+                result['absolute_gap'] = ch - ilp
+            except TypeError:
+                # Falls unerwartet doch kein numerischer Typ
+                result['quality_ratio'] = None
+                result['absolute_gap'] = None
         else:
             result['quality_ratio'] = None
             result['absolute_gap'] = None
