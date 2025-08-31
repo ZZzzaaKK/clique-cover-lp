@@ -163,7 +163,8 @@ class WP3EnhancedEvaluator:
                 solver = ClusterEditingSolver(graph.copy())
                 result = solver.solve(
                     use_kernelization=config['use_kernel'],
-                    kernelization_type='smart' if config.get('smart') else 'basic'
+                    kernelization_type='smart' if config.get('smart') else 'basic',
+                    time_limit=600
                 )
 
                 elapsed = time.time() - start_time
@@ -223,7 +224,7 @@ class WP3EnhancedEvaluator:
                 # Without kernelization
                 solver_nok = ClusterEditingSolver(graph.copy())
                 start = time.time()
-                result_nok = solver_nok.solve(use_kernelization=False)
+                result_nok = solver_nok.solve(use_kernelization=False, time_limit=600)
                 times_no_kernel.append(time.time() - start)
                 costs_no_kernel.append(result_nok['editing_cost'])
                 clusters_no_kernel.append(len(result_nok.get('clusters', [])))
@@ -231,7 +232,7 @@ class WP3EnhancedEvaluator:
                 # With kernelization
                 solver_k = ClusterEditingSolver(graph.copy())
                 start = time.time()
-                result_k = solver_k.solve(use_kernelization=True)
+                result_k = solver_k.solve(use_kernelization=True, time_limit=600)
                 times_with_kernel.append(time.time() - start)
                 costs_with_kernel.append(result_k['editing_cost'])
                 clusters_with_kernel.append(len(result_k.get('clusters', [])))

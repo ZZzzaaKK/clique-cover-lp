@@ -1,4 +1,4 @@
-# src/algorithms/cluster_editing_solver_fixed.py
+# src/algorithms/cluster_editing_solver.py
 import time
 import logging
 from pathlib import Path
@@ -422,7 +422,7 @@ def benchmark_solver(graphs: Dict[str, nx.Graph],
             solution = solver.solve(
                 use_kernelization=config['use_kernelization'],
                 use_2partition=config['use_2partition'],
-                time_limit=300,  # 5 minute limit
+                time_limit=600,
                 track_memory=True
             )
 
