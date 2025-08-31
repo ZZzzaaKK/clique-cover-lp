@@ -38,4 +38,4 @@ fi
 
 # Run tests
 echo "Running tests..."
-python src/test.py --reduced-ilp $test_args "$path_arg"
+python src/test.py --ilp $test_args "$path_arg"

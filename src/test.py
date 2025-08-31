@@ -10,9 +10,10 @@ class TestRunner:
     def __init__(self, test_data_dir="data"):
         self.test_data_dir = Path(test_data_dir)
 
-    def run_tests(self, algorithm_func, attribute_name="Chromatic Number"):
+    def run_tests(self, algorithm_func, attribute_name="Vertex Clique Cover Number"):
         """Run algorithm on all files and compare with ground truth"""
         results = []
+        problem_type = "vertex_clique_cover" if attribute_name == "Vertex Clique Cover Number" else "chromatic_number"
         for txt_file in self.test_data_dir.glob("**/*.txt"):
             ground_truth = get_value(txt_file, attribute_name)
             if ground_truth is None:
@@ -23,8 +24,9 @@ class TestRunner:
                 except ValueError as e:
                     print(f"Error parsing ground truth for {txt_file}: {e}")
             start_time = time.time()
-            predicted = algorithm_func(str(txt_file))[0]
-            is_optimal = algorithm_func(str(txt_file))[1]
+            result = algorithm_func(str(txt_file), problem_type)[0]
+            predicted = result[0] if result else None
+            is_optimal = result[1] if result else False
             end_time = time.time()
             if predicted is not None:
                 results.append({
