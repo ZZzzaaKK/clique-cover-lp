@@ -1,0 +1,25 @@
+0: 2 8
+1:
+2: 0
+3:
+4:
+5:
+6:
+7:
+8: 0
+9:
+
+Connected: No
+Number of Vertices: 10
+Number of Edges: 2
+Average Degree: 0.400
+Density: 0.044
+Number of Components: 8
+Maximum Degree: 2
+Minimum Degree: 0
+
+# Calculated by ILP
+Chromatic Number: 2
+
+# Calculated by ILP
+Vertex Clique Cover Number: 9

@@ -1,0 +1,19 @@
+0: 3
+1: 3
+2:
+3: 0 1
+
+Connected: No
+Number of Vertices: 4
+Number of Edges: 2
+Average Degree: 1.000
+Density: 0.333
+Number of Components: 2
+Maximum Degree: 2
+Minimum Degree: 0
+
+# Calculated by ILP
+Chromatic Number: 2
+
+# Calculated by ILP
+Vertex Clique Cover Number: 3

@@ -76,8 +76,6 @@ def apply_degree_two_folding(G: nx.Graph) -> Tuple[nx.Graph, bool, List[Tuple[st
             u, w = neighbors
             if G.has_edge(u, w):
                 continue  # Folding only applies if u and w are not connected
-            if not neighbourhood_is_crossing_independent(G, v):
-                continue  # Ensure the crossing independent condition
 
             # Get external neighbors of u and w (excluding v)
             u_neighbors = set(G.neighbors(u)) - {v}
@@ -94,11 +92,11 @@ def apply_degree_two_folding(G: nx.Graph) -> Tuple[nx.Graph, bool, List[Tuple[st
             G.remove_nodes_from([v, u, w])
 
             folds.append((v, u, w))
+            VCC_addition = 1
             if G.degree(x) == 0:
                 G.remove_node(x)
                 folds.append(("folded node isolated", x)) # If x is isolated, remove it and note it
                 VCC_addition += 1
-            VCC_addition = 1
             changed = True
             return G, changed, folds, VCC_addition # Only one fold per call for consistency
 
@@ -135,9 +133,6 @@ def apply_twin_folding_or_removal(G: nx.Graph) -> Tuple[nx.Graph, bool, List[Tup
         if v_found is None:
             continue
         v = v_found
-
-        if not neighbourhood_is_crossing_independent(G, u):
-            continue # Ensure the crossing independent condition
 
         if G.has_edge(w, x) or G.has_edge(w, y) or G.has_edge(x, y):
             nodes_to_remove = {u, v, w, x, y}
@@ -184,8 +179,8 @@ def apply_domination_reduction(G: nx.Graph) -> Tuple[nx.Graph, bool, List[Tuple[
         for v in set(G.neighbors(u)):
             Nv_closed = (set(G.neighbors(v)) | {v})
             if Nu_closed.issubset(Nv_closed):
-                # v dominates u, so remove v
-                G.remove_node(v)
+                # v dominates u, so remove u
+                G.remove_node(u)
                 dominated.append((v, u))  # v dominates u
                 changed = True
                 return G, changed, dominated, VCC_addition  # Only one per call for safety
@@ -313,6 +308,7 @@ def apply_all_reductions(G, verbose: bool = True, timing: bool = True) -> Tuple[
             G, did_change, details, VCC_addition = reduction(G)
             end = time.time() if timing else None
             if did_change:
+                logger.info(f"Applied {reduction.__name__} with details: {details}. VCC addition: {VCC_addition}")
                 if verbose:
                     logger.info(f"Applied {reduction.__name__}: {details}")
                     if timing:

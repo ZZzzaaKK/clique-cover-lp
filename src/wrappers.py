@@ -4,7 +4,7 @@ from algorithms.chalupa import ChalupaHeuristic
 from algorithms.ilp_solver import solve_ilp_clique_cover
 from reductions.reductions import apply_all_reductions
 
-def reduced_ilp_wrapper(txt_filepath, problem_type="vertex_clique_cover"):
+def reduced_ilp_wrapper(txt_filepath, problem_type="vertex_clique_cover", time_limit=60):
     """
     Wrapper for reduction followed by ILP
         1. Estimate upper bound k on clique cover number θ(G)
@@ -21,7 +21,7 @@ def reduced_ilp_wrapper(txt_filepath, problem_type="vertex_clique_cover"):
         if problem_type == "chromatic_number":
             # For chromatic number, work with the original graph
             G_reduced, trace, vcc_addition = apply_all_reductions(nx.complement(G))
-            result = solve_ilp_clique_cover(G_reduced)
+            result = solve_ilp_clique_cover(G_reduced, time_limit=time_limit)
             if 'error' in result:
                 print(f"ILP failed on {txt_filepath}: {result['error']}")
                 return None, False
@@ -29,7 +29,7 @@ def reduced_ilp_wrapper(txt_filepath, problem_type="vertex_clique_cover"):
         else:
             # For vertex clique cover, work with the complement
             G_reduced, trace, vcc_addition = apply_all_reductions(G)
-            result = solve_ilp_clique_cover(nx.complement(G_reduced))
+            result = solve_ilp_clique_cover(nx.complement(G_reduced), time_limit=time_limit)
             if 'error' in result:
                 print(f"ILP failed on {txt_filepath}: {result['error']}")
                 return None, False
@@ -38,7 +38,7 @@ def reduced_ilp_wrapper(txt_filepath, problem_type="vertex_clique_cover"):
         print(f"ILP failed on {txt_filepath}: {e}")
         return None, False
 
-def interactive_reduced_ilp_wrapper(txt_filepath, problem_type="vertex_clique_cover"):
+def interactive_reduced_ilp_wrapper(txt_filepath, problem_type="vertex_clique_cover", time_limit=60):
     """
     Wrapper for interactive reduction followed by ILP
         1. Estimate upper bound k on clique cover number θ(G)
@@ -66,10 +66,10 @@ def interactive_reduced_ilp_wrapper(txt_filepath, problem_type="vertex_clique_co
 
         if problem_type == "chromatic_number":
             # For chromatic number, work with the graph directly
-            result = solve_ilp_clique_cover(G)
+            result = solve_ilp_clique_cover(G, time_limit=time_limit)
         else:
             # For vertex clique cover, work with the complement
-            result = solve_ilp_clique_cover(nx.complement(G))
+            result = solve_ilp_clique_cover(nx.complement(G), time_limit=time_limit)
 
         if 'error' in result:
             print(f"ILP failed on {txt_filepath}: {result['error']}")

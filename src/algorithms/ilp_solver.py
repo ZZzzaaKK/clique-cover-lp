@@ -13,7 +13,7 @@ from utils import txt_to_networkx
 # Hauptfunktion: Löse Vertex Clique Coloring mit ILP
 # (Assignment Model gemäß Mutzel, Folie 24)
 # ----------------------------------------------------------
-def solve_ilp_clique_cover(G, time_limit=10, require_optimal=False):
+def solve_ilp_clique_cover(G, time_limit=60, require_optimal=False):
     V = list(G.nodes())           # Liste aller Knoten
     E = list(G.edges())           # Liste aller Kanten
     n = len(V)                    # Anzahl Knoten
@@ -37,11 +37,12 @@ def solve_ilp_clique_cover(G, time_limit=10, require_optimal=False):
     # (2) Benachbarte Knoten dürfen nicht dieselbe Farbe haben
     for (u, v) in E:
         for i in range(H):
-            model.addConstr(x[u, i] + x[v, i] <= w[i])
+            model.addConstr(x[u, i] + x[v, i] <= 1)
 
-    # (3) Farbe i darf nur verwendet werden (w[i] = 1), wenn sie auch zugewiesen wird
-    for i in range(H):
-        model.addConstr(w[i] <= gp.quicksum(x[v, i] for v in V))
+    # (3) Wenn ein Knoten eine Farbe erhält, muss diese Farbe als verwendet markiert werden
+    for v in V:
+        for i in range(H):
+            model.addConstr(x[v, i] <= w[i])
 
     # (4) Symmetriebrechung: wenn Farbe i verwendet wird, muss auch Farbe i-1 verwendet worden sein
     for i in range(1, H):

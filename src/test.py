@@ -10,7 +10,7 @@ class TestRunner:
     def __init__(self, test_data_dir="data"):
         self.test_data_dir = Path(test_data_dir)
 
-    def run_tests(self, algorithm_func, attribute_name="Vertex Clique Cover Number"):
+    def run_tests(self, algorithm_func, attribute_name="Vertex Clique Cover Number", timeout=60):
         """Run algorithm on all files and compare with ground truth"""
         results = []
         problem_type = "vertex_clique_cover" if attribute_name == "Vertex Clique Cover Number" else "chromatic_number"
@@ -24,7 +24,10 @@ class TestRunner:
                 except ValueError as e:
                     print(f"Error parsing ground truth for {txt_file}: {e}")
             start_time = time.time()
-            result = algorithm_func(str(txt_file), problem_type)[0]
+            if algorithm_func in [ilp_wrapper, reduced_ilp_wrapper, interactive_reduced_ilp_wrapper]:
+                result = algorithm_func(str(txt_file), problem_type, time_limit=timeout)
+            else:
+                result = algorithm_func(str(txt_file), problem_type)
             predicted = result[0] if result else None
             is_optimal = result[1] if result else False
             end_time = time.time()
@@ -62,8 +65,8 @@ def save_summary(results, name):
         f.write("=" * 50 + "\n\n")
         for result in results:
             f.write(f"File: {result['file']}\n")
-            f.write(f"Predicted: {result['predicted']}\n")
             f.write(f"Optimal solution found: {result.get('optimal', False)}\n")
+            f.write(f"Predicted: {result['predicted']}\n")
             f.write(f"Actual: {result['actual']}\n")
             f.write(f"Deviation: {result.get('deviation', 'N/A')}\n")
             f.write(f"Correct: {result['correct']}\n")
@@ -88,6 +91,7 @@ def main():
     parser.add_argument('--chalupa', action='store_true', help='Run Chalupa heuristic')
     parser.add_argument('--ilp', action='store_true', help='Run ILP solver')
     parser.add_argument('--reduced-ilp', action='store_true', help='Run reduced ILP solver')
+    parser.add_argument('--timeout', type=int, default=60, help='Timeout for ILP solvers in seconds')
     parser.add_argument('--interactive-reduced-ilp', action='store_true', help='Run interactive reduced ILP solver')
     parser.add_argument('--all', action='store_true', help='Run all algorithms')
     parser.add_argument('--chromatic-number', action='store_true', help='Test against Chromatic Number instead of Vertex Clique Cover Number')
@@ -127,7 +131,7 @@ def main():
 
     for name, wrapper in algorithms:
         print(f"\nTesting {name.replace('_', ' ').title()} Algorithm against {attribute_name}:")
-        results = runner.run_tests(wrapper, attribute_name)
+        results = runner.run_tests(wrapper, attribute_name, timeout=args.timeout)
         output_name = f"{Path(args.path).name}_{name}"
         save_summary(results, output_name)
         print(f"Results saved to results/raw/{output_name}.txt")

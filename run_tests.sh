@@ -3,16 +3,21 @@
 # Find the path argument (which does not start with --)
 path_arg=""
 test_args=""
-for arg in "$@"
-do
-    case "$arg" in
-        --*)
-            test_args="$test_args $arg"
-            ;;
-        *)
-            path_arg=$arg
-            ;;
-    esac
+while (( "$#" )); do
+  case "$1" in
+    --*)
+      test_args="$test_args $1"
+      # is the next argument a value for the current option?
+      if [[ $# -gt 1 ]] && [[ "$2" != --* ]]; then
+        test_args="$test_args $2"
+        shift
+      fi
+      ;;
+    *)
+      path_arg=$1
+      ;;
+  esac
+  shift
 done
 
 # Set path to default if it's empty
@@ -38,4 +43,4 @@ fi
 
 # Run tests
 echo "Running tests..."
-python src/test.py --ilp $test_args "$path_arg"
+python src/test.py --reduced-ilp $test_args "$path_arg"
