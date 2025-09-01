@@ -36,7 +36,7 @@ def neighbourhood_is_crossing_independent(G: nx.Graph, v) -> bool:
     are crossing-independent.
 
     That is, for every pair of neighbors (u, w) of v, and for every
-    a ∈ N(u)\{v}, b ∈ N(w)\{v}, the edge (a, b) must exist.
+    a ∈ N(u)\\{v}, b ∈ N(w)\\{v}, the edge (a, b) must exist.
     """
     neighbors = list(G.neighbors(v))
 
@@ -298,7 +298,8 @@ def apply_all_reductions(G, verbose: bool = True, timing: bool = True) -> Tuple[
 
     reductions = [
         apply_isolated_vertex_reduction,
-        apply_degree_two_folding,
+        # this one does not work correctly yet in some cases
+        # apply_degree_two_folding,
         apply_twin_folding_or_removal,
         apply_domination_reduction,
         apply_crown_reduction
