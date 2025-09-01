@@ -2,10 +2,12 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import re
 import sys
+import seaborn as sns
+import os
 
 def parse_results(filepath):
     results = []
-    algorithm = filepath.split('/')[-1].replace('perturbed_', '').replace('.txt', '')
+    algorithm = os.path.basename(filepath).replace('perturbed_', '').replace('.txt', '')
     with open(filepath, 'r') as f:
         content = f.read()
 
@@ -58,6 +60,32 @@ def extract_params(filename):
         return {'type': 'skewed', 'num_cliques': cliques, 'min_clique_size': min_size, 'max_clique_size': max_size, 'perturbation': p}
     return {}
 
+
+graph_properties_cache = {}
+
+def get_graph_properties(graph_filename):
+    if graph_filename in graph_properties_cache:
+        return graph_properties_cache[graph_filename]
+
+    for root, _, files in os.walk('test_graphs'):
+        if graph_filename in files:
+            filepath = os.path.join(root, graph_filename)
+            with open(filepath, 'r') as f:
+                content = f.read()
+
+            density_match = re.search(r'Density: (\d+\.?\d*)', content)
+            vertices_match = re.search(r'Number of Vertices: (\d+)', content)
+
+            properties = {
+                'density': float(density_match.group(1)) if density_match else None,
+                'vertices': int(vertices_match.group(1)) if vertices_match else None
+            }
+            graph_properties_cache[graph_filename] = properties
+            return properties
+
+    graph_properties_cache[graph_filename] = {'density': None, 'vertices': None}
+    return graph_properties_cache[graph_filename]
+
 def main():
     if len(sys.argv) < 2:
         print("Usage: python src/comparison.py <file1> <file2> ...")
@@ -71,10 +99,13 @@ def main():
     df = pd.DataFrame(all_results)
 
     params_df = df['file'].apply(extract_params).apply(pd.Series)
-    df = pd.concat([df, params_df], axis=1)
+    graph_props_df = df['file'].apply(get_graph_properties).apply(pd.Series)
+    df = pd.concat([df, params_df, graph_props_df], axis=1)
 
-    # Add a problem size column
+    # Add a problem size and cliques column
     df['problem_size'] = df.apply(lambda row: row['n'] if row['type'] == 'uniform' else row['num_cliques'] * row['max_clique_size'], axis=1)
+    df['num_cliques'] = df.apply(lambda row: row['s'] if row['type'] == 'uniform' else row['num_cliques'], axis=1)
+
 
     # Plot 1: Time taken by algorithm
     plt.figure(figsize=(10, 6))
@@ -95,25 +126,68 @@ def main():
 
     # Plot 3: Time vs Problem Size
     plt.figure(figsize=(12, 8))
-    for name, group in df.groupby('algorithm'):
-        plt.scatter(group['problem_size'], group['time'], label=name, alpha=0.6)
+    sns.lineplot(data=df, x='problem_size', y='time', hue='algorithm')
     plt.title('Time Taken vs. Problem Size')
     plt.xlabel('Problem Size (n for uniform, cliques*max_size for skewed)')
     plt.ylabel('Time Taken (s)')
     plt.yscale('log')
-    plt.legend()
     plt.grid(True, which="both", ls="--")
     plt.savefig('results/analyses/time_vs_size.png')
     plt.close()
 
     # Plot 4: Deviation from actual
     plt.figure(figsize=(10, 6))
-    df.boxplot(column='deviation', by='algorithm')
+    sns.boxplot(data=df, x='algorithm', y='deviation')
     plt.title('Deviation from Actual by Algorithm')
-    plt.suptitle('')
     plt.xlabel('Algorithm')
     plt.ylabel('Deviation')
     plt.savefig('results/analyses/deviation_comparison.png')
+    plt.close()
+
+    # Plot 5: Time vs Perturbation
+    plt.figure(figsize=(12, 8))
+    sns.lineplot(data=df[df['type'] == 'skewed'], x='perturbation', y='time', hue='algorithm')
+    plt.title('Time Taken vs. Perturbation (Skewed Graphs)')
+    plt.xlabel('Perturbation')
+    plt.ylabel('Average Time (s)')
+    plt.yscale('log')
+    plt.grid(True, which="both", ls="--")
+    plt.savefig('results/analyses/time_vs_perturbation.png')
+    plt.close()
+
+    # Plot 6: Correctness vs Perturbation
+    plt.figure(figsize=(12, 8))
+    correctness_perturbation = df[df['type'] == 'skewed'].groupby(['algorithm', 'perturbation'])['correct'].mean().reset_index()
+    sns.lineplot(data=correctness_perturbation, x='perturbation', y='correct', hue='algorithm')
+    plt.title('Correctness vs. Perturbation (Skewed Graphs)')
+    plt.xlabel('Perturbation')
+    plt.ylabel('Correctness (%)')
+    plt.grid(True, which="both", ls="--")
+    plt.savefig('results/analyses/correctness_vs_perturbation.png')
+    plt.close()
+
+    # --- Density Plots ---
+
+    # Plot 7: Time vs. Density
+    plt.figure(figsize=(12, 8))
+    sns.lineplot(data=df, x='density', y='time', hue='algorithm')
+    plt.title('Time Taken vs. Graph Density')
+    plt.xlabel('Graph Density')
+    plt.ylabel('Average Time (s)')
+    plt.yscale('log')
+    plt.grid(True, which="both", ls="--")
+    plt.savefig('results/analyses/time_vs_density.png')
+    plt.close()
+
+    # Plot 8: Correctness vs. Density
+    plt.figure(figsize=(12, 8))
+    correctness_density = df.groupby(['algorithm', 'density'])['correct'].mean().reset_index()
+    sns.lineplot(data=correctness_density, x='density', y='correct', hue='algorithm')
+    plt.title('Correctness vs. Graph Density')
+    plt.xlabel('Graph Density')
+    plt.ylabel('Correctness (%)')
+    plt.grid(True, which="both", ls="--")
+    plt.savefig('results/analyses/correctness_vs_density.png')
     plt.close()
 
     print("Plots generated in results/analyses/")

@@ -77,6 +77,9 @@ def apply_degree_two_folding(G: nx.Graph) -> Tuple[nx.Graph, bool, List[Tuple[st
             if G.has_edge(u, w):
                 continue  # Folding only applies if u and w are not connected
 
+            if not neighbourhood_is_crossing_independent(G, v):
+                continue
+
             # Get external neighbors of u and w (excluding v)
             u_neighbors = set(G.neighbors(u)) - {v}
             w_neighbors = set(G.neighbors(w)) - {v}
@@ -298,8 +301,7 @@ def apply_all_reductions(G, verbose: bool = True, timing: bool = True) -> Tuple[
 
     reductions = [
         apply_isolated_vertex_reduction,
-        # this one does not work correctly yet in some cases
-        # apply_degree_two_folding,
+        apply_degree_two_folding,
         apply_twin_folding_or_removal,
         apply_domination_reduction,
         apply_crown_reduction
