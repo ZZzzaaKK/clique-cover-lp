@@ -25,7 +25,7 @@ class WP2bcResultsAnalyzer:
     Analyzes existing evaluation results to answer WP2b and WP2c research questions.
     """
 
-    def __init__(self, results_dir: str = "evaluation_results"):
+    def __init__(self, results_dir: str = "results/WP1and2"):
         self.results_dir = Path(results_dir)
         #self.output_dir = Path("wp2bc_analysis")
         self.output_dir = Path("results/wp2")
@@ -35,7 +35,7 @@ class WP2bcResultsAnalyzer:
 
     def load_latest_results(self) -> pd.DataFrame:
         """Load the most recent evaluation results CSV"""
-        csv_files = list(self.results_dir.glob("evaluation_results_*_VCC.csv"))
+        csv_files = list(self.results_dir.glob("evaluation_results_VCC.csv"))
         if not csv_files:
             raise FileNotFoundError(f"No evaluation results found in {self.results_dir} go get them whereelse")
 

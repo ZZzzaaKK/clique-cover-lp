@@ -1,4 +1,4 @@
-# src/algorithms/cluster_editing_kernelization.py
+# src/algorithms/cluster_editing_kernelization_fixed.py
 import logging
 import time
 import hashlib

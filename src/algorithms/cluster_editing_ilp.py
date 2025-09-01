@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 def solve_cluster_editing_ilp(
         graph: nx.Graph,
         weights: Dict[Tuple[int, int], float],
-        time_limit: Optional[float] = 600,
+        time_limit: Optional[float] = 300,
         mip_gap: Optional[float] = None,
         threads: Optional[int] = None,
         gurobi_params: Optional[Dict[str, Any]] = None,
