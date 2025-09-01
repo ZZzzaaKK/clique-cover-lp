@@ -71,8 +71,5 @@ Twin-Free: Yes
 Vertex Connectivity: 1
 Vertex Cover Number: 10
 
-
-
-
 # Calculated by ILP on complement graph
 Vertex Clique Cover Number: 10

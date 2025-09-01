@@ -60,8 +60,5 @@ Twin-Free: No
 Vertex Connectivity: 3
 Vertex Cover Number: 3
 
-
-
-
 # Calculated by ILP on complement graph
 Vertex Clique Cover Number: 6

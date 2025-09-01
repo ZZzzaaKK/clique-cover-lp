@@ -3,6 +3,8 @@ Generate and save test cases for clique covering experiments.
 """
 
 import os
+import argparse
+import ast
 import matplotlib.pyplot as plt
 import numpy as np
 import networkx as nx
@@ -139,38 +141,46 @@ def save_test_case_as_txt(G_original, G_perturbed, communities, stats_original, 
 
     print(f"Saved {case_name} as txt files to {output_dir}")
 
-def generate_test_suite():
+def generate_test_suite(
+    sizes=[2, 6, 12],
+    num_cliques_uniform=[3, 5],
+    removal_prob_uniform=[0.3],
+    min_sizes=[1, 5, 8],
+    max_sizes=[5, 11, 20],
+    num_cliques_skewed=[2, 3, 5],
+    perturbations=[0.1, 0.3, 0.8]
+):
     """Generate a comprehensive test suite with different parameters."""
     # Generate uniform distribution examples
-    for size in [2, 6, 12]:
-        for num_cliques in [3, 5]:
-            removal_prob = 0.3
-            config = GraphConfig(
-                num_cliques=num_cliques,
-                distribution_type="uniform",
-                uniform_size=size,
-                edge_removal_prob=removal_prob,
-                edge_addition_prob=removal_prob/4
-            )
+    for size in sizes:
+        for num_cliques in num_cliques_uniform:
+            for removal_prob in removal_prob_uniform:
+                config = GraphConfig(
+                    num_cliques=num_cliques,
+                    distribution_type="uniform",
+                    uniform_size=size,
+                    edge_removal_prob=removal_prob,
+                    edge_addition_prob=removal_prob/4
+                )
 
-            result = GraphGenerator.generate_test_case(config)
-            G_original, G_perturbed, communities, stats_original, stats_perturbed = result
+                result = GraphGenerator.generate_test_case(config)
+                G_original, G_perturbed, communities, stats_original, stats_perturbed = result
 
-            case_name = f"uniform_n{num_cliques}_s{size}_r{int(removal_prob*100)}"
+                case_name = f"uniform_n{num_cliques}_s{size}_r{int(removal_prob*100)}"
 
-            # Save as txt files instead of pickle
-            save_test_case_as_txt(G_original, G_perturbed, communities, stats_original, stats_perturbed, case_name)
+                # Save as txt files instead of pickle
+                save_test_case_as_txt(G_original, G_perturbed, communities, stats_original, stats_perturbed, case_name)
 
-            # Visualize the first few examples
-            if size <= 10 and num_cliques <= 5:
-                visualize_graph(G_original, communities, "original", case_name)
-                visualize_graph(G_perturbed, communities, "perturbed", case_name)
+                # Visualize the first few examples
+                if size <= 10 and num_cliques <= 5:
+                    visualize_graph(G_original, communities, "original", case_name)
+                    visualize_graph(G_perturbed, communities, "perturbed", case_name)
 
     # Generate skewed distribution examples
-    for min_size in [1, 5, 8]:
-        for max_size in [5, 11, 20]:
-            for num_cliques in [2, 3, 5]:
-                for perturbation_strength in [0.1, 0.3, 0.8]:
+    for min_size in min_sizes:
+        for max_size in max_sizes:
+            for num_cliques in num_cliques_skewed:
+                for perturbation_strength in perturbations:
                     config = GraphConfig(
                         num_cliques=num_cliques,
                         distribution_type="skewed",
@@ -191,4 +201,52 @@ def generate_test_suite():
                     visualize_graph(G_perturbed, communities, "perturbed", case_name)
 
 if __name__ == "__main__":
-    generate_test_suite()
+    parser = argparse.ArgumentParser(description="Generate test graphs for clique covering experiments.")
+
+    def parse_list(s):
+        """Helper to parse string representations of lists"""
+        try:
+            return ast.literal_eval(s)
+        except (ValueError, SyntaxError):
+            # Fallback for comma-separated values without brackets
+            if isinstance(s, str) and ',' in s:
+                try:
+                    # Attempt to convert to a list of floats or ints
+                    items = [float(item.strip()) for item in s.split(',')]
+                    # If all items are integers, convert them to int
+                    if all(item.is_integer() for item in items):
+                        return [int(item) for item in items]
+                    return items
+                except ValueError:
+                    pass  # Stick with original error
+            raise argparse.ArgumentTypeError(f"Invalid list format: {s}")
+
+    # Uniform distribution parameters
+    parser.add_argument('--sizes', type=parse_list, default=[2, 6, 12],
+                        help='List of sizes for uniform distribution. E.g., --sizes="[2,6,12]" or --sizes="2,6,12"')
+    parser.add_argument('--num-cliques-uniform', type=parse_list, default=[3, 5],
+                        help='List of clique counts for uniform distribution. E.g., --num-cliques-uniform="[3,5]"')
+    parser.add_argument('--removal-prob-uniform', type=parse_list, default=[0.3],
+                        help='List of removal probabilities for uniform distribution. E.g., --removal-prob-uniform="[0.3,0.5]"')
+
+    # Skewed distribution parameters
+    parser.add_argument('--min-sizes', type=parse_list, default=[1, 5, 8],
+                        help='List of min sizes for skewed distribution. E.g., --min-sizes="[1,5,8]"')
+    parser.add_argument('--max-sizes', type=parse_list, default=[5, 11, 20],
+                        help='List of max sizes for skewed distribution. E.g., --max-sizes="[5,11,20]"')
+    parser.add_argument('--num-cliques-skewed', type=parse_list, default=[2, 3, 5],
+                        help='List of clique counts for skewed distribution. E.g., --num-cliques-skewed="[2,3,5]"')
+    parser.add_argument('--perturbations', type=parse_list, default=[0.1, 0.3, 0.8],
+                        help='List of perturbation strengths for skewed distribution. E.g., --perturbations="[0.1,0.3,0.8]"')
+
+    args = parser.parse_args()
+
+    generate_test_suite(
+        sizes=args.sizes,
+        num_cliques_uniform=args.num_cliques_uniform,
+        removal_prob_uniform=args.removal_prob_uniform,
+        min_sizes=args.min_sizes,
+        max_sizes=args.max_sizes,
+        num_cliques_skewed=args.num_cliques_skewed,
+        perturbations=args.perturbations
+    )

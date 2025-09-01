@@ -134,6 +134,9 @@ def apply_twin_folding_or_removal(G: nx.Graph) -> Tuple[nx.Graph, bool, List[Tup
             continue
         v = v_found
 
+        if not neighbourhood_is_crossing_independent(G, u):
+            continue # Ensure the crossing independent condition
+
         if G.has_edge(w, x) or G.has_edge(w, y) or G.has_edge(x, y):
             nodes_to_remove = {u, v, w, x, y}
             G.remove_nodes_from(nodes_to_remove)
@@ -150,7 +153,7 @@ def apply_twin_folding_or_removal(G: nx.Graph) -> Tuple[nx.Graph, bool, List[Tup
         nodes_to_remove = {u, v, w, x, y}
         G.remove_nodes_from(nodes_to_remove)
         folded_twins.append((u, v, w, x, y, new_node))
-        VCC_addition = 2
+        VCC_addition = 3
         changed = True
         return G, changed, folded_twins, VCC_addition  # Only apply one per call for consistency
 
@@ -175,12 +178,16 @@ def apply_domination_reduction(G: nx.Graph) -> Tuple[nx.Graph, bool, List[Tuple[
 
     for i in range(len(nodes)):
         u = nodes[i]
+        if u not in G:
+            continue
         Nu_closed = (set(G.neighbors(u)) | {u})
-        for v in set(G.neighbors(u)):
+        for v in list(G.neighbors(u)):
+            if v not in G:
+                continue
             Nv_closed = (set(G.neighbors(v)) | {v})
             if Nu_closed.issubset(Nv_closed):
-                # v dominates u, so remove u
-                G.remove_node(u)
+                # v dominates u, so remove v (the dominator)
+                G.remove_node(v)
                 dominated.append((v, u))  # v dominates u
                 changed = True
                 return G, changed, dominated, VCC_addition  # Only one per call for safety
@@ -299,22 +306,27 @@ def apply_all_reductions(G, verbose: bool = True, timing: bool = True) -> Tuple[
     trace = []
     VCC_total_addition = 0
     round_number = 1
-    for reduction in reductions:
-        did_change = True
-        while did_change:
-            if verbose:
-                logger.info(f"\n--- Reduction Round {round_number} ({reduction.__name__}) ---")
-            start = time.time() if timing else None
-            G, did_change, details, VCC_addition = reduction(G)
-            end = time.time() if timing else None
-            if did_change:
-                logger.info(f"Applied {reduction.__name__} with details: {details}. VCC addition: {VCC_addition}")
+
+    outer_did_change = True
+    while outer_did_change:
+        outer_did_change = False
+        for reduction in reductions:
+            inner_did_change = True
+            while inner_did_change:
                 if verbose:
-                    logger.info(f"Applied {reduction.__name__}: {details}")
-                    if timing:
-                        if start is not None and end is not None:
-                            logger.info(f"Time: {end - start:.4f}s")
-                trace.append((reduction.__name__, details))
-                VCC_total_addition += VCC_addition
-                round_number += 1
+                    logger.info(f"\n--- Reduction Round {round_number} ({reduction.__name__}) ---")
+                start = time.time() if timing else None
+                G, inner_did_change, details, VCC_addition = reduction(G)
+                end = time.time() if timing else None
+                if inner_did_change:
+                    outer_did_change = True
+                    logger.info(f"Applied {reduction.__name__} with details: {details}. VCC addition: {VCC_addition}")
+                    if verbose:
+                        logger.info(f"Applied {reduction.__name__}: {details}")
+                        if timing:
+                            if start is not None and end is not None:
+                                logger.info(f"Time: {end - start:.4f}s")
+                    trace.append((reduction.__name__, details))
+                    VCC_total_addition += VCC_addition
+                    round_number += 1
     return G, trace, VCC_total_addition
