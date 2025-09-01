@@ -1,7 +1,7 @@
 """
 comparison_chalupa_ilp_evaluation_all_wrappers.py
 WP1.c Evaluation ++WP2: Comprehensive comparison of all solver variants
-Extends the original comparison to include reduced and interactive reduced ILP methods
+Extends the OG comparison to include reduced and interactive reduced ILP methods
 """
 
 import re
@@ -191,6 +191,7 @@ class WP1cEvaluator:
         result = {'filepath': filepath}
 
         # Load graph and get basic properties
+        # Load graph and get basic properties
         try:
             G = txt_to_networkx(filepath)
             result['n_nodes'] = G.number_of_nodes()
@@ -199,13 +200,22 @@ class WP1cEvaluator:
 
             # Extract perturbation level from filename if available
             stem = Path(filepath).stem
+            # tries: ..._pXYZ..., ..._rXX..., ...perturbationXX...
             m = (re.search(r'[pP](\d{2,3})', stem) or
                  re.search(r'[rR](\d{1,3})', stem) or
                  re.search(r'perturbation(\d{1,3})', stem))
             result['perturbation'] = (int(m.group(1)) / 100) if m else None
+
         except Exception as e:
             print(f"Error loading {filepath}: {e}")
             return None
+
+           # match = re.search(r'r(\d+)', Path(filepath).stem)
+           # if match:
+           #     result['perturbation'] = int(match.group(1)) / 100
+           # else:
+           #     result['perturbation'] = None
+
 
         # Run Chalupa heuristic
         try:
@@ -213,13 +223,8 @@ class WP1cEvaluator:
             chalupa_result = chalupa_wrapper(filepath)
             chalupa_time = time.time() - start
 
-            # Handle dict return from chalupa_wrapper
-            if isinstance(chalupa_result, dict):
-                result['chalupa_theta'] = chalupa_result.get('theta')
-                result['chalupa_time'] = chalupa_result.get('time', chalupa_time)
-            else:
-                result['chalupa_theta'] = chalupa_result
-                result['chalupa_time'] = chalupa_time
+            result['chalupa_theta'] = chalupa_result if chalupa_result is not None else None
+            result['chalupa_time'] = chalupa_time
         except Exception as e:
             print(f"Chalupa failed on {filepath}: {e}")
             result['chalupa_theta'] = None
@@ -229,7 +234,7 @@ class WP1cEvaluator:
         try:
             ilp_res = ilp_wrapper(
                 filepath,
-                use_warmstart=False,
+                use_warmstart=False,  # Fair comparison
                 time_limit=timeout,
                 mip_gap=0.01,
                 verbose=False,
@@ -665,7 +670,7 @@ class WP1cEvaluator:
 
         # Save as CSV
         if hasattr(self, 'df') and not self.df.empty:
-            csv_path = self.output_dir / f"evaluation_results_{self.timestamp}.csv"
+            csv_path = self.output_dir / f"evaluation_results_{self.timestamp}VCC.csv"
             self.df.to_csv(csv_path, index=False)
             print(f"Saved CSV to {csv_path}")
 
@@ -776,7 +781,7 @@ class WP1cEvaluator:
 class ExtendedWP1cEvaluator(WP1cEvaluator):
     """Extended evaluation class for WP1.c comparisons with all solver variants"""
 
-    def __init__(self, output_dir: str = "evaluation_results", **kwargs):
+    def __init__(self, output_dir: str = "results/WP1and2", **kwargs):
         super().__init__(output_dir=output_dir, **kwargs)
 
     def evaluate_single_instance(self, filepath: str, timeout: int = 300) -> Dict:
@@ -1494,7 +1499,7 @@ class ExtendedWP1cEvaluator(WP1cEvaluator):
             df_stats["timeout_count_overall"] = timeout_count
             df_stats["timeout_rate_overall"] = timeout_rate
 
-        out_csv = self.output_dir / f"runtime_comparison_stats_{self.timestamp}.csv"
+        out_csv = self.output_dir / f"runtime_comparison_stats_{self.timestamp}_VCC.csv"
         df_stats.to_csv(out_csv, index=False)
         print(f"Saved runtime statistics to {out_csv}")
 

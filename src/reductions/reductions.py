@@ -94,6 +94,10 @@ def apply_degree_two_folding(G: nx.Graph) -> Tuple[nx.Graph, bool, List[Tuple[st
             G.remove_nodes_from([v, u, w])
 
             folds.append((v, u, w))
+            if G.degree(x) == 0:
+                G.remove_node(x)
+                folds.append(("folded node isolated", x)) # If x is isolated, remove it and note it
+                VCC_addition += 1
             VCC_addition = 1
             changed = True
             return G, changed, folds, VCC_addition # Only one fold per call for consistency
@@ -225,13 +229,26 @@ def apply_crown_reduction(G: nx.Graph) -> Tuple[nx.Graph, bool, List[Any], int]:
 
     try:
         I = maximal_independent_set_from_matching(G)
+        I = {v for v in I if G.degree(v) > 0}  # exclude isolated vertices
         if not I:
             return G, False, [], VCC_addition
 
+        # iteratively prune I to keep only vertices with neighbors in H
+        prev_I = None
+        while prev_I != I:
+            prev_I = set(I)
+            H = set()
+            for v in I:
+                H.update(G.neighbors(v))
+            H -= I
+            I = {v for v in I if any(nbr in H for nbr in G.neighbors(v))}
+
         H = set()
-        for n in I:
-            H.update(G.neighbors(n))
-        H -= I  # to be on the save side
+        for v in I:
+            H.update(G.neighbors(v))
+        H -= I
+        if not H:
+            return G, False, [], VCC_addition
 
         if not H:
             return G, False, [], VCC_addition
@@ -258,8 +275,8 @@ def apply_crown_reduction(G: nx.Graph) -> Tuple[nx.Graph, bool, List[Any], int]:
             G.remove_nodes_from(H)
             G.remove_nodes_from(I)
 
-            crown_sets.append((list(I), list(H), matched_pairs, list(unmatched_I)))
-            VCC_addition += len(I)
+            crown_sets.append((list(I), list(H), matched_pairs, list(I - matched_I)))
+            VCC_addition += len(I)  # add full I to clique cover number
             changed = True
 
     except Exception as e:
