@@ -90,11 +90,11 @@ def chalupa_wrapper(txt_filepath, problem_type="vertex_clique_cover"):
         G = txt_to_networkx(txt_filepath)
 
         if problem_type == "chromatic_number":
-            # For chromatic number, run Chalupa on the original graph
-            chalupa = ChalupaHeuristic(G)
-        else:
             # For vertex clique cover, run Chalupa on the complement
             chalupa = ChalupaHeuristic(nx.complement(G))
+        else:
+            # For chromatic number, run Chalupa on the original graph
+            chalupa = ChalupaHeuristic(G)
 
         result = chalupa.run()
         return result['upper_bound'], True  # Chalupa is a heuristic, so we consider its result 'optimal' for its own execution

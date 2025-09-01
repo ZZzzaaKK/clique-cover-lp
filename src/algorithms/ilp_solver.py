@@ -39,9 +39,9 @@ def solve_ilp_clique_cover(G, time_limit=60, require_optimal=False):
         for i in range(H):
             model.addConstr(x[u, i] + x[v, i] <= w[i])
 
-    # (3) Farbe i darf nur verwendet werden (w[i] = 1), wenn sie auch zugewiesen wird
+    # (3) w[i] muss 1 sein, wenn Farbe i verwendet wird
     for i in range(H):
-        model.addConstr(w[i] <= gp.quicksum(x[v, i] for v in V))
+        model.addConstr(gp.quicksum(x[v, i] for v in V) <= n * w[i])
 
     # (4) Symmetriebrechung: wenn Farbe i verwendet wird, muss auch Farbe i-1 verwendet worden sein
     for i in range(1, H):
