@@ -65,7 +65,7 @@ def save_summary(results, name):
         f.write("=" * 50 + "\n\n")
         for result in results:
             f.write(f"File: {result['file']}\n")
-            f.write(f"Optimal solution found: {result.get('optimal', False)}\n")
+            f.write(f"Optimal solution found: {result.get('is_optimal', False)}\n")
             f.write(f"Predicted: {result['predicted']}\n")
             f.write(f"Actual: {result['actual']}\n")
             f.write(f"Deviation: {result.get('deviation', 'N/A')}\n")
