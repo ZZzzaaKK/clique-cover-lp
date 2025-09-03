@@ -13,7 +13,7 @@ def add_ground_truth_if_missing(directory):
 
         if existing_ground_truth is None:
             print(f"Computing chromatic number for {txt_file.name}...")
-            chromatic_number = ilp_wrapper(str(txt_file), require_optimal=True, time_limit=300)
+            chromatic_number = ilp_wrapper(str(txt_file), "chromatic_number", require_optimal=True, time_limit=300)[0]
 
             if chromatic_number is not None:
                 # Append to file

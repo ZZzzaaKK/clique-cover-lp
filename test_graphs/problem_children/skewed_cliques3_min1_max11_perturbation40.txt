@@ -27,3 +27,6 @@ Minimum Degree: 2
 
 # Calculated by ILP on complement graph
 Vertex Clique Cover Number: 8
+
+# Calculated by ILP
+Chromatic Number: 4

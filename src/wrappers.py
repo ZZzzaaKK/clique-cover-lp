@@ -20,12 +20,12 @@ def reduced_ilp_wrapper(txt_filepath, problem_type="vertex_clique_cover", time_l
 
         if problem_type == "chromatic_number":
             # For chromatic number, work with the original graph
-            G_reduced, trace, vcc_addition = apply_all_reductions(nx.complement(G))
-            result = solve_ilp_clique_cover(G_reduced, time_limit=time_limit)
+            G_complement_reduced, trace, chromatic_number_addition = apply_all_reductions(nx.complement(G))
+            result = solve_ilp_clique_cover(nx.complement(G_complement_reduced), time_limit=time_limit)
             if 'error' in result:
                 print(f"ILP failed on {txt_filepath}: {result['error']}")
                 return None, False
-            return int(result['chromatic_number']) + vcc_addition, result['optimal']
+            return int(result['chromatic_number']) + chromatic_number_addition, result['optimal']
         else:
             # For vertex clique cover, work with the complement
             G_reduced, trace, vcc_addition = apply_all_reductions(G)
@@ -77,6 +77,29 @@ def interactive_reduced_ilp_wrapper(txt_filepath, problem_type="vertex_clique_co
         return int(result['chromatic_number']) + total_vcc_addition, result['optimal']
     except Exception as e:
         print(f"ILP failed on {txt_filepath}: {e}")
+        return None, False
+
+def reduced_chalupa_wrapper(txt_filepath, problem_type="vertex_clique_cover"):
+    """Wrapper for Reduced Chalupa algorithm
+
+    Args:
+        problem_type: "vertex_clique_cover" or "chromatic_number"
+    """
+    try:
+        print(f"{txt_filepath}")
+        G = txt_to_networkx(txt_filepath)
+
+        if problem_type == "chromatic_number":
+            # For vertex clique cover, run Chalupa on the complement
+            chalupa = ChalupaHeuristic(nx.complement(G))
+        else:
+            # For chromatic number, run Chalupa on the original graph
+            chalupa = ChalupaHeuristic(G)
+
+        result = chalupa.run()
+        return result['upper_bound'], True  # Chalupa is a heuristic, so we consider its result 'optimal' for its own execution
+    except Exception as e:
+        print(f"Reduced Chalupa failed on {txt_filepath}: {e}")
         return None, False
 
 def chalupa_wrapper(txt_filepath, problem_type="vertex_clique_cover"):
