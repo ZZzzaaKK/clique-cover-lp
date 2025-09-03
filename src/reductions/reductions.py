@@ -36,7 +36,7 @@ def neighbourhood_is_crossing_independent(G: nx.Graph, v) -> bool:
     are crossing-independent.
 
     That is, for every pair of neighbors (u, w) of v, and for every
-    a ∈ N(u)\\{v}, b ∈ N(w)\\{v}, the edge (a, b) must exist.
+    a ∈ N(u)\\\\{v}, b ∈ N(w)\\\\{v}, the edge (a, b) must not exist.
     """
     neighbors = list(G.neighbors(v))
 
@@ -49,7 +49,7 @@ def neighbourhood_is_crossing_independent(G: nx.Graph, v) -> bool:
             # check crossing-independence condition
             for a in u_ext:
                 for b in w_ext:
-                    if not G.has_edge(a, b):
+                    if G.has_edge(a, b):
                         return False
 
     return True
@@ -85,15 +85,8 @@ def apply_degree_two_folding(G: nx.Graph) -> Tuple[nx.Graph, bool, List[Tuple[st
             w_neighbors = set(G.neighbors(w)) - {v}
             new_neighbors = (u_neighbors | w_neighbors)
 
-            # Determine VCC addition based on neighborhood structure
-            u_private_neighbors = u_neighbors - w_neighbors
-            w_private_neighbors = w_neighbors - u_neighbors
-
             if not new_neighbors:
                 # Case: Isolated P3 (u-v-w). VCC(P3)=2, VCC(G')=0. Diff=2.
-                VCC_addition = 2
-            elif u_private_neighbors and w_private_neighbors:
-                # Case: Both u and w have private external neighbors, creating a "shortcut". Diff=2.
                 VCC_addition = 2
             else:
                 # Default case (e.g., P4, diamond graph). Diff=1.
