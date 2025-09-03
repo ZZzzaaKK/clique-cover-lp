@@ -12,12 +12,29 @@ References:
 """
 
 import itertools
+import networkx as nx
 import numpy as np
 from .helpers import jump, random_permutation, uniformly_random
 
 class ChalupaHeuristic:
     def __init__(self, Input_Graph):
-            self.G = Input_Graph
+            self.original_nodes = list(Input_Graph.nodes())
+            if not self.original_nodes:
+                self.G = Input_Graph
+                self.V = []
+                self.E = []
+                self.n = 0
+                self.node_labels = np.array([])
+                self.upper_bound = 0
+                self.lower_bound = 0
+                self.best_clique_covering = []
+                self.best_independent_set = []
+                return
+
+            # Sometimes need to relabel nodes, for example after applying reductions first
+            self.node_to_int = {node: i for i, node in enumerate(self.original_nodes)}
+            self.G = nx.relabel_nodes(Input_Graph, self.node_to_int, copy=True)
+
             self.V = list(self.G.nodes())
             self.E = list(self.G.edges())
             self.n = len(self.V)
