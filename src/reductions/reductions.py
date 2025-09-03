@@ -47,8 +47,8 @@ def neighbourhood_is_crossing_independent(G: nx.Graph, v) -> bool:
             w_ext = set(G.neighbors(w)) - {v}
 
             # check crossing-independence condition
-            for a in u_ext:
-                for b in w_ext:
+            for a in u_ext - w_ext:
+                for b in w_ext - u_ext:
                     if G.has_edge(a, b):
                         return False
 
@@ -69,46 +69,45 @@ def apply_degree_two_folding(G: nx.Graph) -> Tuple[nx.Graph, bool, List[Tuple[st
     changed = False
     folds = []
     for v in list(G.nodes()):
-        if G.degree(v) == 2:
-            neighbors = list(G.neighbors(v))
-            if len(neighbors) != 2:
-                continue
-            u, w = neighbors
-            if G.has_edge(u, w):
-                continue  # Folding only applies if u and w are not connected
+        if G.degree(v) != 2:
+            continue
 
-            if not neighbourhood_is_crossing_independent(G, v):
-                continue
+        neighbors = list(G.neighbors(v))
+        u, w = neighbors
+        if G.has_edge(u, w):
+            continue  # Folding only applies if u and w are not connected
 
-            # Get external neighbors of u and w (excluding v)
-            u_neighbors = set(G.neighbors(u)) - {v}
-            w_neighbors = set(G.neighbors(w)) - {v}
-            new_neighbors = (u_neighbors | w_neighbors)
+        if not neighbourhood_is_crossing_independent(G, v):
+            continue
 
-            if not new_neighbors:
-                # Case: Isolated P3 (u-v-w). VCC(P3)=2, VCC(G')=0. Diff=2.
-                VCC_addition = 2
-            else:
-                # Default case (e.g., P4, diamond graph). Diff=1.
-                VCC_addition = 1
+        # Get external neighbors of u and w (excluding v)
+        u_neighbors = set(G.neighbors(u)) - {v}
+        w_neighbors = set(G.neighbors(w)) - {v}
+        new_neighbors = (u_neighbors | w_neighbors)
 
-            # Add new vertex x representing folded structure (if it's not an isolated P3)
-            if new_neighbors:
-                x = f"fold_{v}"
-                G.add_node(x)
-                for n in new_neighbors:
-                    G.add_edge(x, n)
+        if not new_neighbors:
+            # Case: Isolated P3 (u-v-w). VCC(P3)=2, VCC(G')=0. Diff=2.
+            VCC_addition = 2
+        else:
+            # Default case (e.g., P4, diamond graph). Diff=1.
+            VCC_addition = 1
 
-            # Remove v, u, w
-            G.remove_nodes_from([v, u, w])
+        # Add new vertex x representing folded structure (if it's not an isolated P3)
+        if new_neighbors:
+            x = f"fold_{v}"
+            G.add_node(x)
+            for n in new_neighbors:
+                G.add_edge(x, n)
 
-            folds.append((v, u, w))
-            changed = True
-            return G, changed, folds, VCC_addition # Only one fold per call for consistency
+        # Remove v, u, w
+        G.remove_nodes_from([v, u, w])
+
+        folds.append((v, u, w))
+        changed = True
+        return G, changed, folds, VCC_addition # Only one fold per call for consistency
 
 
     return G, changed, folds, VCC_addition
-
 
 
 def apply_twin_folding_or_removal(G: nx.Graph) -> Tuple[nx.Graph, bool, List[Tuple[str, str, str, List[str]]], int]:
