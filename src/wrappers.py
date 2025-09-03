@@ -90,14 +90,17 @@ def reduced_chalupa_wrapper(txt_filepath, problem_type="vertex_clique_cover"):
         G = txt_to_networkx(txt_filepath)
 
         if problem_type == "chromatic_number":
-            # For vertex clique cover, run Chalupa on the complement
-            chalupa = ChalupaHeuristic(nx.complement(G))
+            G_complement_reduced, trace, chromatic_number_addition = apply_all_reductions(nx.complement(G))
+            print(G_complement_reduced)
+            chalupa = ChalupaHeuristic(G_complement_reduced)
+            result = chalupa.run()
+            return result['upper_bound'] + chromatic_number_addition, True
         else:
-            # For chromatic number, run Chalupa on the original graph
-            chalupa = ChalupaHeuristic(G)
+            G_reduced, trace, vcc_addition = apply_all_reductions(G)
+            chalupa = ChalupaHeuristic(G_reduced)
+            result = chalupa.run()
+            return result['upper_bound'] + vcc_addition, True
 
-        result = chalupa.run()
-        return result['upper_bound'], True  # Chalupa is a heuristic, so we consider its result 'optimal' for its own execution
     except Exception as e:
         print(f"Reduced Chalupa failed on {txt_filepath}: {e}")
         return None, False

@@ -37,6 +37,15 @@ class ChalupaHeuristic:
         - Best clique covering found
         - Best independent set found
         """
+        if self.n == 0:
+            return {
+                'lower_bound': 0,
+                'upper_bound': 0,
+                'clique_covering': [],
+                'independent_set': [],
+                'bounds_interval': [0, 0]
+            }
+
         # Step 1: Find upper bound using Iterated Greedy heuristic for clique covering
         self.best_clique_covering = self.iterated_greedy_clique_covering()
         self.upper_bound = len(self.best_clique_covering) if self.best_clique_covering else float('inf')

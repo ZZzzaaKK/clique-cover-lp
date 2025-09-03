@@ -3,7 +3,7 @@ import argparse
 import sys
 import time
 from pathlib import Path
-from wrappers import chalupa_wrapper, ilp_wrapper, reduced_ilp_wrapper, interactive_reduced_ilp_wrapper
+from wrappers import chalupa_wrapper, ilp_wrapper, reduced_chalupa_wrapper, reduced_ilp_wrapper, interactive_reduced_ilp_wrapper
 from utils import get_value
 
 class TestRunner:
@@ -89,6 +89,7 @@ def save_summary(results, name):
 def main():
     parser = argparse.ArgumentParser(description='Run graph coloring algorithm tests')
     parser.add_argument('--chalupa', action='store_true', help='Run Chalupa heuristic')
+    parser.add_argument('--reduced-chalupa', action='store_true', help='Run reduced Chalupa heuristic')
     parser.add_argument('--ilp', action='store_true', help='Run ILP solver')
     parser.add_argument('--reduced-ilp', action='store_true', help='Run reduced ILP solver')
     parser.add_argument('--timeout', type=int, default=60, help='Timeout for ILP solvers in seconds')
@@ -101,7 +102,7 @@ def main():
     args = parser.parse_args()
 
     # If no algorithm specified, show help
-    if not any([args.chalupa, args.ilp, args.reduced_ilp, args.interactive_reduced_ilp, args.all]):
+    if not any([args.chalupa, args.reduced_chalupa, args.ilp, args.reduced_ilp, args.interactive_reduced_ilp, args.all]):
         parser.print_help()
         sys.exit(1)
 
@@ -111,6 +112,7 @@ def main():
     if args.all:
         algorithms = [
             ('chalupa', chalupa_wrapper),
+            ('reduced_chalupa', reduced_chalupa_wrapper),
             ('ilp', ilp_wrapper),
             ('reduced_ilp', reduced_ilp_wrapper),
             ('interactive_reduced_ilp', interactive_reduced_ilp_wrapper)
@@ -118,6 +120,8 @@ def main():
     else:
         if args.chalupa:
             algorithms.append(('chalupa', chalupa_wrapper))
+        if args.reduced_chalupa:
+            algorithms.append(('reduced_chalupa', reduced_chalupa_wrapper))
         if args.ilp:
             algorithms.append(('ilp', ilp_wrapper))
         if args.reduced_ilp:
