@@ -3,7 +3,7 @@ from pathlib import Path
 from utils import get_value, txt_to_networkx
 import sys
 import networkx as nx
-from algorithms.ilp_solver import solve_ilp_clique_cover
+from wrappers import reduced_ilp_wrapper
 
 def add_vertex_clique_cover_number_if_missing(directory):
     """Add vertex clique cover number only to files that don't already have it"""
@@ -17,10 +17,9 @@ def add_vertex_clique_cover_number_if_missing(directory):
             print(f"Computing vertex clique cover number for {txt_file.name}...")
             G = txt_to_networkx(str(txt_file))
             G_complement = nx.complement(G)
-            result = solve_ilp_clique_cover(G_complement, time_limit=300, require_optimal=True)
+            vcc_number = reduced_ilp_wrapper(str(txt_file), time_limit=300)[0]
 
-            if 'error' not in result:
-                vcc_number = result['chromatic_number']
+            if vcc_number is not None:
                 # Append to file
                 with open(txt_file, 'a') as f:
                     f.write("\n# Calculated by ILP on complement graph\n")

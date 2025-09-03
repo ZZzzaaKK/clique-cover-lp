@@ -1,4 +1,4 @@
-from wrappers import ilp_wrapper
+from wrappers import ilp_wrapper, reduced_ilp_wrapper
 from pathlib import Path
 from utils import get_value
 import sys
@@ -13,7 +13,7 @@ def add_ground_truth_if_missing(directory):
 
         if existing_ground_truth is None:
             print(f"Computing chromatic number for {txt_file.name}...")
-            chromatic_number = ilp_wrapper(str(txt_file), "chromatic_number", require_optimal=True, time_limit=300)[0]
+            chromatic_number = reduced_ilp_wrapper(str(txt_file), "chromatic_number", time_limit=300)[0]
 
             if chromatic_number is not None:
                 # Append to file

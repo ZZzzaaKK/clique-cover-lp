@@ -10,7 +10,7 @@ Run `python src/generate_test_graphs.py` to generate test cases of differing dis
 
 ## Testing
 
-For convenience, you can run the script `run_tests.sh`. It first calculates chromatic numbers for all generated perturbed graphs via the `src/add_ground_truth.py` script, and then runs through the tests you specify in the script. Adding ground truths relies on the Gurobi solver, so you'll need a license for larger graphs. You can also deviate from default path by running with a positional argument like this: `run_tests.sh test_graphs/curated`.
+For convenience, you can run the script `run_tests.sh`. It first calculates vertex clique cover numbers for all generated perturbed graphs via the `src/add_vertex_clique_cover_number.py` script, or chromatic numbers via `src/add_chromatic_number.py` script if you pass the --chromatic-number flag. It then runs through the tests you specify in the script. Adding ground truths relies on the Gurobi solver, so you'll need a license for larger graphs. You can also deviate from default path by running with a positional argument like this: `run_tests.sh test_graphs/curated`.
 
 ## Curation
 
@@ -18,15 +18,18 @@ Curated test cases were found at [houseofgraphs.org](houseofgraphs.org). Each `.
 
 # Current State of Progress
 
-- [ ] WP0 Simulator
+- [x] WP0 Simulator
   - [x] Generate test cases for different distributions
   - [x] Introduce perturbations
   - [ ] Choose reasonable parameters for task completions
 - [ ] WP1 Exact vs Heuristic
   - [x] Chalupa
+    - [ ] How to actually use lower bound?
   - [x] ILP
-  - [ ] Compare algorithms and write down answers
-- [ ] WP2 Kernelizations for vertex clique cover problem
+  - [x] Compare algorithms
+- [x] WP2 Kernelizations for vertex clique cover problem
+  - [x] Implement reductions
+  - [ ] Double-check for difference between reduced-ilp and interactive-reduced-ilp
 - [ ] WP3 Kernelizations for cluster editing problem
 - [ ] WP4 Comparison of vertex clique cover and cluster editing solutions
 - [ ] Bonus

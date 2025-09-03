@@ -66,7 +66,6 @@ class ChalupaHeuristic:
         # Step 1: Find upper bound using Iterated Greedy heuristic for clique covering
         self.best_clique_covering = self.iterated_greedy_clique_covering()
         self.upper_bound = len(self.best_clique_covering) if self.best_clique_covering else float('inf')
-
         # Step 2: Find lower bound using Randomized Local Search for maximum independent set
         self.lower_bound, self.best_independent_set = self.find_maximum_independent_set()
 
@@ -188,8 +187,8 @@ class ChalupaHeuristic:
             Best clique covering found
         """
         permutation = random_permutation(self.V)
-        best_cliques = None
-        best_count = float('inf')
+        best_cliques = self.best_clique_covering
+        best_count = self.upper_bound or float('inf')
         iteration = 0
         max_iterations = 10000
         no_improvement_count = 0

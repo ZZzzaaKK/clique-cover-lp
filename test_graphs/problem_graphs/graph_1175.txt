@@ -228,3 +228,6 @@ Vertex Cover Number: Computation time out
 
 
 
+
+# Calculated by ILP on complement graph
+Vertex Clique Cover Number: 42
