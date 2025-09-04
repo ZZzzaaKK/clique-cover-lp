@@ -37,8 +37,9 @@ Curated test cases were found at [houseofgraphs.org](houseofgraphs.org). Each `.
 
 # Next Steps
 
-- Test ILP individually (in test_curated.py)
-- Use ILP solutions as ground truth for chalupa in generated examples (in test_generated.py)
+- Check cluster editing implementation
+- Rethink Chalupa, where to use upper/lower bound
+- Weighting in Real Data
 
 # Work Program
 
