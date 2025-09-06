@@ -46,10 +46,14 @@ def neighbourhood_is_crossing_independent(G: nx.Graph, v) -> bool:
         for w in neighbors[i+1:]:
             w_ext = set(G.neighbors(w)) - {v}
 
+            # die direkten Kanten u-w nicht einbeziehen:
+            u_ext.discard(w)
+            w_ext.discard(u)
+
             # check crossing-independence condition
             for a in u_ext - w_ext:
                 for b in w_ext - u_ext:
-                    if not G.has_edge(a, b):
+                    if G.has_edge(a, b):
                         return False
 
     return True
@@ -82,7 +86,7 @@ def apply_degree_two_folding(G: nx.Graph) -> Tuple[nx.Graph, bool, List[Tuple[st
             # Get external neighbors of u and w (excluding v)
             u_neighbors = set(G.neighbors(u)) - {v}
             w_neighbors = set(G.neighbors(w)) - {v}
-            new_neighbors = (u_neighbors | w_neighbors)
+            new_neighbors = (u_neighbors | w_neighbors) - {u, w, v}
 
             # Add new vertex x representing folded structure
             x = f"fold_{v}"
@@ -247,9 +251,6 @@ def apply_crown_reduction(G: nx.Graph) -> Tuple[nx.Graph, bool, List[Any], int]:
         for v in I:
             H.update(G.neighbors(v))
         H -= I
-        if not H:
-            return G, False, [], VCC_addition
-
         if not H:
             return G, False, [], VCC_addition
 

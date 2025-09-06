@@ -65,8 +65,7 @@ class TestTwinRemoval(unittest.TestCase):
         self.G = nx.Graph()
         self.G.add_edges_from([(1, 4), (2, 4), (3, 4)])
         self.G.add_edges_from([(1, 5), (2, 5), (3, 5)])
-#        self.G.add_edges_from([(1, 6), (2, 6), (3, 6)])   # not sure if the reduction removes triple twins
-        self.G.add_edges_from([(1, 2)])
+        self.G.add_edge(1, 2)
 
     def test_twin_removal(self):
         G_reduced, changed, removed, VCC_addition = apply_twin_folding_or_removal(self.G.copy())
