@@ -658,14 +658,14 @@ class WP1cEvaluator:
             return
 
         # Save as JSON
-        json_path = self.output_dir / f"evaluation_results_{self.timestamp}.json"
+        json_path = self.output_dir / f"evaluation_results_VCC.json"
         with open(json_path, 'w') as f:
             json.dump(self.results, f, indent=2, default=str)
         print(f"Saved results to {json_path}")
 
         # Save as CSV
         if hasattr(self, 'df') and not self.df.empty:
-            csv_path = self.output_dir / f"evaluation_results_{self.timestamp}.csv"
+            csv_path = self.output_dir / f"evaluation_results_VCC.csv"
             self.df.to_csv(csv_path, index=False)
             print(f"Saved CSV to {csv_path}")
 
@@ -1494,7 +1494,7 @@ class ExtendedWP1cEvaluator(WP1cEvaluator):
             df_stats["timeout_count_overall"] = timeout_count
             df_stats["timeout_rate_overall"] = timeout_rate
 
-        out_csv = self.output_dir / f"runtime_comparison_stats_{self.timestamp}.csv"
+        out_csv = self.output_dir / f"runtime_comparison_stats_VCC.csv"
         df_stats.to_csv(out_csv, index=False)
         print(f"Saved runtime statistics to {out_csv}")
 
