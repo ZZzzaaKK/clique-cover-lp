@@ -83,11 +83,16 @@ class TestTwinFolding(unittest.TestCase):
         self.G = nx.Graph()
         self.G.add_edges_from([(1, 4), (1, 5), (1, 6),
                                (2, 4), (2, 5), (2, 6)])
+        self.G.add_edges_from([(4, 7), (5, 8)])
+        # self.G.add_edges_from([(7, 8)]) # this should lead to no reduction because of the crossing independence
 
     def test_twin_folding(self):
         G_reduced, changed, folds, VCC_addition = apply_twin_folding_or_removal(self.G.copy())
-        print("Folded nodes (twin folding):", [new_node for _, _, new_node, _ in folds])
+#        print("Reductions applied (twin_folding):", [name for name, _ in folds])
+        print("Folded nodes:", folds)
+        print(f"edges after folding: {G_reduced.edges}")
         self.assertTrue(changed, "Graph should have changed due to twin folding.")
+#        self.assertTrue(any("twin_folding" in name.lower() for name, _ in folds), "Twin folding should have been applied.")
         self.assertTrue(len(folds) > 0, "Twin folding should have been applied.")
 
 
@@ -230,18 +235,34 @@ class TestCrownReductionAlternative(unittest.TestCase):
             self.assertTrue(len(crown_sets) > 0, "Should have found crown sets")
 
 
-"""
-class TestCrownReduction(unittest.TestCase):
+
+
+class TestCrownReduction2(unittest.TestCase):
     def setUp(self):
         # Create a graph for crown reduction
         self.G = nx.Graph()
-        self.G.add_edges_from([(1, 4), (2, 4), (3, 4), (1, 5), (2, 5), (3, 5)]) 
-    def test_crown_reduction(self):
+        self.G.add_edges_from([
+            (70, 80), (71, 80), (72, 80), (73, 80), (74, 80),
+            (70, 81), (71, 81), (72, 81), (73, 81), (74, 81),
+            (70, 82), (71, 82), (72, 82), (73, 82), (74, 82),
+            (70, 83), (71, 83), (72, 83), (73, 83), (74, 83)
+        ])
+        self.G.add_node(1)
+        self.G.add_node(2)
+
+
+    def test_crown_reduction_2(self):
+        print("Initial graph nodes:", self.G.nodes)
+        print("Initial graph edges:", self.G.edges)
         G_reduced, changed, removed, VCC_addition = apply_crown_reduction(self.G.copy())
-        print("Removed nodes (crown_reduction):", removed)
+        print(f"removed nodes: {removed}")
+        print(f"clique cover addition: {VCC_addition}")
+        print(f"remaining edges: {G_reduced.edges}")
         self.assertTrue(changed, "Graph should have changed due to crown reduction.")
         self.assertTrue(len(removed) > 0, "Crown reduction should have removed some nodes.")
-"""
+
+
+
 # haven't found a graph that applies all reductions yet, so this test is commented out
 """
 
@@ -307,6 +328,7 @@ def suite():
 
     suite.addTest(TestCrownReduction('test_crown_reduction'))
     suite.addTest(TestCrownReductionAlternative('test_crown_reduction_alternative'))
+    suite.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(TestCrownReduction2))
     # suite.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(TestAllReductions))
 
     return suite
