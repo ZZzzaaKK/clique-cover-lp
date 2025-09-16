@@ -99,7 +99,7 @@ src/
 ## Walkthrough (per IDE)
 1. **WP0** – Testgraphen erzeugen (`src/generate_test_graphs.py`, `src/generate_testgraphs_extended.py`)
 2. **WP1** – VCC: Heuristik/ILP (`src/comparison_chalupa_ilp_evaluation_all_wrappers.py --extended`) 
-3. **WP2** – VCC-Reduktionen + Evaluation (`src/reductions/test_reductions.py`, `WP2BC.py`)
+3. **WP2** – VCC-Reduktionen + Evaluation (`src/reductions/test_reductions_visual.py`, `src/WP2BC.py`)
 4. **WP3** – CE Experimente (`src/wp3_evaluation.py`) 
 5. **WP4** – Vergleich VCC vs CE (`src/WP4_comparison_VCC_CE.py --verbose`) # unfinished
 6. **WP5** – Rfam Analyse (Baustelle) (`src/WP5_constructionsite.py`) #unfinished
