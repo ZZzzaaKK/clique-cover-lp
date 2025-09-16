@@ -1,0 +1,107 @@
+1: 8
+2: 27 46
+3: 15 36
+4: 31 37
+5: 20 32
+6: 19 32
+7: 16 17 28
+8: 1 9 36
+9: 8 35 36
+10: 11 35 38
+11: 10 31 38
+12: 21 24 45
+13: 26 27 34
+14: 18 25 40
+15: 3 35 36
+16: 7 28 29 47
+17: 7 24 29 39
+18: 14 19 40 49
+19: 6 18 32 49
+20: 5 32 37 49
+21: 12 41 45 46
+22: 25 26 43 44
+23: 42 43 44 48
+24: 12 17 39 45
+25: 14 22 40 44
+26: 13 22 33 34
+27: 2 13 34 46
+28: 7 16 30 38 47
+29: 16 17 39 47 48
+30: 28 31 37 38 47
+31: 4 11 30 37 38
+32: 5 6 19 20 49
+33: 26 34 41 43 46
+34: 13 26 27 33 46
+35: 9 10 15 36 38
+36: 3 8 9 15 35
+37: 4 20 30 31 47 49
+38: 10 11 28 30 31 35
+39: 17 24 29 42 45 48
+40: 14 18 25 44 48 49
+41: 21 33 42 43 45 46
+42: 23 39 41 43 45 48
+43: 22 23 33 41 42 44
+44: 22 23 25 40 43 48
+45: 12 21 24 39 41 42
+46: 2 21 27 33 34 41
+47: 16 28 29 30 37 48 49
+48: 23 29 39 40 42 44 47 49
+49: 18 19 20 32 37 40 47 48
+
+Acyclic: No
+Algebraic Connectivity: 0.098
+Average Degree: 4.367
+Bipartite: No
+Chromatic Index: 8
+Chromatic Number: 4
+Circumference: Computation time out
+Claw-Free: No
+Clique Number: 3
+Connected: Yes
+Degeneracy: 3
+Density: 0.091
+Diameter: 11
+Domination Number: 11
+Edge Connectivity: 1
+Eulerian: No
+Feedback Vertex Set Number: 15
+Genus: 0
+Girth: 3
+Group Size: 1
+Hamiltonian: No
+Hypohamiltonian: No
+Hypotraceable: No
+Independence Number: 19
+Index: 5.319
+Laplacian Largest Eigenvalue: 9.929
+Length of Longest Induced Cycle: 22
+Length of Longest Induced Path: 26
+Length of Longest Path: Computation time out
+Matching Number: 24
+Maximum Degree: 8
+Minimum Degree: 1
+Number of Arc Orbits: 214
+Number of Components: 1
+Number of Edge Orbits: 107
+Number of Edges: 107
+Number of Spanning Trees: 2147483647
+Number of Triangles: 57
+Number of Vertex Orbits: 49
+Number of Vertices: 49
+Number of Zero Eigenvalues: 0
+Planar: Yes
+Radius: 6
+Regular: No
+Second Largest Eigenvalue: 4.56
+Smallest Eigenvalue: -2.888
+Traceable: Yes
+Treewidth: 6
+Twin-Free: Yes
+Vertex Connectivity: 1
+Vertex Cover Number: 30
+
+
+
+
+# Calculated by ILP on complement graph
+Vertex Clique Cover Number: 19

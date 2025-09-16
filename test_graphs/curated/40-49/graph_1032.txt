@@ -1,0 +1,84 @@
+1: 15 24 26
+2: 15 23 25
+3: 16 18 20
+4: 17 19 20
+5: 16 22 26
+6: 19 22 25
+7: 18 21 24
+8: 17 21 23
+9: 15 22 25 26
+10: 15 21 23 24
+11: 16 18 24 26
+12: 17 19 23 25
+13: 16 19 20 22
+14: 17 18 20 21
+15: 1 2 9 10
+16: 3 5 11 13
+17: 4 8 12 14
+18: 3 7 11 14
+19: 4 6 12 13
+20: 3 4 13 14
+21: 7 8 10 14
+22: 5 6 9 13
+23: 2 8 10 12
+24: 1 7 10 11
+25: 2 6 9 12
+26: 1 5 9 11
+
+Acyclic: No
+Algebraic Connectivity: 0.859
+Average Degree: 3.692
+Bipartite: Yes
+Chromatic Index: 4
+Chromatic Number: 2
+Circumference: 24
+Claw-Free: No
+Clique Number: 2
+Connected: Yes
+Degeneracy: 3
+Density: 0.148
+Diameter: 6
+Domination Number: 6
+Edge Connectivity: 3
+Eulerian: No
+Feedback Vertex Set Number: 8
+Genus: 0
+Girth: 4
+Group Size: 48
+Hamiltonian: No
+Hypohamiltonian: No
+Hypotraceable: No
+Independence Number: 14
+Index: 3.742
+Laplacian Largest Eigenvalue: 7.562
+Length of Longest Induced Cycle: 16
+Length of Longest Induced Path: 15
+Length of Longest Path: 24
+Matching Number: 12
+Maximum Degree: 4
+Minimum Degree: 3
+Number of Arc Orbits: 4
+Number of Components: 1
+Number of Edge Orbits: 2
+Number of Edges: 48
+Number of Spanning Trees: 2147483647
+Number of Triangles: 0
+Number of Vertex Orbits: 3
+Number of Vertices: 26
+Number of Zero Eigenvalues: 8
+Planar: Yes
+Radius: 4
+Regular: No
+Second Largest Eigenvalue: 2.828
+Smallest Eigenvalue: -3.742
+Traceable: No
+Treewidth: 7
+Twin-Free: Yes
+Vertex Connectivity: 3
+Vertex Cover Number: 12
+
+
+
+
+# Calculated by ILP on complement graph
+Vertex Clique Cover Number: 14

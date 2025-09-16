@@ -1,0 +1,167 @@
+1: 2 3 4
+2: 1 107 109
+3: 1 108 110
+4: 1 111 112
+5: 8 65 67
+6: 7 63 68
+7: 6 69 70
+8: 5 64 66
+9: 17 47 48
+10: 18 49 53
+11: 18 50 52
+12: 17 51 54
+13: 19 55 62
+14: 20 56 61
+15: 20 58 60
+16: 19 57 59
+17: 9 12 21
+18: 10 11 21
+19: 13 16 22
+20: 14 15 22
+21: 17 18 22
+22: 19 20 21
+23: 25 39 93
+24: 26 44 88
+25: 23 41 91
+26: 24 43 90
+27: 29 40 92
+28: 30 42 87
+29: 27 46 94
+30: 28 45 89
+31: 47 63 71
+32: 48 65 75
+33: 53 68 78
+34: 49 67 72
+35: 50 66 73
+36: 54 70 74
+37: 51 64 77
+38: 52 69 76
+39: 23 55 71
+40: 27 62 75
+41: 25 56 78
+42: 28 58 74
+43: 26 60 77
+44: 24 59 73
+45: 30 57 76
+46: 29 61 72
+47: 9 31 89
+48: 9 32 88
+49: 10 34 90
+50: 11 35 92
+51: 12 37 94
+52: 11 38 93
+53: 10 33 87
+54: 12 36 91
+55: 13 39 79
+56: 14 41 81
+57: 16 45 83
+58: 15 42 85
+59: 16 44 86
+60: 15 43 84
+61: 14 46 80
+62: 13 40 82
+63: 6 31 84
+64: 8 37 79
+65: 5 32 85
+66: 8 35 81
+67: 5 34 83
+68: 6 33 86
+69: 7 38 80
+70: 7 36 82
+71: 31 39 103
+72: 34 46 103
+73: 35 44 106
+74: 36 42 106
+75: 32 40 104
+76: 38 45 105
+77: 37 43 105
+78: 33 41 104
+79: 55 64 95
+80: 61 69 96
+81: 56 66 97
+82: 62 70 98
+83: 57 67 99
+84: 60 63 102
+85: 58 65 101
+86: 59 68 100
+87: 28 53 95
+88: 24 48 96
+89: 30 47 97
+90: 26 49 98
+91: 25 54 99
+92: 27 50 102
+93: 23 52 101
+94: 29 51 100
+95: 79 87 107
+96: 80 88 107
+97: 81 89 108
+98: 82 90 108
+99: 83 91 109
+100: 86 94 110
+101: 85 93 110
+102: 84 92 109
+103: 71 72 111
+104: 75 78 112
+105: 76 77 112
+106: 73 74 111
+107: 2 95 96
+108: 3 97 98
+109: 2 99 102
+110: 3 100 101
+111: 4 103 106
+112: 4 104 105
+
+Acyclic: No
+Algebraic Connectivity: 0.496
+Average Degree: 3
+Bipartite: No
+Chromatic Index: 3
+Chromatic Number: 3
+Circumference: 112
+Claw-Free: No
+Clique Number: 2
+Connected: Yes
+Degeneracy: 3
+Density: 0.027
+Diameter: 8
+Domination Number: 31
+Edge Connectivity: 3
+Eulerian: No
+Feedback Vertex Set Number: 29
+Genus: Computation time out
+Girth: 11
+Group Size: 64
+Hamiltonian: Yes
+Hypohamiltonian: No
+Hypotraceable: No
+Independence Number: 52
+Index: 3
+Laplacian Largest Eigenvalue: 5.856
+Length of Longest Induced Cycle: Computation time out
+Length of Longest Induced Path: Computation time out
+Length of Longest Path: 111
+Matching Number: 56
+Maximum Degree: 3
+Minimum Degree: 3
+Number of Arc Orbits: 12
+Number of Components: 1
+Number of Edge Orbits: 7
+Number of Edges: 168
+Number of Spanning Trees: 2147483647
+Number of Triangles: 0
+Number of Vertex Orbits: 6
+Number of Vertices: 112
+Number of Zero Eigenvalues: 12
+Planar: No
+Radius: 6
+Regular: Yes
+Second Largest Eigenvalue: 2.504
+Smallest Eigenvalue: -2.856
+Traceable: Yes
+Treewidth: Computation time out
+Twin-Free: Yes
+Vertex Connectivity: 3
+Vertex Cover Number: 60
+
+
+

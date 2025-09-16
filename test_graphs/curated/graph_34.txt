@@ -1,0 +1,68 @@
+1: 10
+2: 10
+3: 10
+4: 10
+5: 10
+6: 10
+7: 10
+8: 10
+9: 10
+10: 1 2 3 4 5 6 7 8 9
+
+Acyclic: Yes
+Algebraic Connectivity: 1
+Average Degree: 1.8
+Bipartite: Yes
+Chromatic Index: 9
+Chromatic Number: 2
+Circumference: undefined
+Claw-Free: No
+Clique Number: 2
+Connected: Yes
+Degeneracy: 1
+Density: 0.2
+Diameter: 2
+Domination Number: 1
+Edge Connectivity: 1
+Eulerian: No
+Feedback Vertex Set Number: 0
+Genus: 0
+Girth: undefined
+Group Size: 362880
+Hamiltonian: No
+Hypohamiltonian: No
+Hypotraceable: No
+Independence Number: 9
+Index: 3
+Laplacian Largest Eigenvalue: 10
+Length of Longest Induced Cycle: undefined
+Length of Longest Induced Path: 2
+Length of Longest Path: 2
+Matching Number: 1
+Maximum Degree: 9
+Minimum Degree: 1
+Number of Arc Orbits: 2
+Number of Components: 1
+Number of Edge Orbits: 1
+Number of Edges: 9
+Number of Spanning Trees: 1
+Number of Triangles: 0
+Number of Vertex Orbits: 2
+Number of Vertices: 10
+Number of Zero Eigenvalues: 8
+Planar: Yes
+Radius: 1
+Regular: No
+Second Largest Eigenvalue: 0
+Smallest Eigenvalue: -3
+Traceable: No
+Treewidth: 1
+Twin-Free: No
+Vertex Connectivity: 1
+Vertex Cover Number: 1
+
+
+
+
+# Calculated by ILP on complement graph
+Vertex Clique Cover Number: 9
