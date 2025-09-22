@@ -37,9 +37,13 @@ Curated test cases were found at [houseofgraphs.org](houseofgraphs.org). Each `.
 
 # Next Steps
 
-- Check cluster editing implementation
-- Rethink Chalupa, where to use upper/lower bound
-- Weighting in Real Data
+- [ ] Check cluster editing implementation
+  - [ ] ILP
+    - [ ] What's the goal?
+    - [ ] What's the triangle inequality?
+    - [ ] What are 2-partition inequalities?
+- [ ] Rethink Chalupa, where to use upper/lower bound
+- [ ] Weighting in Real Data
 
 # Work Program
 
