@@ -3,7 +3,10 @@ import gurobipy as gp
 from gurobipy import GRB
 from itertools import combinations
 
-def solve_cluster_editing_ilp(graph: nx.Graph, weights: dict[tuple[int, int], int] | None) -> tuple[set[tuple[int, int]], float]:
+
+def solve_cluster_editing_ilp(
+    graph: nx.Graph, weights: dict[tuple[int, int], int] | None
+) -> tuple[set[tuple[int, int]], float]:
     """
     Args:
         graph: Input graph
@@ -29,6 +32,8 @@ def solve_cluster_editing_ilp(graph: nx.Graph, weights: dict[tuple[int, int], in
     # Decision variable: x[i, j] = 1 if edge (i, j) exists in solution
     x = model.addVars(pairs, vtype=GRB.BINARY, name="x")
     obj_expr = gp.LinExpr()
+
+    print("Weights:", weights)
 
     for i, j in pairs:
         if weights is None:
