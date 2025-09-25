@@ -42,6 +42,7 @@ Curated test cases were found at [houseofgraphs.org](houseofgraphs.org). Each `.
     - [ ] What's the goal?
     - [ ] What's the triangle inequality?
     - [ ] What are 2-partition inequalities?
+  - [ ] Reduction based on edge cuts
 - [ ] Rethink Chalupa, where to use upper/lower bound
 - [ ] Weighting in Real Data
 
