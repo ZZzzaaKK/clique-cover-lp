@@ -61,8 +61,10 @@ def parse_test_graph_file(filepath):
                     set(tuple(sorted(edge)) for edge in mod)
                     for mod in modifications_list
                 ]
-            except:
-                print(f"Warning: Could not parse modifications: {modifications_str}")
+            except Exception as e:
+                print(
+                    f"Warning: Could not parse modifications: {modifications_str}, error: {e}"
+                )
 
     weights_dict = None
 
@@ -346,7 +348,7 @@ def test_curated_graphs():
             print()
 
         except Exception as e:
-            print(f"Error testing {filename}: {e}")
+            print(f"Error testing {filepath}: {e}")
             print()
 
 
@@ -364,7 +366,7 @@ def test_similarity_data():
     try:
         graph, similarity_scores = load_similarity_graph(similarity_file)
         print(
-            f"Loaded graph with {len(graph.nodes())} nodes and {len(graph.edges())} edges"
+            f"Loaded graph with {graph.number_of_nodes} nodes and {graph.number_of_edges} edges"
         )
         print(
             f"Score range: {min(similarity_scores.values()):.0f} - {max(similarity_scores.values()):.0f}"
