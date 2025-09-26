@@ -38,12 +38,14 @@ Curated test cases were found at [houseofgraphs.org](houseofgraphs.org). Each `.
 # Next Steps
 
 - [ ] Check cluster editing implementation
-  - [ ] ILP
-    - [ ] What's the goal?
-    - [ ] What's the triangle inequality?
+  - [x] ILP
+    - [x] What's the goal? -> produce modifications to create cluster graph with minimum cost
+    - [x] What's the triangle inequality? -> way to check if vertices are connected in a clique
     - [ ] What are 2-partition inequalities?
-  - [ ] Reduction based on edge cuts
+  - [x] Reduction based on edge cuts -> produces consistent results, results in small, but sometimes noticeable speedup
+  - [ ] Should output number of clusters obtained to compare with vertex clique cover number
 - [ ] Rethink Chalupa, where to use upper/lower bound
+- [ ] Double-check interactive scheme
 - [ ] Weighting in Real Data
 
 # Work Program
