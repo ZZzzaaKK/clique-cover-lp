@@ -10,10 +10,10 @@ def cluster_editing_wrapper(txt_filepath, time_limit):
     print(f"{txt_filepath}")
     G = txt_to_networkx(txt_filepath)
     try:
-        modifications, cost = solve_cluster_editing_ilp(G, None, time_limit)
+        clusters, cost, modifications = solve_cluster_editing_ilp(G, None, time_limit)
     except RuntimeError:
         return 0, False, []
-    return cost, True, modifications
+    return len(clusters), True, cost, modifications
 
 
 def reduced_cluster_editing_wrapper(txt_filepath, time_limit):
@@ -21,12 +21,12 @@ def reduced_cluster_editing_wrapper(txt_filepath, time_limit):
     G = txt_to_networkx(txt_filepath)
     reduced_graph, reduced_weights, _, _ = kernelize_edge_cuts(G, None)
     try:
-        modifications, cost = solve_cluster_editing_ilp(
+        clusters, cost, modifications = solve_cluster_editing_ilp(
             reduced_graph, reduced_weights, time_limit
         )
     except RuntimeError:
         return 0, False, []
-    return cost, True, modifications
+    return len(clusters), True, cost, modifications
 
 
 def reduced_ilp_wrapper(

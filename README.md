@@ -21,7 +21,7 @@ Curated test cases were found at [houseofgraphs.org](houseofgraphs.org). Each `.
 - [x] WP0 Simulator
   - [x] Generate test cases for different distributions
   - [x] Introduce perturbations
-  - [ ] Choose reasonable parameters for task completions
+  - [x] Choose reasonable parameters for task completions
 - [ ] WP1 Exact vs Heuristic
   - [x] Chalupa
     - [ ] How to actually use lower bound?

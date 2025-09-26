@@ -75,12 +75,13 @@ class TestRunner:
                         "is_optimal": False,
                     }
                 )
-            # if algorithm_func in [
-            #     cluster_editing_wrapper,
-            #     reduced_cluster_editing_wrapper,
-            # ]:
-            #     modifications = result[2]
-            #     results.append({"modifications": modifications})
+            if algorithm_func in [
+                cluster_editing_wrapper,
+                reduced_cluster_editing_wrapper,
+            ]:
+                cost = result[2]
+                # Add clusters and modifications to current result in results
+                results[-1].update({"cost": cost})
 
         return results
 
@@ -103,6 +104,8 @@ def save_summary(results, name):
             f.write(f"Deviation: {result.get('deviation', 'N/A')}\n")
             f.write(f"Correct: {result['correct']}\n")
             f.write(f"Time taken: {result['time_taken']}\n")
+            if result.get("cost"):
+                f.write(f"Cost: {result['cost']}\n")
             f.write("-" * 30 + "\n")
 
         f.write("\nSummary:\n")

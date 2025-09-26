@@ -1,0 +1,779 @@
+Test Results for perturbed_cluster_editing
+==================================================
+
+File: uniform_n3_s2_r30.txt
+Optimal solution found: True
+Predicted: 5
+Actual: 5
+Deviation: 0
+Correct: True
+Time taken: 0.009190797805786133
+Cost: 1.0
+------------------------------
+File: uniform_n5_s2_r30.txt
+Optimal solution found: True
+Predicted: 6
+Actual: 6
+Deviation: 0
+Correct: True
+Time taken: 0.011402130126953125
+Cost: 3.0
+------------------------------
+File: uniform_n3_s6_r30.txt
+Optimal solution found: True
+Predicted: 5
+Actual: 6
+Deviation: -1
+Correct: False
+Time taken: 0.04319953918457031
+Cost: 19.0
+------------------------------
+File: uniform_n5_s6_r30.txt
+Optimal solution found: True
+Predicted: 8
+Actual: 10
+Deviation: -2
+Correct: False
+Time taken: 0.17249631881713867
+Cost: 29.0
+------------------------------
+File: uniform_n3_s12_r30.txt
+Optimal solution found: True
+Predicted: 6
+Actual: 9
+Deviation: -3
+Correct: False
+Time taken: 0.6851382255554199
+Cost: 87.0
+------------------------------
+File: uniform_n5_s12_r30.txt
+Optimal solution found: True
+Predicted: 8
+Actual: 15
+Deviation: -7
+Correct: False
+Time taken: 5.187219858169556
+Cost: 206.0
+------------------------------
+File: skewed_cliques2_min1_max5_perturbation10.txt
+Optimal solution found: True
+Predicted: 2
+Actual: 3
+Deviation: -1
+Correct: False
+Time taken: 0.0029234886169433594
+Cost: 1.0
+------------------------------
+File: skewed_cliques2_min1_max5_perturbation40.txt
+Optimal solution found: True
+Predicted: 2
+Actual: 2
+Deviation: 0
+Correct: True
+Time taken: 0.0005481243133544922
+------------------------------
+File: skewed_cliques2_min1_max5_perturbation80.txt
+Optimal solution found: True
+Predicted: 1
+Actual: 1
+Deviation: 0
+Correct: True
+Time taken: 0.00021314620971679688
+------------------------------
+File: skewed_cliques3_min1_max5_perturbation10.txt
+Optimal solution found: True
+Predicted: 3
+Actual: 3
+Deviation: 0
+Correct: True
+Time taken: 0.0023086071014404297
+------------------------------
+File: skewed_cliques3_min1_max5_perturbation40.txt
+Optimal solution found: True
+Predicted: 3
+Actual: 3
+Deviation: 0
+Correct: True
+Time taken: 0.0003573894500732422
+------------------------------
+File: skewed_cliques3_min1_max5_perturbation80.txt
+Optimal solution found: True
+Predicted: 3
+Actual: 3
+Deviation: 0
+Correct: True
+Time taken: 0.00102996826171875
+Cost: 2.0
+------------------------------
+File: skewed_cliques5_min1_max5_perturbation10.txt
+Optimal solution found: True
+Predicted: 5
+Actual: 5
+Deviation: 0
+Correct: True
+Time taken: 0.008538246154785156
+------------------------------
+File: skewed_cliques5_min1_max5_perturbation40.txt
+Optimal solution found: True
+Predicted: 6
+Actual: 6
+Deviation: 0
+Correct: True
+Time taken: 0.0025148391723632812
+------------------------------
+File: skewed_cliques5_min1_max5_perturbation80.txt
+Optimal solution found: True
+Predicted: 7
+Actual: 7
+Deviation: 0
+Correct: True
+Time taken: 0.0059888362884521484
+Cost: 2.0
+------------------------------
+File: skewed_cliques2_min1_max11_perturbation10.txt
+Optimal solution found: True
+Predicted: 2
+Actual: 3
+Deviation: -1
+Correct: False
+Time taken: 0.0029201507568359375
+Cost: 2.0
+------------------------------
+File: skewed_cliques2_min1_max11_perturbation40.txt
+Optimal solution found: True
+Predicted: 3
+Actual: 5
+Deviation: -2
+Correct: False
+Time taken: 0.006704568862915039
+Cost: 11.0
+------------------------------
+File: skewed_cliques2_min1_max11_perturbation80.txt
+Optimal solution found: True
+Predicted: 7
+Actual: 8
+Deviation: -1
+Correct: False
+Time taken: 0.01230621337890625
+Cost: 6.0
+------------------------------
+File: skewed_cliques3_min1_max11_perturbation10.txt
+Optimal solution found: True
+Predicted: 3
+Actual: 4
+Deviation: -1
+Correct: False
+Time taken: 0.008924007415771484
+Cost: 3.0
+------------------------------
+File: skewed_cliques3_min1_max11_perturbation40.txt
+Optimal solution found: True
+Predicted: 6
+Actual: 8
+Deviation: -2
+Correct: False
+Time taken: 0.07973980903625488
+Cost: 26.0
+------------------------------
+File: skewed_cliques3_min1_max11_perturbation80.txt
+Optimal solution found: True
+Predicted: 10
+Actual: 10
+Deviation: 0
+Correct: True
+Time taken: 0.06791520118713379
+Cost: 22.0
+------------------------------
+File: skewed_cliques5_min1_max11_perturbation10.txt
+Optimal solution found: True
+Predicted: 4
+Actual: 6
+Deviation: -2
+Correct: False
+Time taken: 0.013138294219970703
+Cost: 4.0
+------------------------------
+File: skewed_cliques5_min1_max11_perturbation40.txt
+Optimal solution found: True
+Predicted: 7
+Actual: 8
+Deviation: -1
+Correct: False
+Time taken: 0.09617233276367188
+Cost: 36.0
+------------------------------
+File: skewed_cliques5_min1_max11_perturbation80.txt
+Optimal solution found: True
+Predicted: 9
+Actual: 10
+Deviation: -1
+Correct: False
+Time taken: 0.22485756874084473
+Cost: 41.0
+------------------------------
+File: skewed_cliques2_min1_max20_perturbation10.txt
+Optimal solution found: True
+Predicted: 2
+Actual: 3
+Deviation: -1
+Correct: False
+Time taken: 0.01849079132080078
+Cost: 7.0
+------------------------------
+File: skewed_cliques2_min1_max20_perturbation40.txt
+Optimal solution found: True
+Predicted: 3
+Actual: 6
+Deviation: -3
+Correct: False
+Time taken: 0.13152122497558594
+Cost: 57.0
+------------------------------
+File: skewed_cliques2_min1_max20_perturbation80.txt
+Optimal solution found: True
+Predicted: 6
+Actual: 6
+Deviation: 0
+Correct: True
+Time taken: 0.0165102481842041
+Cost: 10.0
+------------------------------
+File: skewed_cliques3_min1_max20_perturbation10.txt
+Optimal solution found: True
+Predicted: 3
+Actual: 4
+Deviation: -1
+Correct: False
+Time taken: 0.042655229568481445
+Cost: 15.0
+------------------------------
+File: skewed_cliques3_min1_max20_perturbation40.txt
+Optimal solution found: True
+Predicted: 8
+Actual: 12
+Deviation: -4
+Correct: False
+Time taken: 1.8471043109893799
+Cost: 126.0
+------------------------------
+File: skewed_cliques3_min1_max20_perturbation80.txt
+Optimal solution found: True
+Predicted: 12
+Actual: 12
+Deviation: 0
+Correct: True
+Time taken: 0.6250588893890381
+Cost: 67.0
+------------------------------
+File: skewed_cliques5_min1_max20_perturbation10.txt
+Optimal solution found: True
+Predicted: 5
+Actual: 7
+Deviation: -2
+Correct: False
+Time taken: 0.08622336387634277
+Cost: 10.0
+------------------------------
+File: skewed_cliques5_min1_max20_perturbation40.txt
+Optimal solution found: True
+Predicted: 8
+Actual: 11
+Deviation: -3
+Correct: False
+Time taken: 1.6514277458190918
+Cost: 84.0
+------------------------------
+File: skewed_cliques5_min1_max20_perturbation80.txt
+Optimal solution found: True
+Predicted: 10
+Actual: 11
+Deviation: -1
+Correct: False
+Time taken: 0.12352228164672852
+Cost: 29.0
+------------------------------
+File: skewed_cliques2_min5_max5_perturbation10.txt
+Optimal solution found: True
+Predicted: 2
+Actual: 3
+Deviation: -1
+Correct: False
+Time taken: 0.006721019744873047
+Cost: 2.0
+------------------------------
+File: skewed_cliques2_min5_max5_perturbation40.txt
+Optimal solution found: True
+Predicted: 3
+Actual: 4
+Deviation: -1
+Correct: False
+Time taken: 0.006423473358154297
+Cost: 7.0
+------------------------------
+File: skewed_cliques2_min5_max5_perturbation80.txt
+Optimal solution found: True
+Predicted: 7
+Actual: 7
+Deviation: 0
+Correct: True
+Time taken: 0.005633115768432617
+Cost: 2.0
+------------------------------
+File: skewed_cliques3_min5_max5_perturbation10.txt
+Optimal solution found: True
+Predicted: 3
+Actual: 4
+Deviation: -1
+Correct: False
+Time taken: 0.01874709129333496
+Cost: 3.0
+------------------------------
+File: skewed_cliques3_min5_max5_perturbation40.txt
+Optimal solution found: True
+Predicted: 6
+Actual: 7
+Deviation: -1
+Correct: False
+Time taken: 0.01928091049194336
+Cost: 12.0
+------------------------------
+File: skewed_cliques3_min5_max5_perturbation80.txt
+Optimal solution found: True
+Predicted: 7
+Actual: 8
+Deviation: -1
+Correct: False
+Time taken: 0.0247347354888916
+Cost: 13.0
+------------------------------
+File: skewed_cliques5_min5_max5_perturbation10.txt
+Optimal solution found: True
+Predicted: 5
+Actual: 8
+Deviation: -3
+Correct: False
+Time taken: 0.08238339424133301
+Cost: 9.0
+------------------------------
+File: skewed_cliques5_min5_max5_perturbation40.txt
+Optimal solution found: True
+Predicted: 8
+Actual: 10
+Deviation: -2
+Correct: False
+Time taken: 0.13028788566589355
+Cost: 31.0
+------------------------------
+File: skewed_cliques5_min5_max5_perturbation80.txt
+Optimal solution found: True
+Predicted: 9
+Actual: 10
+Deviation: -1
+Correct: False
+Time taken: 0.27698826789855957
+Cost: 47.0
+------------------------------
+File: skewed_cliques2_min5_max11_perturbation10.txt
+Optimal solution found: True
+Predicted: 2
+Actual: 4
+Deviation: -2
+Correct: False
+Time taken: 0.02054309844970703
+Cost: 5.0
+------------------------------
+File: skewed_cliques2_min5_max11_perturbation40.txt
+Optimal solution found: True
+Predicted: 4
+Actual: 5
+Deviation: -1
+Correct: False
+Time taken: 0.00795435905456543
+Cost: 9.0
+------------------------------
+File: skewed_cliques2_min5_max11_perturbation80.txt
+Optimal solution found: True
+Predicted: 7
+Actual: 6
+Deviation: 1
+Correct: False
+Time taken: 0.005845546722412109
+Cost: 5.0
+------------------------------
+File: skewed_cliques3_min5_max11_perturbation10.txt
+Optimal solution found: True
+Predicted: 3
+Actual: 5
+Deviation: -2
+Correct: False
+Time taken: 0.028017520904541016
+Cost: 8.0
+------------------------------
+File: skewed_cliques3_min5_max11_perturbation40.txt
+Optimal solution found: True
+Predicted: 5
+Actual: 8
+Deviation: -3
+Correct: False
+Time taken: 0.10366415977478027
+Cost: 43.0
+------------------------------
+File: skewed_cliques3_min5_max11_perturbation80.txt
+Optimal solution found: True
+Predicted: 10
+Actual: 11
+Deviation: -1
+Correct: False
+Time taken: 0.0629737377166748
+Cost: 21.0
+------------------------------
+File: skewed_cliques5_min5_max11_perturbation10.txt
+Optimal solution found: True
+Predicted: 6
+Actual: 10
+Deviation: -4
+Correct: False
+Time taken: 0.2806665897369385
+Cost: 17.0
+------------------------------
+File: skewed_cliques5_min5_max11_perturbation40.txt
+Optimal solution found: True
+Predicted: 10
+Actual: 13
+Deviation: -3
+Correct: False
+Time taken: 1.846738576889038
+Cost: 105.0
+------------------------------
+File: skewed_cliques5_min5_max11_perturbation80.txt
+Optimal solution found: True
+Predicted: 14
+Actual: 14
+Deviation: 0
+Correct: True
+Time taken: 3.3447163105010986
+Cost: 84.0
+------------------------------
+File: skewed_cliques2_min5_max20_perturbation10.txt
+Optimal solution found: True
+Predicted: 2
+Actual: 6
+Deviation: -4
+Correct: False
+Time taken: 0.12357163429260254
+Cost: 31.0
+------------------------------
+File: skewed_cliques2_min5_max20_perturbation40.txt
+Optimal solution found: True
+Predicted: 5
+Actual: 7
+Deviation: -2
+Correct: False
+Time taken: 0.10230851173400879
+Cost: 40.0
+------------------------------
+File: skewed_cliques2_min5_max20_perturbation80.txt
+Optimal solution found: True
+Predicted: 7
+Actual: 7
+Deviation: 0
+Correct: True
+Time taken: 0.017102956771850586
+Cost: 9.0
+------------------------------
+File: skewed_cliques3_min5_max20_perturbation10.txt
+Optimal solution found: True
+Predicted: 3
+Actual: 6
+Deviation: -3
+Correct: False
+Time taken: 0.12709450721740723
+Cost: 14.0
+------------------------------
+File: skewed_cliques3_min5_max20_perturbation40.txt
+Optimal solution found: True
+Predicted: 7
+Actual: 8
+Deviation: -1
+Correct: False
+Time taken: 0.07548189163208008
+Cost: 30.0
+------------------------------
+File: skewed_cliques3_min5_max20_perturbation80.txt
+Optimal solution found: True
+Predicted: 8
+Actual: 9
+Deviation: -1
+Correct: False
+Time taken: 0.17119264602661133
+Cost: 42.0
+------------------------------
+File: skewed_cliques5_min5_max20_perturbation10.txt
+Optimal solution found: True
+Predicted: 5
+Actual: 8
+Deviation: -3
+Correct: False
+Time taken: 0.30872583389282227
+Cost: 24.0
+------------------------------
+File: skewed_cliques5_min5_max20_perturbation40.txt
+Optimal solution found: True
+Predicted: 10
+Actual: 13
+Deviation: -3
+Correct: False
+Time taken: 1.0003924369812012
+Cost: 103.0
+------------------------------
+File: skewed_cliques5_min5_max20_perturbation80.txt
+Optimal solution found: True
+Predicted: 15
+Actual: 15
+Deviation: 0
+Correct: True
+Time taken: 7.225518465042114
+Cost: 106.0
+------------------------------
+File: skewed_cliques2_min8_max5_perturbation10.txt
+Optimal solution found: True
+Predicted: 2
+Actual: 4
+Deviation: -2
+Correct: False
+Time taken: 0.021500110626220703
+Cost: 3.0
+------------------------------
+File: skewed_cliques2_min8_max5_perturbation40.txt
+Optimal solution found: True
+Predicted: 3
+Actual: 5
+Deviation: -2
+Correct: False
+Time taken: 0.016266584396362305
+Cost: 16.0
+------------------------------
+File: skewed_cliques2_min8_max5_perturbation80.txt
+Optimal solution found: True
+Predicted: 8
+Actual: 8
+Deviation: 0
+Correct: True
+Time taken: 0.01866292953491211
+Cost: 9.0
+------------------------------
+File: skewed_cliques3_min8_max5_perturbation10.txt
+Optimal solution found: True
+Predicted: 3
+Actual: 5
+Deviation: -2
+Correct: False
+Time taken: 0.04697442054748535
+Cost: 8.0
+------------------------------
+File: skewed_cliques3_min8_max5_perturbation40.txt
+Optimal solution found: True
+Predicted: 6
+Actual: 9
+Deviation: -3
+Correct: False
+Time taken: 0.08599281311035156
+Cost: 29.0
+------------------------------
+File: skewed_cliques3_min8_max5_perturbation80.txt
+Optimal solution found: True
+Predicted: 10
+Actual: 11
+Deviation: -1
+Correct: False
+Time taken: 0.04836106300354004
+Cost: 18.0
+------------------------------
+File: skewed_cliques5_min8_max5_perturbation10.txt
+Optimal solution found: True
+Predicted: 5
+Actual: 8
+Deviation: -3
+Correct: False
+Time taken: 0.16089630126953125
+Cost: 15.0
+------------------------------
+File: skewed_cliques5_min8_max5_perturbation40.txt
+Optimal solution found: True
+Predicted: 11
+Actual: 12
+Deviation: -1
+Correct: False
+Time taken: 0.32661008834838867
+Cost: 55.0
+------------------------------
+File: skewed_cliques5_min8_max5_perturbation80.txt
+Optimal solution found: True
+Predicted: 10
+Actual: 13
+Deviation: -3
+Correct: False
+Time taken: 0.41245245933532715
+Cost: 61.0
+------------------------------
+File: skewed_cliques2_min8_max11_perturbation10.txt
+Optimal solution found: True
+Predicted: 2
+Actual: 4
+Deviation: -2
+Correct: False
+Time taken: 0.03416728973388672
+Cost: 4.0
+------------------------------
+File: skewed_cliques2_min8_max11_perturbation40.txt
+Optimal solution found: True
+Predicted: 5
+Actual: 7
+Deviation: -2
+Correct: False
+Time taken: 0.07874417304992676
+Cost: 38.0
+------------------------------
+File: skewed_cliques2_min8_max11_perturbation80.txt
+Optimal solution found: True
+Predicted: 8
+Actual: 8
+Deviation: 0
+Correct: True
+Time taken: 0.06319046020507812
+Cost: 24.0
+------------------------------
+File: skewed_cliques3_min8_max11_perturbation10.txt
+Optimal solution found: True
+Predicted: 3
+Actual: 6
+Deviation: -3
+Correct: False
+Time taken: 0.07798337936401367
+Cost: 17.0
+------------------------------
+File: skewed_cliques3_min8_max11_perturbation40.txt
+Optimal solution found: True
+Predicted: 6
+Actual: 10
+Deviation: -4
+Correct: False
+Time taken: 0.26212596893310547
+Cost: 65.0
+------------------------------
+File: skewed_cliques3_min8_max11_perturbation80.txt
+Optimal solution found: True
+Predicted: 11
+Actual: 11
+Deviation: 0
+Correct: True
+Time taken: 0.23563504219055176
+Cost: 46.0
+------------------------------
+File: skewed_cliques5_min8_max11_perturbation10.txt
+Optimal solution found: True
+Predicted: 5
+Actual: 9
+Deviation: -4
+Correct: False
+Time taken: 0.43219614028930664
+Cost: 29.0
+------------------------------
+File: skewed_cliques5_min8_max11_perturbation40.txt
+Optimal solution found: True
+Predicted: 12
+Actual: 15
+Deviation: -3
+Correct: False
+Time taken: 3.7477774620056152
+Cost: 127.0
+------------------------------
+File: skewed_cliques5_min8_max11_perturbation80.txt
+Optimal solution found: True
+Predicted: 14
+Actual: 15
+Deviation: -1
+Correct: False
+Time taken: 10.030709743499756
+Cost: 148.0
+------------------------------
+File: skewed_cliques2_min8_max20_perturbation10.txt
+Optimal solution found: True
+Predicted: 2
+Actual: 4
+Deviation: -2
+Correct: False
+Time taken: 0.16645050048828125
+Cost: 28.0
+------------------------------
+File: skewed_cliques2_min8_max20_perturbation40.txt
+Optimal solution found: True
+Predicted: 4
+Actual: 6
+Deviation: -2
+Correct: False
+Time taken: 0.030586957931518555
+Cost: 23.0
+------------------------------
+File: skewed_cliques2_min8_max20_perturbation80.txt
+Optimal solution found: True
+Predicted: 10
+Actual: 10
+Deviation: 0
+Correct: True
+Time taken: 0.08341145515441895
+Cost: 29.0
+------------------------------
+File: skewed_cliques3_min8_max20_perturbation10.txt
+Optimal solution found: True
+Predicted: 3
+Actual: 6
+Deviation: -3
+Correct: False
+Time taken: 0.26201891899108887
+Cost: 23.0
+------------------------------
+File: skewed_cliques3_min8_max20_perturbation40.txt
+Optimal solution found: True
+Predicted: 7
+Actual: 9
+Deviation: -2
+Correct: False
+Time taken: 0.43706488609313965
+Cost: 78.0
+------------------------------
+File: skewed_cliques3_min8_max20_perturbation80.txt
+Optimal solution found: True
+Predicted: 11
+Actual: 12
+Deviation: -1
+Correct: False
+Time taken: 0.741309642791748
+Cost: 64.0
+------------------------------
+File: skewed_cliques5_min8_max20_perturbation10.txt
+Optimal solution found: True
+Predicted: 5
+Actual: 11
+Deviation: -6
+Correct: False
+Time taken: 0.7477116584777832
+Cost: 46.0
+------------------------------
+File: skewed_cliques5_min8_max20_perturbation40.txt
+Optimal solution found: True
+Predicted: 11
+Actual: 14
+Deviation: -3
+Correct: False
+Time taken: 8.671390771865845
+Cost: 182.0
+------------------------------
+
+Summary:
+Total tests: 86
+Successful: 86
+Timed out: 0
+Correct predictions (overall): 21/86 (24.4%)
+Accuracy (on successful): 24.4%
+Average Deviation (on successful): -1.60

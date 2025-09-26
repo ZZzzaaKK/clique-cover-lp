@@ -1,0 +1,22 @@
+0: 1 4 8 9
+1: 0
+2: 3 8
+3: 2 7
+4: 0 5 8
+5: 4
+6:
+7: 3
+8: 0 2 4
+9: 0
+
+Connected: No
+Number of Vertices: 10
+Number of Edges: 9
+Average Degree: 1.800
+Density: 0.200
+Number of Components: 2
+Maximum Degree: 4
+Minimum Degree: 0
+
+# Calculated by ILP on complement graph
+Vertex Clique Cover Number: 6

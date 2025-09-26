@@ -168,31 +168,33 @@ def kernelize_edge_cuts(
             # Break after processing one vertex to restart the search
             break
 
+    print(f"Applied modifications through edge cut reductions: {applied_modifications}")
     return working_graph, working_weights, remaining_k, applied_modifications
 
 
 def solve_cluster_editing_ilp(
     graph: nx.Graph, weights: dict[tuple[int, int], int] | None, time_limit=60
-) -> tuple[set[tuple[int, int]], float]:
+) -> tuple[set, float, set[tuple[int, int]]]:
     """
     Args:
         graph: Input graph
         weights: Edge weights for pairs of nodes (positive = edge exists, negative = non-edge). If None, edges are assigned +1 and non-edges -1 weight
 
     Returns:
-        modifications: set of edge modifications on the original graph
+        clusters: clusters in the final solutions
         cost: cost of the edge modifications
+        modifications: set of edge modifications on the original graph
     """
 
     nodes = list(graph.nodes())
     n = len(nodes)
     if n <= 1:
-        return set(), 0.0
+        return set(nodes), 0.0, set()
 
     model = gp.Model("cluster_editing")
     model.Params.OutputFlag = 0
     model.Params.TimeLimit = time_limit
-    modifications = set()
+    clusters = set()
 
     # Create all pairs
     pairs = {(min(u, v), max(u, v)) for u, v in combinations(nodes, 2)}
@@ -230,8 +232,11 @@ def solve_cluster_editing_ilp(
     if model.Status not in [GRB.OPTIMAL, GRB.SUBOPTIMAL]:
         raise RuntimeError(f"Optimization failed with status {model.Status}")
 
-    # Extract modifications from solution
+    # Extract modifications and clusters from solution
     modifications = set()
+    solution_graph = nx.Graph()
+    solution_graph.add_nodes_from(nodes)
+
     for u, v in pairs:
         solution_has_edge = x[(u, v)].X > 0.5
         original_has_edge = graph.has_edge(u, v)
@@ -239,4 +244,13 @@ def solve_cluster_editing_ilp(
         if solution_has_edge != original_has_edge:
             modifications.add((u, v))
 
-    return modifications, model.ObjVal
+        # Build solution graph for cluster extraction
+        if solution_has_edge:
+            solution_graph.add_edge(u, v)
+
+    # Extract clusters as connected components
+    clusters = {
+        frozenset(component) for component in nx.connected_components(solution_graph)
+    }
+
+    return clusters, model.ObjVal, modifications
