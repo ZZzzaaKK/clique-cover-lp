@@ -1,10 +1,37 @@
+from algorithms.cluster_editing import solve_cluster_editing_ilp, kernelize_edge_cuts
 from utils import txt_to_networkx
 import networkx as nx
 from algorithms.chalupa import ChalupaHeuristic
 from algorithms.ilp_solver import solve_ilp_clique_cover
 from reductions.reductions import apply_all_reductions
 
-def reduced_ilp_wrapper(txt_filepath, problem_type="vertex_clique_cover", time_limit=60):
+
+def cluster_editing_wrapper(txt_filepath, time_limit):
+    print(f"{txt_filepath}")
+    G = txt_to_networkx(txt_filepath)
+    try:
+        modifications, cost = solve_cluster_editing_ilp(G, None, time_limit)
+    except RuntimeError:
+        return 0, False, []
+    return cost, True, modifications
+
+
+def reduced_cluster_editing_wrapper(txt_filepath, time_limit):
+    print(f"{txt_filepath}")
+    G = txt_to_networkx(txt_filepath)
+    reduced_graph, reduced_weights, _, _ = kernelize_edge_cuts(G, None)
+    try:
+        modifications, cost = solve_cluster_editing_ilp(
+            reduced_graph, reduced_weights, time_limit
+        )
+    except RuntimeError:
+        return 0, False, []
+    return cost, True, modifications
+
+
+def reduced_ilp_wrapper(
+    txt_filepath, problem_type="vertex_clique_cover", time_limit=60
+):
     """
     Wrapper for reduction followed by ILP
         1. Estimate upper bound k on clique cover number θ(G)
@@ -20,25 +47,36 @@ def reduced_ilp_wrapper(txt_filepath, problem_type="vertex_clique_cover", time_l
 
         if problem_type == "chromatic_number":
             # For chromatic number, work with the original graph
-            G_complement_reduced, trace, chromatic_number_addition = apply_all_reductions(nx.complement(G))
-            result = solve_ilp_clique_cover(nx.complement(G_complement_reduced), time_limit=time_limit)
-            if 'error' in result:
+            G_complement_reduced, trace, chromatic_number_addition = (
+                apply_all_reductions(nx.complement(G))
+            )
+            result = solve_ilp_clique_cover(
+                nx.complement(G_complement_reduced), time_limit=time_limit
+            )
+            if "error" in result:
                 print(f"ILP failed on {txt_filepath}: {result['error']}")
                 return None, False
-            return int(result['chromatic_number']) + chromatic_number_addition, result['optimal']
+            return int(result["chromatic_number"]) + chromatic_number_addition, result[
+                "optimal"
+            ]
         else:
             # For vertex clique cover, work with the complement
             G_reduced, trace, vcc_addition = apply_all_reductions(G)
-            result = solve_ilp_clique_cover(nx.complement(G_reduced), time_limit=time_limit)
-            if 'error' in result:
+            result = solve_ilp_clique_cover(
+                nx.complement(G_reduced), time_limit=time_limit
+            )
+            if "error" in result:
                 print(f"ILP failed on {txt_filepath}: {result['error']}")
                 return None, False
-            return int(result['chromatic_number']) + vcc_addition, result['optimal']
+            return int(result["chromatic_number"]) + vcc_addition, result["optimal"]
     except Exception as e:
         print(f"ILP failed on {txt_filepath}: {e}")
         return None, False
 
-def interactive_reduced_ilp_wrapper(txt_filepath, problem_type="vertex_clique_cover", time_limit=60):
+
+def interactive_reduced_ilp_wrapper(
+    txt_filepath, problem_type="vertex_clique_cover", time_limit=60
+):
     """
     Wrapper for interactive reduction followed by ILP
         1. Estimate upper bound k on clique cover number θ(G)
@@ -52,7 +90,7 @@ def interactive_reduced_ilp_wrapper(txt_filepath, problem_type="vertex_clique_co
     try:
         print(f"{txt_filepath}")
         G = txt_to_networkx(txt_filepath)
-        upper_bound = float('inf')
+        upper_bound = float("inf")
         # just any value lower than infinity
         current_upper_bound = 0
         total_vcc_addition = 0
@@ -60,7 +98,9 @@ def interactive_reduced_ilp_wrapper(txt_filepath, problem_type="vertex_clique_co
             chalupa = ChalupaHeuristic(nx.complement(G))
             best_clique_covering = chalupa.iterated_greedy_clique_covering()
             upper_bound = current_upper_bound
-            current_upper_bound = len(best_clique_covering) if best_clique_covering else float('inf')
+            current_upper_bound = (
+                len(best_clique_covering) if best_clique_covering else float("inf")
+            )
             G, trace, vcc_addition = apply_all_reductions(G)
             total_vcc_addition += vcc_addition
 
@@ -71,13 +111,14 @@ def interactive_reduced_ilp_wrapper(txt_filepath, problem_type="vertex_clique_co
             # For vertex clique cover, work with the complement
             result = solve_ilp_clique_cover(nx.complement(G), time_limit=time_limit)
 
-        if 'error' in result:
+        if "error" in result:
             print(f"ILP failed on {txt_filepath}: {result['error']}")
             return None, False
-        return int(result['chromatic_number']) + total_vcc_addition, result['optimal']
+        return int(result["chromatic_number"]) + total_vcc_addition, result["optimal"]
     except Exception as e:
         print(f"ILP failed on {txt_filepath}: {e}")
         return None, False
+
 
 def reduced_chalupa_wrapper(txt_filepath, problem_type="vertex_clique_cover"):
     """Wrapper for Reduced Chalupa algorithm
@@ -90,7 +131,9 @@ def reduced_chalupa_wrapper(txt_filepath, problem_type="vertex_clique_cover"):
         G = txt_to_networkx(txt_filepath)
 
         if problem_type == "chromatic_number":
-            G_complement_reduced, trace, addition = apply_all_reductions(nx.complement(G))
+            G_complement_reduced, trace, addition = apply_all_reductions(
+                nx.complement(G)
+            )
             print(G_complement_reduced)
             chalupa = ChalupaHeuristic(G_complement_reduced)
         else:
@@ -98,12 +141,13 @@ def reduced_chalupa_wrapper(txt_filepath, problem_type="vertex_clique_cover"):
             chalupa = ChalupaHeuristic(G_reduced)
 
         result = chalupa.run()
-        is_optimal = result['upper_bound'] == result['lower_bound']
-        return result['upper_bound'] + addition, is_optimal
+        is_optimal = result["upper_bound"] == result["lower_bound"]
+        return result["upper_bound"] + addition, is_optimal
 
     except Exception as e:
         print(f"Reduced Chalupa failed on {txt_filepath}: {e}")
         return None, False
+
 
 def chalupa_wrapper(txt_filepath, problem_type="vertex_clique_cover"):
     """Wrapper for Chalupa algorithm
@@ -123,13 +167,19 @@ def chalupa_wrapper(txt_filepath, problem_type="vertex_clique_cover"):
             chalupa = ChalupaHeuristic(G)
 
         result = chalupa.run()
-        is_optimal = result['upper_bound'] == result['lower_bound'] == 0
-        return result['upper_bound'], is_optimal
+        is_optimal = result["upper_bound"] == result["lower_bound"] == 0
+        return result["upper_bound"], is_optimal
     except Exception as e:
         print(f"Chalupa failed on {txt_filepath}: {e}")
         return None, False
 
-def ilp_wrapper(txt_filepath, problem_type="vertex_clique_cover", require_optimal=False, time_limit=60):
+
+def ilp_wrapper(
+    txt_filepath,
+    problem_type="vertex_clique_cover",
+    require_optimal=False,
+    time_limit=60,
+):
     """Wrapper for ILP solver
 
     Args:
@@ -141,15 +191,19 @@ def ilp_wrapper(txt_filepath, problem_type="vertex_clique_cover", require_optima
 
         if problem_type == "chromatic_number":
             # For chromatic number, work with the original graph
-            result = solve_ilp_clique_cover(G, require_optimal=require_optimal, time_limit=time_limit)
+            result = solve_ilp_clique_cover(
+                G, require_optimal=require_optimal, time_limit=time_limit
+            )
         else:
             # For vertex clique cover, work with the complement
-            result = solve_ilp_clique_cover(nx.complement(G), require_optimal=require_optimal, time_limit=time_limit)
+            result = solve_ilp_clique_cover(
+                nx.complement(G), require_optimal=require_optimal, time_limit=time_limit
+            )
 
-        if 'error' in result:
+        if "error" in result:
             print(f"ILP failed on {txt_filepath}: {result['error']}")
             return None, False
-        return result['chromatic_number'], result['optimal']
+        return result["chromatic_number"], result["optimal"]
     except Exception as e:
         print(f"ILP failed on {txt_filepath}: {e}")
         return None, False

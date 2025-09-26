@@ -172,7 +172,7 @@ def kernelize_edge_cuts(
 
 
 def solve_cluster_editing_ilp(
-    graph: nx.Graph, weights: dict[tuple[int, int], int] | None
+    graph: nx.Graph, weights: dict[tuple[int, int], int] | None, time_limit=60
 ) -> tuple[set[tuple[int, int]], float]:
     """
     Args:
@@ -191,6 +191,7 @@ def solve_cluster_editing_ilp(
 
     model = gp.Model("cluster_editing")
     model.Params.OutputFlag = 0
+    model.Params.TimeLimit = time_limit
     modifications = set()
 
     # Create all pairs
@@ -199,8 +200,6 @@ def solve_cluster_editing_ilp(
     # Decision variable: x[i, j] = 1 if edge (i, j) exists in solution
     x = model.addVars(pairs, vtype=GRB.BINARY, name="x")
     obj_expr = gp.LinExpr()
-
-    print("Weights:", weights)
 
     for i, j in pairs:
         if weights is None:
