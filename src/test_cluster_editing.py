@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import networkx as nx
-from algorithms.cluster_editing import solve_cluster_editing_ilp
+from algorithms.cluster_editing import kernelize_edge_cuts, solve_cluster_editing_ilp
 import ast
 import os
 
@@ -352,6 +352,74 @@ def test_curated_graphs():
             print()
 
 
+def test_curated_graphs_reduced():
+    """Test on hand-crafted examples with known optimal solutions"""
+    test_dir = "test_graphs/curated/cluster_editing"
+
+    if not os.path.exists(test_dir):
+        print(f"Test directory {test_dir} not found, skipping curated tests")
+        return
+
+    # Recursively find all .txt files in subdirectories
+    test_files = []
+    for root, dirs, files in os.walk(test_dir):
+        for filename in files:
+            if filename.endswith(".txt"):
+                filepath = os.path.join(root, filename)
+                # Get relative path from test_dir for cleaner display
+                rel_path = os.path.relpath(filepath, test_dir)
+                test_files.append((filepath, rel_path))
+
+    # Sort by relative path for consistent ordering
+    test_files.sort(key=lambda x: x[1])
+
+    for filepath, rel_path in test_files:
+        print(f"Testing {rel_path}:")
+
+        try:
+            graph, expected_modifications_list, weights = parse_test_graph_file(
+                filepath
+            )
+            print(f"Original edges: {list(graph.edges())}")
+            print(f"Expected solutions: {expected_modifications_list}")
+
+            (reduced_graph, reduced_weights, remaining_k, applied_modifications) = (
+                kernelize_edge_cuts(graph, weights)
+            )
+            print(f"Remaining k: {remaining_k}")
+            print(f"Applied modifications: {applied_modifications}")
+            modifications, cost = solve_cluster_editing_ilp(
+                reduced_graph, reduced_weights
+            )
+            print(f"ILP solution: {modifications}")
+            print(f"Cost: {cost}")
+
+            is_valid, solution_idx = validate_solution(
+                modifications, expected_modifications_list, cost
+            )
+
+            if is_valid:
+                print(f"✓ PASS: Matches expected solution {solution_idx}")
+            else:
+                print("✗ FAIL: Does not match any expected solution")
+                print(f"Expected one of: {expected_modifications_list}")
+
+            # Show resulting clusters
+            result = graph.copy()
+            for u, v in modifications:
+                if result.has_edge(u, v):
+                    result.remove_edge(u, v)
+                else:
+                    result.add_edge(u, v)
+            clusters = list(nx.connected_components(result))
+            print(f"Resulting clusters: {clusters}")
+            print()
+
+        except Exception as e:
+            print(f"Error testing {filepath}: {e}")
+            print()
+
+
 def test_similarity_data():
     """Test cluster editing on similarity data like RF02246.tsv"""
     similarity_file = "test_graphs/rfam/RF02246.tsv"
@@ -419,5 +487,6 @@ if __name__ == "__main__":
     # test_triangle_graph()
     # test_path_graph()
     # test_weighted()
-    test_curated_graphs()
+    test_curated_graphs_reduced()
+    # test_curated_graphs()
     # test_similarity_data()

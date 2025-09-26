@@ -8,7 +8,7 @@ def kernelize_edge_cuts(
     graph: nx.Graph,
     weights: dict[tuple[int, int], int] | None = None,
     k: int | None = None,
-) -> tuple[nx.Graph, dict[tuple[int, int], int], int, set[tuple[int, int]]]:
+) -> tuple[nx.Graph, dict[tuple[int, int], int], int | float, set[tuple[int, int]]]:
     """
     Apply edge cuts kernelization for cluster editing.
 
