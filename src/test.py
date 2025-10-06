@@ -86,13 +86,25 @@ class TestRunner:
         return results
 
 
-def save_summary(results, name):
+def save_summary(results, name, output_dir):
+    """Save test results to file
+
+    Args:
+        results: List of test results
+        name: Algorithm name
+        output_dir: Directory to save results to (mirrors test_graphs structure)
+    """
     correct = sum(1 for r in results if r["correct"])
     total = len(results)
     successful_results = [r for r in results if r.get("deviation") is not None]
     timed_out_results = len(results) - len(successful_results)
 
-    output_file = f"results/raw/{name}.txt"
+    # Create output directory if it doesn't exist
+    output_path = Path(output_dir)
+    output_path.mkdir(parents=True, exist_ok=True)
+
+    output_file = output_path / f"{name}.txt"
+
     with open(output_file, "w") as f:
         f.write(f"Test Results for {name}\n")
         f.write("=" * 50 + "\n\n")
@@ -125,6 +137,36 @@ def save_summary(results, name):
             f.write(
                 f"\nAverage Deviation (on successful): {deviation_sum / len(successful_results):.2f}\n"
             )
+
+    return output_file
+
+
+def get_output_directory(test_path):
+    """Convert test_graphs path to results/raw path
+
+    Example:
+        test_graphs/curated/20-29 -> results/raw/curated/20-29
+        test_graphs/curated -> results/raw/curated
+        test_graphs/generated/perturbed -> results/raw/generated/perturbed
+    """
+    test_path = Path(test_path)
+
+    # Find where 'test_graphs' starts in the path
+    parts = test_path.parts
+    if "test_graphs" in parts:
+        # Get all parts after 'test_graphs'
+        idx = parts.index("test_graphs")
+        relative_parts = parts[idx + 1 :]
+
+        # Build output path
+        output_path = Path("results/raw")
+        for part in relative_parts:
+            output_path = output_path / part
+
+        return str(output_path)
+    else:
+        # Fallback if test_graphs not in path
+        return f"results/raw/{test_path.name}"
 
 
 def main():
@@ -221,14 +263,16 @@ def main():
     if args.chromatic_number:
         attribute_name = "Chromatic Number"
 
+    # Determine output directory based on input path
+    output_dir = get_output_directory(args.path)
+
     for name, wrapper in algorithms:
         print(
             f"\nTesting {name.replace('_', ' ').title()} Algorithm against {attribute_name}:"
         )
         results = runner.run_tests(wrapper, attribute_name, timeout=args.timeout)
-        output_name = f"{Path(args.path).name}_{name}"
-        save_summary(results, output_name)
-        print(f"Results saved to results/raw/{output_name}.txt")
+        output_file = save_summary(results, name, output_dir)
+        print(f"Results saved to {output_file}")
 
 
 if __name__ == "__main__":
