@@ -220,7 +220,17 @@ def test_triangle_graph():
     print("Triangle graph test:")
     print(f"Original edges: {list(G.edges())}")
 
-    modifications, cost = solve_cluster_editing_ilp(G, None)
+    clusters, cost, modifications = solve_cluster_editing_ilp(G, None)
+    print(f"Modifications: {modifications}")
+    print(f"Cost: {cost}")
+
+    reduced_graph, reduced_weights, remaining_k, applied_modifications = (
+        kernelize_edge_cuts(G)
+    )
+    clusters, cost, modifications = solve_cluster_editing_ilp(
+        reduced_graph, reduced_weights
+    )
+    print("After reduction:")
     print(f"Modifications: {modifications}")
     print(f"Cost: {cost}")
 
@@ -484,9 +494,9 @@ def test_similarity_data():
 
 
 if __name__ == "__main__":
-    # test_triangle_graph()
+    test_triangle_graph()
     # test_path_graph()
     # test_weighted()
-    test_curated_graphs_reduced()
+    # test_curated_graphs_reduced()
     # test_curated_graphs()
     # test_similarity_data()

@@ -1,6 +1,6 @@
 # Getting Started
 
-Install [uv](https://github.com/astral-sh/uv). Then add all the dependencies and activate the virtual environment with `source .venv/bin/activate`.
+Install [uv](https://github.com/astral-sh/uv). Then add all the dependencies and activate the virtual environment with `source .venv/bin/activate`. To test different algorithms, run e.g. `python src/test.py --ilp --reduced-ilp --chalupa --reduced-chalupa --cluster-editing --reduced-cluster-editing --chromatic-number test_graphs/generated/perturbed`. This will run all the specified algorithms, which are made available through the `src/wrappers.py` script, on the specified test graph directory and save the results in `results/raw/`. These results are human-readable and already contain interesting information. To compare results of different algorithms, you can run `python src/comparison.py <results-file1> <results-file2> ...` with two or more of these results files. This will output analysis plots in the `results/analyses` directory.
 
 # Test Cases
 

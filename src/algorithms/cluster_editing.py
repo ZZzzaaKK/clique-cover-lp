@@ -47,15 +47,16 @@ def kernelize_edge_cuts(
 
     def compute_cut_cost(vertex_set: set[int]) -> int:
         """Compute γ(X): total cost of the cut of vertex set X"""
+        complement = set(working_graph.nodes()) - vertex_set
         cut_cost = 0
+
         for u in vertex_set:
-            for v in working_graph.nodes():
-                if v not in vertex_set:
-                    weight = get_weight(u, v)
-                    if weight > 0 and working_graph.has_edge(u, v):
-                        cut_cost += weight  # Cost of removing existing positive edge
-                    elif weight < 0 and not working_graph.has_edge(u, v):
-                        cut_cost += abs(weight)  # Cost of adding missing negative edge
+            for v in complement:
+                weight = get_weight(u, v)
+                if weight > 0 and working_graph.has_edge(u, v):
+                    cut_cost += weight  # Cost of removing existing positive edge
+                elif weight < 0 and not working_graph.has_edge(u, v):
+                    cut_cost += abs(weight)  # Cost of adding missing negative edge
         return cut_cost
 
     def compute_edge_weight_sum(x: int, vertex_set: set[int]) -> int:
@@ -106,6 +107,9 @@ def kernelize_edge_cuts(
 
             # Calculate γ(N[v]): total cost of cut of closed neighborhood
             gamma_closed = compute_cut_cost(closed_neighbors)
+            print(f"Gamme_closed: {gamma_closed}")
+            print(f"Delta_v: {delta_v}")
+            print(f"Length of closed_neighbors: {len(closed_neighbors)}")
 
             # Check kernelization condition: 2δ(v) + γ(N[v]) < |N[v]|
             if 2 * delta_v + gamma_closed >= len(closed_neighbors):
