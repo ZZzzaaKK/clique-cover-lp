@@ -225,6 +225,3 @@ Treewidth: Computation time out
 Twin-Free: Yes
 Vertex Connectivity: 12
 Vertex Cover Number: Computation time out
-
-
-

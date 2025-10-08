@@ -142,7 +142,11 @@ def reduced_chalupa_wrapper(txt_filepath, problem_type="vertex_clique_cover"):
 
         result = chalupa.run()
         is_optimal = result["upper_bound"] == result["lower_bound"]
-        return result["upper_bound"] + addition, is_optimal
+        return (
+            result["upper_bound"] + addition,
+            is_optimal,
+            result["lower_bound"] + addition,
+        )
 
     except Exception as e:
         print(f"Reduced Chalupa failed on {txt_filepath}: {e}")
@@ -168,7 +172,7 @@ def chalupa_wrapper(txt_filepath, problem_type="vertex_clique_cover"):
 
         result = chalupa.run()
         is_optimal = result["upper_bound"] == result["lower_bound"] == 0
-        return result["upper_bound"], is_optimal
+        return result["upper_bound"], is_optimal, result["lower_bound"]
     except Exception as e:
         print(f"Chalupa failed on {txt_filepath}: {e}")
         return None, False

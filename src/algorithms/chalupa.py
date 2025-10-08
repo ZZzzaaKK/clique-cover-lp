@@ -16,33 +16,34 @@ import networkx as nx
 import numpy as np
 from .helpers import jump, random_permutation, uniformly_random
 
+
 class ChalupaHeuristic:
     def __init__(self, Input_Graph):
-            self.original_nodes = list(Input_Graph.nodes())
-            if not self.original_nodes:
-                self.G = Input_Graph
-                self.V = []
-                self.E = []
-                self.n = 0
-                self.node_labels = np.array([])
-                self.upper_bound = 0
-                self.lower_bound = 0
-                self.best_clique_covering = []
-                self.best_independent_set = []
-                return
+        self.original_nodes = list(Input_Graph.nodes())
+        if not self.original_nodes:
+            self.G = Input_Graph
+            self.V = []
+            self.E = []
+            self.n = 0
+            self.node_labels = np.array([])
+            self.upper_bound = 0
+            self.lower_bound = 0
+            self.best_clique_covering = []
+            self.best_independent_set = []
+            return
 
-            # Sometimes need to relabel nodes, for example after applying reductions first
-            self.node_to_int = {node: i for i, node in enumerate(self.original_nodes)}
-            self.G = nx.relabel_nodes(Input_Graph, self.node_to_int, copy=True)
+        # Sometimes need to relabel nodes, for example after applying reductions first
+        self.node_to_int = {node: i for i, node in enumerate(self.original_nodes)}
+        self.G = nx.relabel_nodes(Input_Graph, self.node_to_int, copy=True)
 
-            self.V = list(self.G.nodes())
-            self.E = list(self.G.edges())
-            self.n = len(self.V)
-            self.node_labels = np.zeros(self.n)
-            self.upper_bound = None
-            self.lower_bound = None
-            self.best_clique_covering = None
-            self.best_independent_set = None
+        self.V = list(self.G.nodes())
+        self.E = list(self.G.edges())
+        self.n = len(self.V)
+        self.node_labels = np.zeros(self.n)
+        self.upper_bound = None
+        self.lower_bound = None
+        self.best_clique_covering = None
+        self.best_independent_set = None
 
     def run(self):
         """
@@ -56,25 +57,31 @@ class ChalupaHeuristic:
         """
         if self.n == 0:
             return {
-                'lower_bound': 0,
-                'upper_bound': 0,
-                'clique_covering': [],
-                'independent_set': [],
-                'bounds_interval': [0, 0]
+                "lower_bound": 0,
+                "upper_bound": 0,
+                "clique_covering": [],
+                "independent_set": [],
+                "bounds_interval": [0, 0],
             }
 
         # Step 1: Find upper bound using Iterated Greedy heuristic for clique covering
         self.best_clique_covering = self.iterated_greedy_clique_covering()
-        self.upper_bound = len(self.best_clique_covering) if self.best_clique_covering else float('inf')
+        self.upper_bound = (
+            len(self.best_clique_covering)
+            if self.best_clique_covering
+            else float("inf")
+        )
         # Step 2: Find lower bound using Randomized Local Search for maximum independent set
-        self.lower_bound, self.best_independent_set = self.find_maximum_independent_set()
+        self.lower_bound, self.best_independent_set = (
+            self.find_maximum_independent_set()
+        )
 
         return {
-            'lower_bound': self.lower_bound,
-            'upper_bound': self.upper_bound,
-            'clique_covering': self.best_clique_covering,
-            'independent_set': self.best_independent_set,
-            'bounds_interval': f"[{self.lower_bound}, {self.upper_bound}]"
+            "lower_bound": self.lower_bound,
+            "upper_bound": self.upper_bound,
+            "clique_covering": self.best_clique_covering,
+            "independent_set": self.best_independent_set,
+            "bounds_interval": f"[{self.lower_bound}, {self.upper_bound}]",
         }
 
     def get_neighbors(self, vertex):
@@ -176,8 +183,8 @@ class ChalupaHeuristic:
             sizes[label] += 1
             self.node_labels[current_vertex] = label
 
-        # Filter out empty cliques and convert to sets
-        return [set(clique) for clique in cliques if clique]
+        # Convert to sets
+        return [set(clique) for clique in cliques]
 
     def iterated_greedy_clique_covering(self):
         """
@@ -188,7 +195,7 @@ class ChalupaHeuristic:
         """
         permutation = random_permutation(self.V)
         best_cliques = self.best_clique_covering
-        best_count = self.upper_bound or float('inf')
+        best_count = self.upper_bound or float("inf")
         iteration = 0
         max_iterations = 10000
         no_improvement_count = 0
@@ -207,7 +214,9 @@ class ChalupaHeuristic:
 
             # Create new permutation based on current cliques
             if cliques:
-                permutation = random_permutation(list(itertools.chain.from_iterable(cliques)))
+                permutation = random_permutation(
+                    list(itertools.chain.from_iterable(cliques))
+                )
             else:
                 permutation = random_permutation(self.V)
 

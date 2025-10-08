@@ -82,6 +82,12 @@ class TestRunner:
                 cost = result[2]
                 # Add clusters and modifications to current result in results
                 results[-1].update({"cost": cost})
+            elif algorithm_func in [
+                chalupa_wrapper,
+                reduced_chalupa_wrapper,
+            ]:
+                lower_bound = result[2]
+                results[-1].update({"lower_bound": lower_bound})
 
         return results
 
@@ -118,6 +124,8 @@ def save_summary(results, name, output_dir):
             f.write(f"Time taken: {result['time_taken']}\n")
             if result.get("cost"):
                 f.write(f"Cost: {result['cost']}\n")
+            if result.get("lower_bound"):
+                f.write(f"Lower bound: {result['lower_bound']}\n")
             f.write("-" * 30 + "\n")
 
         f.write("\nSummary:\n")

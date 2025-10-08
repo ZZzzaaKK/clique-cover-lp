@@ -5,6 +5,8 @@ import sys
 import seaborn as sns
 import os
 from pathlib import Path
+import numpy as np
+from scipy import stats
 
 
 def parse_results(filepath):
@@ -316,19 +318,49 @@ def generate_plots(df):
 
     # Plot 3: Time vs Problem Size (vertices)
     plt.figure(figsize=(12, 8))
+
+    # Create a more sophisticated plot with confidence bands
     for algo in sorted(df["algorithm"].unique()):
-        algo_data = df[df["algorithm"] == algo]
-        plt.scatter(
-            algo_data["vertices"], algo_data["time"], alpha=0.6, label=algo, s=50
+        algo_data = df[df["algorithm"] == algo].copy()
+        if len(algo_data) == 0:
+            continue
+
+        # Sort by vertices for proper line plotting
+        algo_data = algo_data.sort_values("vertices")
+
+        # Group by vertices and calculate statistics
+        grouped = (
+            algo_data.groupby("vertices")["time"]
+            .agg(["mean", "std", "count"])
+            .reset_index()
         )
-    plt.title("Time Taken vs. Number of Vertices")
-    plt.xlabel("Number of Vertices")
-    plt.ylabel("Time Taken (s)")
+        grouped = grouped.dropna()
+
+        if len(grouped) == 0:
+            continue
+
+        # Calculate confidence intervals (using standard error)
+        grouped["stderr"] = grouped["std"] / np.sqrt(grouped["count"])
+        grouped["ci_lower"] = grouped["mean"] - 1.96 * grouped["stderr"]  # 95% CI
+        grouped["ci_upper"] = grouped["mean"] + 1.96 * grouped["stderr"]
+
+        # Handle cases where CI goes below 0 on log scale
+        grouped["ci_lower"] = np.maximum(grouped["ci_lower"], grouped["mean"] * 0.01)
+
+        # Plot the line and confidence band
+        plt.plot(grouped["vertices"], grouped["mean"], label=algo, linewidth=2)
+        plt.fill_between(
+            grouped["vertices"], grouped["ci_lower"], grouped["ci_upper"], alpha=0.3
+        )
+
+    plt.title("Time Taken vs. Problem Size", fontsize=14, fontweight="bold")
+    plt.xlabel("Problem Size (vertices)", fontsize=12)
+    plt.ylabel("Time Taken (s)", fontsize=12)
     plt.yscale("log")
-    plt.legend()
-    plt.grid(True, which="both", ls="--", alpha=0.3)
+    plt.legend(title="algorithm", fontsize=10, title_fontsize=10)
+    plt.grid(True, which="both", ls="--", alpha=0.4)
     plt.tight_layout()
-    plt.savefig("results/analyses/time_vs_vertices.png", dpi=150)
+    plt.savefig("results/analyses/time_vs_vertices.png", dpi=150, bbox_inches="tight")
     plt.close()
 
     # Plot 4: Deviation from actual
@@ -350,43 +382,121 @@ def generate_plots(df):
     # Plot 5: Time vs Density
     if "density" in df.columns and df["density"].notna().any():
         plt.figure(figsize=(12, 8))
+
         for algo in sorted(df["algorithm"].unique()):
-            algo_data = df[(df["algorithm"] == algo) & (df["density"].notna())]
-            if not algo_data.empty:
-                plt.scatter(
-                    algo_data["density"], algo_data["time"], alpha=0.6, label=algo, s=50
-                )
-        plt.title("Time Taken vs. Graph Density")
-        plt.xlabel("Graph Density")
-        plt.ylabel("Time Taken (s)")
+            algo_data = df[(df["algorithm"] == algo) & (df["density"].notna())].copy()
+            if algo_data.empty:
+                continue
+
+            # Sort by density for proper line plotting
+            algo_data = algo_data.sort_values("density")
+
+            # Create density bins for grouping
+            algo_data["density_bin"] = pd.cut(
+                algo_data["density"], bins=min(20, len(algo_data) // 2 + 1)
+            )
+            grouped = (
+                algo_data.groupby("density_bin")["time"]
+                .agg(["mean", "std", "count"])
+                .reset_index()
+            )
+            grouped = grouped.dropna()
+
+            if len(grouped) == 0:
+                continue
+
+            # Get bin centers for x-axis
+            grouped["density_center"] = [
+                interval.mid for interval in grouped["density_bin"]
+            ]
+
+            # Calculate confidence intervals
+            grouped["stderr"] = grouped["std"] / np.sqrt(grouped["count"])
+            grouped["ci_lower"] = grouped["mean"] - 1.96 * grouped["stderr"]
+            grouped["ci_upper"] = grouped["mean"] + 1.96 * grouped["stderr"]
+
+            # Handle cases where CI goes below 0 on log scale
+            grouped["ci_lower"] = np.maximum(
+                grouped["ci_lower"], grouped["mean"] * 0.01
+            )
+
+            # Plot the line and confidence band
+            plt.plot(
+                grouped["density_center"], grouped["mean"], label=algo, linewidth=2
+            )
+            plt.fill_between(
+                grouped["density_center"],
+                grouped["ci_lower"],
+                grouped["ci_upper"],
+                alpha=0.3,
+            )
+
+        plt.title("Time Taken vs. Graph Density", fontsize=14, fontweight="bold")
+        plt.xlabel("Graph Density", fontsize=12)
+        plt.ylabel("Time Taken (s)", fontsize=12)
         plt.yscale("log")
-        plt.legend()
-        plt.grid(True, which="both", ls="--", alpha=0.3)
+        plt.legend(title="algorithm", fontsize=10, title_fontsize=10)
+        plt.grid(True, which="both", ls="--", alpha=0.4)
         plt.tight_layout()
-        plt.savefig("results/analyses/time_vs_density.png", dpi=150)
+        plt.savefig(
+            "results/analyses/time_vs_density.png", dpi=150, bbox_inches="tight"
+        )
         plt.close()
 
     # Plot 6: Time vs Clique Number
     if "clique_number" in df.columns and df["clique_number"].notna().any():
         plt.figure(figsize=(12, 8))
+
         for algo in sorted(df["algorithm"].unique()):
-            algo_data = df[(df["algorithm"] == algo) & (df["clique_number"].notna())]
-            if not algo_data.empty:
-                plt.scatter(
-                    algo_data["clique_number"],
-                    algo_data["time"],
-                    alpha=0.6,
-                    label=algo,
-                    s=50,
-                )
-        plt.title("Time Taken vs. Clique Number")
-        plt.xlabel("Clique Number")
-        plt.ylabel("Time Taken (s)")
+            algo_data = df[
+                (df["algorithm"] == algo) & (df["clique_number"].notna())
+            ].copy()
+            if algo_data.empty:
+                continue
+
+            # Sort by clique number for proper line plotting
+            algo_data = algo_data.sort_values("clique_number")
+
+            # Group by clique number and calculate statistics
+            grouped = (
+                algo_data.groupby("clique_number")["time"]
+                .agg(["mean", "std", "count"])
+                .reset_index()
+            )
+            grouped = grouped.dropna()
+
+            if len(grouped) == 0:
+                continue
+
+            # Calculate confidence intervals
+            grouped["stderr"] = grouped["std"] / np.sqrt(grouped["count"])
+            grouped["ci_lower"] = grouped["mean"] - 1.96 * grouped["stderr"]
+            grouped["ci_upper"] = grouped["mean"] + 1.96 * grouped["stderr"]
+
+            # Handle cases where CI goes below 0 on log scale
+            grouped["ci_lower"] = np.maximum(
+                grouped["ci_lower"], grouped["mean"] * 0.01
+            )
+
+            # Plot the line and confidence band
+            plt.plot(grouped["clique_number"], grouped["mean"], label=algo, linewidth=2)
+            plt.fill_between(
+                grouped["clique_number"],
+                grouped["ci_lower"],
+                grouped["ci_upper"],
+                alpha=0.3,
+            )
+
+        plt.title("Time Taken vs. Clique Number", fontsize=14, fontweight="bold")
+        plt.xlabel("Clique Number", fontsize=12)
+        plt.ylabel("Time Taken (s)", fontsize=12)
         plt.yscale("log")
-        plt.legend()
-        plt.grid(True, which="both", ls="--", alpha=0.3)
+        plt.legend(title="algorithm", fontsize=10, title_fontsize=10)
+        plt.grid(True, which="both", ls="--", alpha=0.4)
         plt.tight_layout()
-        plt.savefig("results/analyses/time_vs_clique_number.png", dpi=150)
+        plt.savefig(
+            "results/analyses/time_vs_clique_number.png", dpi=150, bbox_inches="tight"
+        )
         plt.close()
 
     # Plot 7: Accuracy vs Vertices (showing how accuracy degrades with size)
