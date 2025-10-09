@@ -58,6 +58,9 @@ class TestRunner:
                         "file": txt_file.name,
                         "predicted": predicted,
                         "actual": ground_truth,
+                        "ratio": predicted / ground_truth
+                        if ground_truth != 0
+                        else "Cannot calculate",
                         "deviation": predicted - ground_truth,
                         "correct": predicted == ground_truth,
                         "time_taken": end_time - start_time,
@@ -119,6 +122,8 @@ def save_summary(results, name, output_dir):
             f.write(f"Optimal solution found: {result.get('is_optimal', False)}\n")
             f.write(f"Predicted: {result['predicted']}\n")
             f.write(f"Actual: {result['actual']}\n")
+            if result.get("ratio"):
+                f.write(f"Ratio: {result['ratio']}\n")
             f.write(f"Deviation: {result.get('deviation', 'N/A')}\n")
             f.write(f"Correct: {result['correct']}\n")
             f.write(f"Time taken: {result['time_taken']}\n")
