@@ -107,6 +107,8 @@ def save_summary(results, name, output_dir):
     total = len(results)
     successful_results = [r for r in results if r.get("deviation") is not None]
     timed_out_results = len(results) - len(successful_results)
+    predicted_sum = sum(r["predicted"] for r in results)
+    actual_sum = sum(r["actual"] for r in results)
 
     # Create output directory if it doesn't exist
     output_path = Path(output_dir)
@@ -151,7 +153,12 @@ def save_summary(results, name, output_dir):
             )
             deviation_sum = sum(r["deviation"] for r in successful_results)
             f.write(
-                f"\nAverage Deviation (on successful): {deviation_sum / len(successful_results):.2f}\n"
+                f"\nAverage Deviation (on successful): {deviation_sum / len(successful_results):.2f}"
+            )
+            f.write(
+                f"\nTotal ratio between Predicted and Actual: {predicted_sum / actual_sum:.2f}"
+                if actual_sum > 0
+                else "Cannot calculate"
             )
 
     return output_file
