@@ -58,15 +58,29 @@ def kernelize_edge_cuts(
                 elif weight < 0 and not working_graph.has_edge(u, v):
                     cut_cost += abs(weight)  # Cost of adding missing negative edge
         return cut_cost
-
+    """
+    #problematisch, weil: summiert werden Beträge aller Paare, also auch Nicht-Kanten (negative Gewichte) als positive Beiträge.
     def compute_edge_weight_sum(x: int, vertex_set: set[int]) -> int:
-        """Compute w(E(x, N[v])): sum of weights of edges between x and vertex_set"""
+        #Compute w(E(x, N[v])): sum of weights of edges between x and vertex_set
         weight_sum = 0
         for v in vertex_set:
             if x != v:
                 weight_sum += abs(get_weight(x, v))
         return weight_sum
-
+    """
+    
+    def compute_edge_weight_sum(x: int, vertex_set: set[int]) -> int:
+        # Summe der Gewichte nur über EXISTIERENDE Kanten von x in vertex_set, Nicht-Kanten bleiben außen vor
+        s = 0
+        for u in vertex_set:
+            if u != x and working_graph.has_edge(x, u):
+                w = get_weight(x, u)
+                # Bei Deiner Konvention: vorhandene Kante => w > 0
+                if w > 0:
+                    s += w  # i.d.R. 1
+        return s
+   
+    
     def add_edge_with_cost(u: int, v: int) -> int:
         """Add edge and return cost"""
         edge_key = (min(u, v), max(u, v))
