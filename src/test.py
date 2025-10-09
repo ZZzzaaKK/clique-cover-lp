@@ -132,9 +132,12 @@ def save_summary(results, name, output_dir):
         f.write(f"Total tests: {total}\n")
         f.write(f"Successful: {len(successful_results)}\n")
         f.write(f"Timed out: {timed_out_results}\n")
-        f.write(
-            f"Correct predictions (overall): {correct}/{total} ({correct / total * 100:.1f}%)\n"
-        )
+        if total > 0:
+            f.write(
+                f"Correct predictions (overall): {correct}/{total} ({correct / total * 100:.1f}%)\n"
+            )
+        else:
+            f.write("Correct predictions (overall): N/A (no tests found)\n")
 
         if len(successful_results) > 0:
             correct_successful = sum(1 for r in successful_results if r["correct"])

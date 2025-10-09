@@ -1,23 +1,21 @@
 #!/bin/bash
 
-# Find the path argument (which does not start with --)
+# Find the path argument (which does not start with --) and test arguments
 path_arg=""
-test_args=""
-while (( "$#" )); do
-  case "$1" in
+declare -a test_args_array=()
+for arg in "$@"; do
+  case $arg in
     --*)
-      test_args="$test_args $1"
-      # is the next argument a value for the current option?
-      if [[ $# -gt 1 ]] && [[ "$2" != --* ]]; then
-        test_args="$test_args $2"
-        shift
-      fi
+      test_args_array+=("$arg")
       ;;
     *)
-      path_arg=$1
+      if [ -n "$path_arg" ]; then
+        echo "Error: More than one path argument provided. Please provide only one." >&2
+        exit 1
+      fi
+      path_arg=$arg
       ;;
   esac
-  shift
 done
 
 # Set path to default if it's empty
@@ -25,9 +23,18 @@ if [ -z "$path_arg" ]; then
     path_arg="test_graphs/generated/perturbed"
 fi
 
+# If no algorithm flags provided, default to --all
+if [ ${#test_args_array[@]} -eq 0 ]; then
+    test_args_array+=("--all")
+    echo "No algorithm specified, defaulting to --all"
+fi
+
+# Join array into a string for the check
+test_args_str="${test_args_array[*]}"
+
 # Default to Vertex Clique Cover Number
 test_type="vertex_clique_cover"
-if [[ "$test_args" == *"--chromatic-number"* ]]; then
+if [[ "$test_args_str" == *"--chromatic-number"* ]]; then
     test_type="chromatic_number"
 fi
 
@@ -41,6 +48,7 @@ else
     python src/add_vertex_clique_cover_number.py "$path_arg"
 fi
 
-# Run tests
+# Run tests - path_arg must come last as a positional argument
 echo "Running tests..."
-python src/test.py $test_args "$path_arg"
+# Use array expansion to pass arguments correctly
+python src/test.py "${test_args_array[@]}" "$path_arg"
