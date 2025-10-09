@@ -10,7 +10,7 @@ Run `python src/generate_test_graphs.py` to generate test cases of differing dis
 
 ## Testing
 
-For convenience, you can run the script `run_tests.sh`. It first calculates vertex clique cover numbers for all generated perturbed graphs via the `src/add_vertex_clique_cover_number.py` script, or chromatic numbers via `src/add_chromatic_number.py` script if you pass the --chromatic-number flag. It then runs through the tests you specify in the script, or all available tests if none were specified. Adding ground truths relies on the Gurobi solver, so you'll need a license for larger graphs. You can also deviate from default path by running with a positional argument like this: `run_tests.sh test_graphs/curated`.
+For convenience, you can run the script `run_tests.sh`. It first calculates vertex clique cover numbers for all graphs in a path that can be specified (default: `test_graphs/generated/perturbed`) via the `src/add_vertex_clique_cover_number.py` script, or chromatic numbers via `src/add_chromatic_number.py` script if you pass the --chromatic-number flag. It then runs through the tests you specify as command line arguments, or all available tests if none were specified. Adding ground truths relies on the Gurobi solver, so you'll need a license for larger graphs. You can also deviate from default path by running with a positional argument like this: `run_tests.sh test_graphs/curated`.
 
 Example Usage:
 ```
@@ -30,7 +30,7 @@ Curated test cases were found at [houseofgraphs.org](houseofgraphs.org). Each `.
 
 Files in `src/algorithms` pertain to algorithms, `chalupa.py` and `helpers.py` for the Chalupa heuristic, `cluster_editing.py` for the cluster editing problem, `ilp_solver.py` for the vertex clique cover (VCC) problem. The `src/reductions` directory contains code for reductions pertaining to the VCC problem. The cluster editing reductions are currently contained in the `src/algorithms/cluster_editing.py` file.
 
-The files in the top-level `src/` directory relate to the workflow infrastructure. The files `src/test_cluster_editing.py` and `src/test_reductions.py` were used during development to verify the cluster editing VCC reduction algorithms. `src/wp5_rfam_to_graph.py` is meant for converting an rfam file into a weighted graph, but is currently still a work-in-progress. `src/algorithms/helpers.py` contains some convenience functions for test infrastructure.
+The files in the top-level `src/` directory relate to the workflow infrastructure. The files `src/test_cluster_editing.py` and `src/test_reductions.py` were used during development to verify the cluster editing and VCC reduction algorithms. `src/wp5_rfam_to_graph.py` is meant for converting an rfam file into a weighted graph, but is currently still a work-in-progress. `src/algorithms/helpers.py` contains some convenience functions for test infrastructure.
 
 
 
