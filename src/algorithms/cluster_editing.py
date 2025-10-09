@@ -64,7 +64,9 @@ def kernelize_edge_cuts(
         weight_sum = 0
         for v in vertex_set:
             if x != v:
-                weight_sum += abs(get_weight(x, v))
+                w = get_weight(x, v)
+                if w > 0:
+                    weight_sum += w
         return weight_sum
 
     def add_edge_with_cost(u: int, v: int) -> int:

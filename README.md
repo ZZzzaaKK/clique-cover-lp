@@ -1,20 +1,38 @@
 # Getting Started
 
-Install [uv](https://github.com/astral-sh/uv). Then add all the dependencies and activate the virtual environment with `source .venv/bin/activate`. To test different algorithms, run e.g. `./run_tests.sh --ilp --reduced-ilp --chalupa --reduced-chalupa --cluster-editing --reduced-cluster-editing --chromatic-number test_graphs/generated/perturbed`. This will run all the specified algorithms, which are made available through the `src/wrappers.py` script, on the specified test graph directory and save the results in `results/raw/`. These results are human-readable and already contain interesting information. To compare results of different algorithms, you can run `python src/comparison.py <results-file1> <results-file2> ...` with two or more of these results files. This will output analysis plots in the `results/analyses` directory.
+Install [uv](https://github.com/astral-sh/uv). Then add all the dependencies by running `uv sync` and activate the virtual environment with `source .venv/bin/activate`.
 
 # Test Cases
 
 ## Simulator
 
-Run `python src/generate_test_graphs.py` to generate test cases of differing distributions and save them to `test_graphs/generated`.
+Run `python src/generate_test_graphs.py` to generate test cases of differing distributions and save them to `test_graphs/generated`. It's possible, but not necessary, to specify custom parameters for the graphs that should be generated here. They are documented in the main function of the script.
 
 ## Testing
 
-For convenience, you can run the script `run_tests.sh`. It first calculates vertex clique cover numbers for all generated perturbed graphs via the `src/add_vertex_clique_cover_number.py` script, or chromatic numbers via `src/add_chromatic_number.py` script if you pass the --chromatic-number flag. It then runs through the tests you specify in the script. Adding ground truths relies on the Gurobi solver, so you'll need a license for larger graphs. You can also deviate from default path by running with a positional argument like this: `run_tests.sh test_graphs/curated`.
+For convenience, you can run the script `run_tests.sh`. It first calculates vertex clique cover numbers for all generated perturbed graphs via the `src/add_vertex_clique_cover_number.py` script, or chromatic numbers via `src/add_chromatic_number.py` script if you pass the --chromatic-number flag. It then runs through the tests you specify in the script, or all available tests if none were specified. Adding ground truths relies on the Gurobi solver, so you'll need a license for larger graphs. You can also deviate from default path by running with a positional argument like this: `run_tests.sh test_graphs/curated`.
+
+Example Usage:
+```
+  ./run_tests.sh --ilp --reduced-ilp --chalupa --reduced-chalupa --cluster-editing --reduced-cluster-editing --chromatic-number test_graphs/generated/perturbed
+```
+This will run all the specified algorithms, which are made available through the `src/wrappers.py` script, on the specified test graph directory and save the results in `results/raw/`. These results are human-readable and already contain interesting information.
+
+## Analysis
+
+To compare results of different algorithms, you can run `python src/comparison.py <results-file1> <results-file2> ...` with two or more of these results files. This will output analysis plots in the `results/analyses` directory.
 
 ## Curation
 
 Curated test cases were found at [houseofgraphs.org](houseofgraphs.org). Each `.txt` file contains the graph structure as well as their invariants. Feel free to add more test cases (choose Invariant values as file format)!
+
+## File Structure
+
+Files in `src/algorithms` pertain to algorithms, `chalupa.py` and `helpers.py` for the Chalupa heuristic, `cluster_editing.py` for the cluster editing problem, `ilp_solver.py` for the vertex clique cover (VCC) problem. The `src/reductions` directory contains code for reductions pertaining to the VCC problem. The cluster editing reductions are currently contained in the `src/algorithms/cluster_editing.py` file.
+
+The files in the top-level `src/` directory relate to the workflow infrastructure. The files `src/test_cluster_editing.py` and `src/test_reductions.py` were used during development to verify the cluster editing VCC reduction algorithms. `src/wp5_rfam_to_graph.py` is meant for converting an rfam file into a weighted graph, but is currently still a work-in-progress. `src/algorithms/helpers.py` contains some convenience functions for test infrastructure.
+
+
 
 # Current State of Progress
 
@@ -24,7 +42,7 @@ Curated test cases were found at [houseofgraphs.org](houseofgraphs.org). Each `.
   - [x] Choose reasonable parameters for task completions
 - [ ] WP1 Exact vs Heuristic
   - [x] Chalupa
-    - [ ] How to actually use lower bound?
+    - [x] How to actually use lower bound? -> Currently just output in results file
   - [x] ILP
   - [x] Compare algorithms
 - [x] WP2 Kernelizations for vertex clique cover problem
@@ -44,7 +62,7 @@ Curated test cases were found at [houseofgraphs.org](houseofgraphs.org). Each `.
     - [ ] What are 2-partition inequalities?
   - [x] Reduction based on edge cuts -> produces consistent results, results in small, but sometimes noticeable speedup
   - [ ] Should output number of clusters obtained to compare with vertex clique cover number
-- [ ] Rethink Chalupa, where to use upper/lower bound
+- [x] Rethink Chalupa, where to use upper/lower bound
 - [ ] Double-check interactive scheme
 - [ ] Weighting in Real Data
 
