@@ -79,8 +79,8 @@ src/
 │
 ├─ reductions/
 │  ├─ reductions.py
-│  ├─ lower_bound_linear.py
-│  ├─ branch_and_reduce.py
+│  ├─ test_reductions.py
+│  ├─ test_reductions_visual.py
 │  └─ utils.py
 │
 ├─ wrappers.py / wrapperV2.py
@@ -122,15 +122,18 @@ src/
 - Zugehöriges Arbeitspaket: WP1
 
 ### src/reductions/reductions.py
-- Wichtige Funktionen: is_isolated_vertex, apply_isolated_vertex_reduction, apply_degree_two_folding, apply_twin_removal, apply_twin_folding, apply_domination_reduction, maximal_independent_set_from_matching, apply_crown_reduction, apply_all_reductions
+- Kurzbeschreibung: Implementierung der VCC-Reduktionen/Kernelization von Strash and Thompson.
+- Wichtige Funktionen: apply_isolated_vertex_reduction, neighbourhood_is_crossing_independent, apply_degree_two_folding, apply_twin_folding_or_removal, apply_domination_reduction, maximal_independent_set_from_matching, apply_crown_reduction, apply_all_reductions
 - Zugehöriges Arbeitspaket: WP2
 
-### src/reductions/lower_bound_linear.py
-- Wichtige Funktionen: compute_lower_bound
+### src/reductions/test_reductions.py
+- Kurzbeschreibung: Tests der VCC-Reduktionen/Kernelization von Strash and Thompson.
+- Wichtige Klassen: TestIsolatedVertexReduction, TestDegreeTwoFolding, TestTwinRemoval, TestTwinFolding, TestDominationReduction, TestCrownReduction
 - Zugehöriges Arbeitspaket: WP2
 
-### src/reductions/branch_and_reduce.py
-- Wichtige Funktionen: branch_and_reduce
+### src/reductions/test_reductions_visual.py
+- Kurzbeschreibung: Tests der VCC-Reduktionen/Kernelization von Strash and Thompson mit Darstellungen der Testgraphen vor/nach Reduktion.
+- Wichtige Klassen: TestIsolatedVertexReduction, TestDegreeTwoFolding, TestTwinRemoval, TestTwinFolding, TestDominationReduction, TestCrownReduction
 - Zugehöriges Arbeitspaket: WP2
 
 ### src/algorithms/cluster_editing_kernelization.py
@@ -303,3 +306,4 @@ Setze exklusive Nachbarschaften \(N_u=N(u)\setminus(N(v)\cup\{v\})\), \(N_v=N(v)
 - Grötschel, M., & Wakabayashi, Y. (1989). A Cutting Plane Algorithm for a Clustering Problem.
 - Bansal, N., Blum, A., & Chawla, S. (2004). Correlation Clustering.
 - Mutzel, P. (2022). Graph Coloring: ILP Formulations.
+- Strash, D. and Thompson, L. (2022). Effective data reduction for the vertex clique cover problem.
