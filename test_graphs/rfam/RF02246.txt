@@ -45,6 +45,3 @@
 (6, 8): 0.07843412868538496
 (2, 6): 0.022279228309379062
 (2, 8): -1.726815897670169
-
-# Calculated by ILP on complement graph
-Vertex Clique Cover Number: 4

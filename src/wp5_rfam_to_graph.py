@@ -155,10 +155,17 @@ def main():
         default="test_graphs/rfam/RF02246.tsv",
         help="Path to rfam file (default: test_graphs/rfam/RF02246.tsv)",
     )
+    parser.add_argument(
+        "--method",
+        "-m",
+        choices=["linear", "threshold", "exp"],
+        default="linear",
+        help="Weight conversion method (default: linear)",
+    )
     args = parser.parse_args()
 
     graph, scores = load_similarity_graph(args.path)
-    weights = convert_dissimilarity_to_weights(scores)
+    weights = convert_dissimilarity_to_weights(scores, method=args.method)
 
     output_path = Path(args.path).with_suffix(".txt")
     save_graph_with_weights(graph, weights, output_path)

@@ -18,6 +18,10 @@ Example Usage:
 ```
 This will run all the specified algorithms, which are made available through the `src/wrappers.py` script, on the specified test graph directory and save the results in `results/raw/`. These results are human-readable and already contain interesting information.
 
+## Testing on rfam data
+
+You can use the script `src/wp5_rfam_to_graph.py` to convert a `.tsv` file containing rfam data into a weighted graph. Pass as positional argument the path to the rfam file (default: `test_graphs/rfam/RF02246.tsv`) and as option the `-m` or `--method` flag to choose the method used to convert from dissimilarity to weight (linear, threshold or exp, default: linear).
+
 ## Analysis
 
 To compare results of different algorithms, you can run `python src/comparison.py <results-file1> <results-file2> ...` with two or more of these results files. This will output analysis plots in the `results/analyses` directory.
@@ -30,7 +34,7 @@ Curated test cases were found at [houseofgraphs.org](houseofgraphs.org). Each `.
 
 Files in `src/algorithms` pertain to algorithms, `chalupa.py` and `helpers.py` for the Chalupa heuristic, `cluster_editing.py` for the cluster editing problem, `ilp_solver.py` for the vertex clique cover (VCC) problem. The `src/reductions` directory contains code for reductions pertaining to the VCC problem. The cluster editing reductions are currently contained in the `src/algorithms/cluster_editing.py` file.
 
-The files in the top-level `src/` directory relate to the workflow infrastructure. The files `src/test_cluster_editing.py` and `src/test_reductions.py` were used during development to verify the cluster editing and VCC reduction algorithms. `src/wp5_rfam_to_graph.py` is meant for converting an rfam file into a weighted graph, but is currently still a work-in-progress. `src/algorithms/helpers.py` contains some convenience functions for test infrastructure.
+The files in the top-level `src/` directory relate to the workflow infrastructure. The files `src/test_cluster_editing.py` and `src/test_reductions.py` were used during development to verify the cluster editing and VCC reduction algorithms. `src/algorithms/helpers.py` contains some convenience functions for test infrastructure.
 
 
 
