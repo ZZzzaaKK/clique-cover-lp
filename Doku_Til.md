@@ -22,43 +22,42 @@ Diese Dokumentation beschreibt Module, Interoperabilität und Ausführungsreihen
 ## Skripte
 
 
-| Datei | Zweck | Wichtigste Klassen/Funktionen | WP |
-|---|---|---|---|
-| src/WP2BC.py | WP2b and WP2c Analysis from Existing Evaluation Results | WP2bcResultsAnalyzer | WP2 |
-| src/WP4_comparison_VCC_CE.py | WP4: Comparison of Vertex Clique Cover and Cluster Editing Solutions | ClusteringResult, ComparisonResult, SolverAdapter, ComparisonFramework | WP4 |
-| src/WP5_constructionsite.py | WP5: Real Data Analysis on Rfam RNA Families | RNAClusteringResult, WP5RfamAnalysis | WP5 |
-| src/__init__.py | Hilfs-/Auswertungsskript | - | shared |
-| src/add_ground_truth.py | EDIT suggestion: | _append_theta_line, add_ground_truth_if_missing, _cli | shared |
-| src/add_ground_truth_initial_version.py | Hilfs-/Auswertungsskript | add_ground_truth_if_missing | shared |
-| src/algorithms/__init__.py | Hilfs-/Auswertungsskript | - | shared |
-| src/algorithms/chalupa.py | Implementation of Chalupa's heuristic algorithm for clique coloring. | ChalupaHeuristic | WP1 |
-| src/algorithms/cluster_editing_ilp.py | Cluster Editing: Kernelization/ILP/Orchestrierung | solve_cluster_editing_ilp, _solve_with_cutting_planes, _find_2partition_cuts, validate_clustering, calculate_clustering_cost | WP3 |
-| src/algorithms/cluster_editing_kernelization.py | Cluster Editing: Kernelization/ILP/Orchestrierung | ReductionRule, UnionFind, KernelizationCache, RuleEffectiveness | WP3 |
-| src/algorithms/cluster_editing_solver.py | Cluster Editing: Kernelization/ILP/Orchestrierung | ClusterEditingSolver | WP3 |
-| src/algorithms/helpers.py | Hilfs-/Auswertungsskript | random_permutation, uniformly_random, jump | shared |
-| src/algorithms/ilp_solver.py | Integer Linear Programming (ILP) formulation for the vertex clique coloring problem. | _parse_warmstart, solve_ilp_clique_cover, solve_ilp_direct_on_complement | WP1 |
-| src/comparison_chalupa_ilp_evaluation_all_wrappers.py | comparison_chalupa_ilp_evaluation_all_wrappers.py | WP1cEvaluator, ExtendedWP1cEvaluator | WP1 |
-| src/generate_test_graphs.py | Generate and save test cases for clique covering experiments. | visualize_graph, visualize_solution_comparison, save_test_case_as_txt, generate_test_suite | WP0 |
-| src/generate_testgraphs_extended.py | Graph Generator für etwas komplexere Graphen | _ensure_simple_graph, _limit_edges_uniform, _apply_perturbation, _write_graph_txt, generate_uniform_clique_blocks, generate_skewed_clique_blocks | WP0 |
-| src/reductions/__init__.py | VCC-Reduktionen/Kernelization | - | WP2 |
-| src/reductions/branch_and_reduce.py | VCC-Reduktionen/Kernelization | branch_and_reduce | WP2 |
-| src/reductions/lower_bound_linear.py | VCC-Reduktionen/Kernelization | compute_lower_bound | WP2 |
-| src/reductions/reductions.py | VCC-Reduktionen/Kernelization | is_isolated_vertex, apply_isolated_vertex_reduction, apply_degree_two_folding, apply_twin_removal, apply_twin_folding, apply_domination_reduction | WP2 |
-| src/reductions/test_reductions.py | VCC-Reduktionen/Kernelization | TestIsolatedVertexReduction, TestDegreeTwoFolding, TestTwinRemoval, TestTwinFolding | WP2 |
-| src/reductions/utils.py | VCC-Reduktionen/Kernelization | reset_stats, log_reduction, timed_step, print_final_stats | WP2 |
-| src/simulator.py | Graph generation and perturbation for clique covering experiments. | GraphConfig, GraphGenerator | WP0 |
-| src/test.py | Hilfs-/Auswertungsskript | TestRunner | shared |
-| src/tests_Tils_constructionsite/hog_to_txt.py | Hilfs-/Auswertungsskript | - | shared |
-| src/tests_Tils_constructionsite/test_chalupa_bounds.py | Chalupa-Heuristik (Vertex Clique Cover) | test_chalupa_bounds | shared |
-| src/tests_Tils_constructionsite/test_cluster_editing_gadgets.py | Cluster Editing: Kernelization/ILP/Orchestrierung | _read_kopt, test_gadgets_kopt | shared |
-| src/tests_Tils_constructionsite/test_graph_creation.py | Hilfs-/Auswertungsskript | write_graph_txt, exact_chromatic_number, theta_via_complement, disjoint_cliques, planted_cluster_editing_gadget | shared |
-| src/tests_Tils_constructionsite/test_ilp_against_gold.py | Hilfs-/Auswertungsskript | test_ilp_matches_gold | shared |
-| src/tests_Tils_constructionsite/test_reductions_safety.py | Hilfs-/Auswertungsskript | test_reductions_preserve_theta | shared |
-| src/utils.py | Hilfs-/Auswertungsskript | get_value, txt_to_networkx | shared |
-| src/utils_metrics.py | utils_metrics.py | set_global_seeds, safe_ratio, rel_change, clean_for_plot, ensure_finite_array, nanmean | shared |
-| src/wp3_evaluation.py | Enhanced WP3 Evaluation with Statistical Testing and VCC Comparison | BenchmarkResult, WP3EnhancedEvaluator | WP3 |
-| src/wrapperV2.py | wrapperV2.py | _compact_int_labels, _is_valid_clique_cover, _validate_result, chalupa_wrapper, _chalupa_warmstart, _chalupa_warmstart_for_coloring | WP1 |
-| src/wrappers.py | Wrapper (Heuristik/ILP/Reduced/Interactive) | reduced_ilp_wrapper, interactive_reduced_ilp_wrapper, chalupa_wrapper, ilp_wrapper | WP1 |
+| Datei | Zweck | Wichtigste Klassen/Funktionen                                                                                                                                                                            | WP |
+|---|---|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---|
+| src/WP2BC.py | WP2b and WP2c Analysis from Existing Evaluation Results | WP2bcResultsAnalyzer                                                                                                                                                                                     | WP2 |
+| src/WP4_comparison_VCC_CE.py | WP4: Comparison of Vertex Clique Cover and Cluster Editing Solutions | ClusteringResult, ComparisonResult, SolverAdapter, ComparisonFramework                                                                                                                                   | WP4 |
+| src/WP5_constructionsite.py | WP5: Real Data Analysis on Rfam RNA Families | RNAClusteringResult, WP5RfamAnalysis                                                                                                                                                                     | WP5 |
+| src/__init__.py | Hilfs-/Auswertungsskript | -                                                                                                                                                                                                        | shared |
+| src/add_ground_truth.py | EDIT suggestion: | _append_theta_line, add_ground_truth_if_missing, _cli                                                                                                                                                    | shared |
+| src/add_ground_truth_initial_version.py | Hilfs-/Auswertungsskript | add_ground_truth_if_missing                                                                                                                                                                              | shared |
+| src/algorithms/__init__.py | Hilfs-/Auswertungsskript | -                                                                                                                                                                                                        | shared |
+| src/algorithms/chalupa.py | Implementation of Chalupa's heuristic algorithm for clique coloring. | ChalupaHeuristic                                                                                                                                                                                         | WP1 |
+| src/algorithms/cluster_editing_ilp.py | Cluster Editing: Kernelization/ILP/Orchestrierung | solve_cluster_editing_ilp, _solve_with_cutting_planes, _find_2partition_cuts, validate_clustering, calculate_clustering_cost                                                                             | WP3 |
+| src/algorithms/cluster_editing_kernelization.py | Cluster Editing: Kernelization/ILP/Orchestrierung | ReductionRule, UnionFind, KernelizationCache, RuleEffectiveness                                                                                                                                          | WP3 |
+| src/algorithms/cluster_editing_solver.py | Cluster Editing: Kernelization/ILP/Orchestrierung | ClusterEditingSolver                                                                                                                                                                                     | WP3 |
+| src/algorithms/helpers.py | Hilfs-/Auswertungsskript | random_permutation, uniformly_random, jump                                                                                                                                                               | shared |
+| src/algorithms/ilp_solver.py | Integer Linear Programming (ILP) formulation for the vertex clique coloring problem. | _parse_warmstart, solve_ilp_clique_cover, solve_ilp_direct_on_complement                                                                                                                                 | WP1 |
+| src/comparison_chalupa_ilp_evaluation_all_wrappers.py | comparison_chalupa_ilp_evaluation_all_wrappers.py | WP1cEvaluator, ExtendedWP1cEvaluator                                                                                                                                                                     | WP1 |
+| src/generate_test_graphs.py | Generate and save test cases for clique covering experiments. | visualize_graph, visualize_solution_comparison, save_test_case_as_txt, generate_test_suite                                                                                                               | WP0 |
+| src/generate_testgraphs_extended.py | Graph Generator für etwas komplexere Graphen | _ensure_simple_graph, _limit_edges_uniform, _apply_perturbation, _write_graph_txt, generate_uniform_clique_blocks, generate_skewed_clique_blocks                                                         | WP0 |
+| src/reductions/__init__.py | VCC-Reduktionen/Kernelization | -                                                                                                                                                                                                        | WP2 |
+| src/reductions/reductions.py | VCC-Reduktionen/Kernelization | apply_isolated_vertex_reduction, neighbourhood_is_crossing_independent, apply_degree_two_folding, apply_twin_folding_or_removal, apply_domination_reduction, apply_crown_reduction, apply_all_reductions | WP2 |
+| src/reductions/test_reductions.py | VCC-Reduktionen/Kernelization | TestIsolatedVertexReduction, TestDegreeTwoFolding, TestTwinRemoval, TestTwinFolding, TestDominationReduction, TestCrownReduction                                                                                                                      | WP2 |
+| src/reductions/test_reductions_visual.py | VCC-Reduktionen/Kernelization | TestIsolatedVertexReduction, TestDegreeTwoFolding, TestTwinRemoval, TestTwinFolding, TestDominationReduction, TestCrownReduction                                                                         | WP2 |
+| src/reductions/utils.py | VCC-Reduktionen/Kernelization | reset_stats, log_reduction, timed_step, print_final_stats                                                                                                                                                | WP2 |
+| src/simulator.py | Graph generation and perturbation for clique covering experiments. | GraphConfig, GraphGenerator                                                                                                                                                                              | WP0 |
+| src/test.py | Hilfs-/Auswertungsskript | TestRunner                                                                                                                                                                                               | shared |
+| src/tests_Tils_constructionsite/hog_to_txt.py | Hilfs-/Auswertungsskript | -                                                                                                                                                                                                        | shared |
+| src/tests_Tils_constructionsite/test_chalupa_bounds.py | Chalupa-Heuristik (Vertex Clique Cover) | test_chalupa_bounds                                                                                                                                                                                      | shared |
+| src/tests_Tils_constructionsite/test_cluster_editing_gadgets.py | Cluster Editing: Kernelization/ILP/Orchestrierung | _read_kopt, test_gadgets_kopt                                                                                                                                                                            | shared |
+| src/tests_Tils_constructionsite/test_graph_creation.py | Hilfs-/Auswertungsskript | write_graph_txt, exact_chromatic_number, theta_via_complement, disjoint_cliques, planted_cluster_editing_gadget                                                                                          | shared |
+| src/tests_Tils_constructionsite/test_ilp_against_gold.py | Hilfs-/Auswertungsskript | test_ilp_matches_gold                                                                                                                                                                                    | shared |
+| src/tests_Tils_constructionsite/test_reductions_safety.py | Hilfs-/Auswertungsskript | test_reductions_preserve_theta                                                                                                                                                                           | shared |
+| src/utils.py | Hilfs-/Auswertungsskript | get_value, txt_to_networkx                                                                                                                                                                               | shared |
+| src/utils_metrics.py | utils_metrics.py | set_global_seeds, safe_ratio, rel_change, clean_for_plot, ensure_finite_array, nanmean                                                                                                                   | shared |
+| src/wp3_evaluation.py | Enhanced WP3 Evaluation with Statistical Testing and VCC Comparison | BenchmarkResult, WP3EnhancedEvaluator                                                                                                                                                                    | WP3 |
+| src/wrapperV2.py | wrapperV2.py | _compact_int_labels, _is_valid_clique_cover, _validate_result, chalupa_wrapper, _chalupa_warmstart, _chalupa_warmstart_for_coloring                                                                      | WP1 |
+| src/wrappers.py | Wrapper (Heuristik/ILP/Reduced/Interactive) | reduced_ilp_wrapper, interactive_reduced_ilp_wrapper, chalupa_wrapper, ilp_wrapper                                                                                                                       | WP1 |
 
 
 ## Hierarchie / Abhängigkeiten
