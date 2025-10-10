@@ -8,3 +8,6 @@
 
 # Checked by hand
 Modifications: [{(1, 2), (3, 4), (5, 6)}]
+
+# Calculated by ILP on complement graph
+Vertex Clique Cover Number: 3
