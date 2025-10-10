@@ -3,38 +3,41 @@ import networkx as nx
 from pathlib import Path
 
 
-def convert_similarity_to_weights(similarity_scores, threshold=None, method="linear"):
+def convert_dissimilarity_to_weights(
+    dissimilarity_scores, threshold=None, method="linear"
+):
     """
-    Convert similarity scores to cluster editing weights
+    Convert dissimilarity scores to cluster editing weights
 
     For cluster editing:
     - Positive weight = cost to REMOVE an existing edge
     - Negative weight = cost to ADD a missing edge
 
     Args:
-        similarity_scores: dict of {(u,v): score} where higher score = more similar
-        threshold: similarity threshold. If None, uses median
+        dissimilarity_scores: dict of {(u,v): score} where LOWER score = more similar
+        threshold: dissimilarity threshold. If None, uses median
         method: 'linear', 'exp', or 'threshold'
 
     Returns:
         dict: {(u,v): weight} suitable for cluster editing ILP
     """
-    if not similarity_scores:
+    if not dissimilarity_scores:
         return {}
 
-    scores = list(similarity_scores.values())
-    if threshold is None:
-        threshold = sorted(scores)[len(scores) // 2]  # median
+    scores = list(dissimilarity_scores.values())
 
     weights = {}
 
+    if threshold is None:
+        threshold = sorted(scores)[len(scores) // 2]  # median
+
     if method == "threshold":
-        # Simple threshold: high similarity = high cost to remove
-        for edge, score in similarity_scores.items():
-            if score >= threshold:
-                weights[edge] = score / max(scores)  # Normalize to [0,1]
+        # Simple threshold: low dissimilarity = high cost to remove
+        for edge, score in dissimilarity_scores.items():
+            if score <= threshold:  # INVERTED: low dissimilarity = similar
+                weights[edge] = (threshold - score) / max(scores)  # Normalize to [0,1]
             else:
-                weights[edge] = -(threshold - score) / max(
+                weights[edge] = -(score - threshold) / max(
                     scores
                 )  # Negative for dissimilar
 
@@ -44,9 +47,10 @@ def convert_similarity_to_weights(similarity_scores, threshold=None, method="lin
         min_score = min(scores)
         score_range = max_score - min_score
 
-        for edge, score in similarity_scores.items():
+        for edge, score in dissimilarity_scores.items():
             # Convert to [-1, 1] range around threshold
-            normalized = 2 * (score - threshold) / score_range
+            # INVERTED: low dissimilarity (similar) → positive weight
+            normalized = 2 * (threshold - score) / score_range
             weights[edge] = normalized
 
     elif method == "exp":
@@ -54,12 +58,19 @@ def convert_similarity_to_weights(similarity_scores, threshold=None, method="lin
         import math
 
         max_score = max(scores)
+        min_score = min(scores)
 
-        for edge, score in similarity_scores.items():
-            # Exponential decay from high similarity
-            weights[edge] = math.exp((score - threshold) / (max_score - threshold))
-            if score < threshold:
-                weights[edge] = -weights[edge]
+        for edge, score in dissimilarity_scores.items():
+            # Exponential emphasis for low dissimilarity (similar pairs)
+            # INVERTED: low dissimilarity → positive weight
+            normalized = (
+                (threshold - score) / (threshold - min_score)
+                if score <= threshold
+                else (threshold - score) / (max_score - threshold)
+            )
+            weights[edge] = (
+                math.exp(normalized) if score <= threshold else -math.exp(-normalized)
+            )
 
     return weights
 
@@ -147,7 +158,7 @@ def main():
     args = parser.parse_args()
 
     graph, scores = load_similarity_graph(args.path)
-    weights = convert_similarity_to_weights(scores)
+    weights = convert_dissimilarity_to_weights(scores)
 
     output_path = Path(args.path).with_suffix(".txt")
     save_graph_with_weights(graph, weights, output_path)
