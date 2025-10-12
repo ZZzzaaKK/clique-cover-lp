@@ -121,3 +121,6 @@ Vertex Cover Number: 48
 
 
 
+
+# Calculated by ILP on complement graph
+Vertex Clique Cover Number: 27

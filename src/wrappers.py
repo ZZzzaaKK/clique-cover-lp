@@ -1,4 +1,4 @@
-from algorithms.cluster_editing import solve_cluster_editing_ilp, kernelize_edge_cuts
+from algorithms.cluster_editing import solve_cluster_editing_ilp, kernelize
 from utils import txt_to_networkx
 import networkx as nx
 from algorithms.chalupa import ChalupaHeuristic
@@ -10,22 +10,26 @@ def cluster_editing_wrapper(txt_filepath, time_limit):
     print(f"{txt_filepath}")
     G = txt_to_networkx(txt_filepath)
     try:
-        clusters, cost, modifications = solve_cluster_editing_ilp(G, None, time_limit)
+        clusters, stats, modifications = solve_cluster_editing_ilp(
+            G, {}, time_limit=time_limit
+        )
+        cost = stats["obj_value"]
     except RuntimeError:
-        return 0, False, []
+        return 0, False, [], 0
     return len(clusters), True, cost, modifications
 
 
 def reduced_cluster_editing_wrapper(txt_filepath, time_limit):
     print(f"{txt_filepath}")
     G = txt_to_networkx(txt_filepath)
-    reduced_graph, reduced_weights, _, _ = kernelize_edge_cuts(G, None)
+    reduced_graph, reduced_weights, _ = kernelize(G, {})
     try:
-        clusters, cost, modifications = solve_cluster_editing_ilp(
-            reduced_graph, reduced_weights, time_limit
+        clusters, stats, modifications = solve_cluster_editing_ilp(
+            reduced_graph, reduced_weights, time_limit=time_limit
         )
+        cost = stats["obj_value"]
     except RuntimeError:
-        return 0, False, []
+        return 0, False, [], 0
     return len(clusters), True, cost, modifications
 
 

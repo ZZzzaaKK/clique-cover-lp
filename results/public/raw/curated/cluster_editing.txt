@@ -1,0 +1,1956 @@
+Test Results for cluster_editing
+==================================================
+
+File: graph_100.txt
+Optimal solution found: True
+Predicted: 1
+Actual: 3
+Ratio: 0.3333333333333333
+Deviation: -2
+Correct: False
+Time taken: 0.007195234298706055
+Cost: 3.0
+------------------------------
+File: graph_102.txt
+Optimal solution found: True
+Predicted: 7
+Actual: 7
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.018684864044189453
+Cost: 6.0
+------------------------------
+File: graph_104.txt
+Optimal solution found: True
+Predicted: 5
+Actual: 5
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.007903814315795898
+Cost: 4.0
+------------------------------
+File: graph_106.txt
+Optimal solution found: True
+Predicted: 5
+Actual: 5
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.004943132400512695
+Cost: 4.0
+------------------------------
+File: graph_108.txt
+Optimal solution found: True
+Predicted: 1
+Actual: 3
+Ratio: 0.3333333333333333
+Deviation: -2
+Correct: False
+Time taken: 0.00341033935546875
+Cost: 7.0
+------------------------------
+File: graph_110.txt
+Optimal solution found: True
+Predicted: 2
+Actual: 2
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.0025403499603271484
+------------------------------
+File: graph_112.txt
+Optimal solution found: True
+Predicted: 8
+Actual: 8
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.009658336639404297
+Cost: 7.0
+------------------------------
+File: graph_114.txt
+Optimal solution found: True
+Predicted: 1
+Actual: 3
+Ratio: 0.3333333333333333
+Deviation: -2
+Correct: False
+Time taken: 0.003100156784057617
+Cost: 3.0
+------------------------------
+File: graph_116.txt
+Optimal solution found: True
+Predicted: 2
+Actual: 2
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.003629446029663086
+------------------------------
+File: graph_118.txt
+Optimal solution found: True
+Predicted: 2
+Actual: 2
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.0033631324768066406
+Cost: 1.0
+------------------------------
+File: graph_120.txt
+Optimal solution found: True
+Predicted: 5
+Actual: 5
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.004801034927368164
+Cost: 5.0
+------------------------------
+File: graph_122.txt
+Optimal solution found: True
+Predicted: 3
+Actual: 3
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.006732940673828125
+------------------------------
+File: graph_124.txt
+Optimal solution found: True
+Predicted: 3
+Actual: 3
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.0061511993408203125
+Cost: 2.0
+------------------------------
+File: graph_126.txt
+Optimal solution found: True
+Predicted: 5
+Actual: 5
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.004126548767089844
+Cost: 4.0
+------------------------------
+File: graph_130.txt
+Optimal solution found: True
+Predicted: 5
+Actual: 5
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.003984212875366211
+Cost: 5.0
+------------------------------
+File: graph_132.txt
+Optimal solution found: True
+Predicted: 2
+Actual: 2
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.002332448959350586
+Cost: 1.0
+------------------------------
+File: graph_134.txt
+Optimal solution found: True
+Predicted: 1
+Actual: 3
+Ratio: 0.3333333333333333
+Deviation: -2
+Correct: False
+Time taken: 0.005541086196899414
+Cost: 8.0
+------------------------------
+File: graph_136.txt
+Optimal solution found: True
+Predicted: 1
+Actual: 3
+Ratio: 0.3333333333333333
+Deviation: -2
+Correct: False
+Time taken: 0.005097866058349609
+Cost: 3.0
+------------------------------
+File: graph_138.txt
+Optimal solution found: True
+Predicted: 2
+Actual: 2
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.006427764892578125
+------------------------------
+File: graph_140.txt
+Optimal solution found: True
+Predicted: 2
+Actual: 2
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.0058956146240234375
+Cost: 1.0
+------------------------------
+File: graph_142.txt
+Optimal solution found: True
+Predicted: 1
+Actual: 3
+Ratio: 0.3333333333333333
+Deviation: -2
+Correct: False
+Time taken: 0.005883693695068359
+Cost: 10.0
+------------------------------
+File: graph_144.txt
+Optimal solution found: True
+Predicted: 2
+Actual: 2
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.00568079948425293
+------------------------------
+File: graph_146.txt
+Optimal solution found: True
+Predicted: 2
+Actual: 2
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.0056307315826416016
+Cost: 1.0
+------------------------------
+File: graph_148.txt
+Optimal solution found: True
+Predicted: 1
+Actual: 2
+Ratio: 0.5
+Deviation: -1
+Correct: False
+Time taken: 0.00706934928894043
+Cost: 5.0
+------------------------------
+File: graph_150.txt
+Optimal solution found: True
+Predicted: 1
+Actual: 2
+Ratio: 0.5
+Deviation: -1
+Correct: False
+Time taken: 0.005094289779663086
+Cost: 1.0
+------------------------------
+File: graph_152.txt
+Optimal solution found: True
+Predicted: 1
+Actual: 0
+Ratio: Cannot calculate
+Deviation: 1
+Correct: False
+Time taken: 0.003874540328979492
+------------------------------
+File: graph_154.txt
+Optimal solution found: True
+Predicted: 4
+Actual: 4
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.0029175281524658203
+------------------------------
+File: graph_156.txt
+Optimal solution found: True
+Predicted: 7
+Actual: 7
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.010345697402954102
+Cost: 6.0
+------------------------------
+File: graph_160.txt
+Optimal solution found: True
+Predicted: 2
+Actual: 3
+Ratio: 0.6666666666666666
+Deviation: -1
+Correct: False
+Time taken: 0.003490924835205078
+Cost: 8.0
+------------------------------
+File: graph_162.txt
+Optimal solution found: True
+Predicted: 8
+Actual: 8
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.010443925857543945
+Cost: 7.0
+------------------------------
+File: graph_164.txt
+Optimal solution found: True
+Predicted: 7
+Actual: 7
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.008752107620239258
+Cost: 6.0
+------------------------------
+File: graph_166.txt
+Optimal solution found: True
+Predicted: 12
+Actual: 12
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.033411264419555664
+Cost: 11.0
+------------------------------
+File: graph_168.txt
+Optimal solution found: True
+Predicted: 13
+Actual: 13
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.040266990661621094
+Cost: 12.0
+------------------------------
+File: graph_170.txt
+Optimal solution found: True
+Predicted: 1
+Actual: 3
+Ratio: 0.3333333333333333
+Deviation: -2
+Correct: False
+Time taken: 0.0035829544067382812
+Cost: 5.0
+------------------------------
+File: graph_26.txt
+Optimal solution found: True
+Predicted: 1
+Actual: 3
+Ratio: 0.3333333333333333
+Deviation: -2
+Correct: False
+Time taken: 0.002366304397583008
+Cost: 5.0
+------------------------------
+File: graph_34.txt
+Optimal solution found: True
+Predicted: 9
+Actual: 9
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.008054494857788086
+Cost: 8.0
+------------------------------
+File: graph_36.txt
+Optimal solution found: True
+Predicted: 10
+Actual: 10
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.016742467880249023
+Cost: 9.0
+------------------------------
+File: graph_38.txt
+Optimal solution found: True
+Predicted: 11
+Actual: 11
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.021569252014160156
+Cost: 10.0
+------------------------------
+File: graph_40.txt
+Optimal solution found: True
+Predicted: 3
+Actual: 3
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.004466533660888672
+------------------------------
+File: graph_42.txt
+Optimal solution found: True
+Predicted: 3
+Actual: 3
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.003771543502807617
+Cost: 2.0
+------------------------------
+File: graph_44.txt
+Optimal solution found: True
+Predicted: 2
+Actual: 2
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.002986907958984375
+------------------------------
+File: graph_46.txt
+Optimal solution found: True
+Predicted: 2
+Actual: 2
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.0028336048126220703
+Cost: 1.0
+------------------------------
+File: graph_48.txt
+Optimal solution found: True
+Predicted: 4
+Actual: 4
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.0028493404388427734
+Cost: 4.0
+------------------------------
+File: graph_50.txt
+Optimal solution found: True
+Predicted: 1
+Actual: 2
+Ratio: 0.5
+Deviation: -1
+Correct: False
+Time taken: 0.002393484115600586
+Cost: 4.0
+------------------------------
+File: graph_53857.txt
+Optimal solution found: True
+Predicted: 29
+Actual: 29
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 1.1500706672668457
+Cost: 32.0
+------------------------------
+File: graph_54.txt
+Optimal solution found: True
+Predicted: 1
+Actual: 2
+Ratio: 0.5
+Deviation: -1
+Correct: False
+Time taken: 0.0035753250122070312
+Cost: 3.0
+------------------------------
+File: graph_56.txt
+Optimal solution found: True
+Predicted: 1
+Actual: 2
+Ratio: 0.5
+Deviation: -1
+Correct: False
+Time taken: 0.0019435882568359375
+Cost: 1.0
+------------------------------
+File: graph_58.txt
+Optimal solution found: True
+Predicted: 1
+Actual: 0
+Ratio: Cannot calculate
+Deviation: 1
+Correct: False
+Time taken: 0.0015633106231689453
+------------------------------
+File: graph_60.txt
+Optimal solution found: True
+Predicted: 7
+Actual: 7
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.010515451431274414
+Cost: 6.0
+------------------------------
+File: graph_74.txt
+Optimal solution found: True
+Predicted: 1
+Actual: 0
+Ratio: Cannot calculate
+Deviation: 1
+Correct: False
+Time taken: 0.0007321834564208984
+------------------------------
+File: graph_78.txt
+Optimal solution found: True
+Predicted: 10
+Actual: 10
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.016561508178710938
+Cost: 9.0
+------------------------------
+File: graph_80.txt
+Optimal solution found: True
+Predicted: 11
+Actual: 11
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.02913212776184082
+Cost: 10.0
+------------------------------
+File: graph_82.txt
+Optimal solution found: True
+Predicted: 4
+Actual: 4
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.005284786224365234
+Cost: 5.0
+------------------------------
+File: graph_86.txt
+Optimal solution found: True
+Predicted: 11
+Actual: 11
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.016063690185546875
+Cost: 10.0
+------------------------------
+File: graph_88.txt
+Optimal solution found: True
+Predicted: 12
+Actual: 12
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.018497943878173828
+Cost: 11.0
+------------------------------
+File: graph_92.txt
+Optimal solution found: True
+Predicted: 3
+Actual: 6
+Ratio: 0.5
+Deviation: -3
+Correct: False
+Time taken: 0.010137081146240234
+Cost: 14.0
+------------------------------
+File: graph_96.txt
+Optimal solution found: True
+Predicted: 5
+Actual: 5
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.004737138748168945
+Cost: 4.0
+------------------------------
+File: graph_50593.txt
+Optimal solution found: True
+Predicted: 1
+Actual: 1
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.014137506484985352
+------------------------------
+File: graph_50893.txt
+Optimal solution found: True
+Predicted: 1
+Actual: 1
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.2747664451599121
+------------------------------
+File: graph_114.txt
+Optimal solution found: True
+Predicted: 1
+Actual: 3
+Ratio: 0.3333333333333333
+Deviation: -2
+Correct: False
+Time taken: 0.0042765140533447266
+Cost: 3.0
+------------------------------
+File: graph_122.txt
+Optimal solution found: True
+Predicted: 3
+Actual: 3
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.0054776668548583984
+------------------------------
+File: graph_140.txt
+Optimal solution found: True
+Predicted: 2
+Actual: 2
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.005840301513671875
+Cost: 1.0
+------------------------------
+File: graph_180.txt
+Optimal solution found: True
+Predicted: 1
+Actual: 1
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.0025398731231689453
+------------------------------
+File: graph_306.txt
+Optimal solution found: True
+Predicted: 3
+Actual: 6
+Ratio: 0.5
+Deviation: -3
+Correct: False
+Time taken: 0.007354736328125
+Cost: 12.0
+------------------------------
+File: graph_51871.txt
+Optimal solution found: True
+Predicted: 4
+Actual: 4
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.009944677352905273
+Cost: 12.0
+------------------------------
+File: graph_51888.txt
+Optimal solution found: True
+Predicted: 3
+Actual: 4
+Ratio: 0.75
+Deviation: -1
+Correct: False
+Time taken: 0.009928464889526367
+Cost: 13.0
+------------------------------
+File: graph_51902.txt
+Optimal solution found: True
+Predicted: 8
+Actual: 8
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.032212018966674805
+Cost: 12.0
+------------------------------
+File: graph_51906.txt
+Optimal solution found: True
+Predicted: 10
+Actual: 10
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.03658914566040039
+Cost: 10.0
+------------------------------
+File: graph_51907.txt
+Optimal solution found: True
+Predicted: 10
+Actual: 10
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.04152035713195801
+Cost: 13.0
+------------------------------
+File: graph_51908.txt
+Optimal solution found: True
+Predicted: 7
+Actual: 10
+Ratio: 0.7
+Deviation: -3
+Correct: False
+Time taken: 0.05489802360534668
+Cost: 15.0
+------------------------------
+File: graph_51909.txt
+Optimal solution found: True
+Predicted: 11
+Actual: 11
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.04945516586303711
+Cost: 10.0
+------------------------------
+File: graph_51910.txt
+Optimal solution found: True
+Predicted: 11
+Actual: 11
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.0482633113861084
+Cost: 11.0
+------------------------------
+File: graph_52394.txt
+Optimal solution found: True
+Predicted: 12
+Actual: 12
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.062148094177246094
+Cost: 13.0
+------------------------------
+File: graph_52395.txt
+Optimal solution found: True
+Predicted: 12
+Actual: 12
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.06280517578125
+Cost: 13.0
+------------------------------
+File: graph_52396.txt
+Optimal solution found: True
+Predicted: 12
+Actual: 12
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.06255745887756348
+Cost: 13.0
+------------------------------
+File: graph_52397.txt
+Optimal solution found: True
+Predicted: 12
+Actual: 12
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.0616300106048584
+Cost: 13.0
+------------------------------
+File: graph_52399.txt
+Optimal solution found: True
+Predicted: 12
+Actual: 12
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.06268715858459473
+Cost: 13.0
+------------------------------
+File: graph_52408.txt
+Optimal solution found: True
+Predicted: 5
+Actual: 6
+Ratio: 0.8333333333333334
+Deviation: -1
+Correct: False
+Time taken: 0.037117958068847656
+Cost: 18.0
+------------------------------
+File: graph_52592.txt
+Optimal solution found: True
+Predicted: 3
+Actual: 4
+Ratio: 0.75
+Deviation: -1
+Correct: False
+Time taken: 0.016132354736328125
+Cost: 16.0
+------------------------------
+File: graph_52626.txt
+Optimal solution found: True
+Predicted: 10
+Actual: 10
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.045449018478393555
+Cost: 19.0
+------------------------------
+File: graph_52997.txt
+Optimal solution found: True
+Predicted: 3
+Actual: 4
+Ratio: 0.75
+Deviation: -1
+Correct: False
+Time taken: 0.016005992889404297
+Cost: 16.0
+------------------------------
+File: graph_53043.txt
+Optimal solution found: True
+Predicted: 7
+Actual: 8
+Ratio: 0.875
+Deviation: -1
+Correct: False
+Time taken: 0.02410888671875
+Cost: 16.0
+------------------------------
+File: graph_53063.txt
+Optimal solution found: True
+Predicted: 7
+Actual: 6
+Ratio: 1.1666666666666667
+Deviation: 1
+Correct: False
+Time taken: 0.010990381240844727
+Cost: 12.0
+------------------------------
+File: graph_53073.txt
+Optimal solution found: True
+Predicted: 8
+Actual: 8
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.02877020835876465
+Cost: 13.0
+------------------------------
+File: graph_53076.txt
+Optimal solution found: True
+Predicted: 8
+Actual: 8
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.027573347091674805
+Cost: 13.0
+------------------------------
+File: graph_53842.txt
+Optimal solution found: True
+Predicted: 16
+Actual: 16
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.12899136543273926
+Cost: 18.0
+------------------------------
+File: graph_53889.txt
+Optimal solution found: True
+Predicted: 6
+Actual: 6
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.028560876846313477
+Cost: 20.0
+------------------------------
+File: graph_54005.txt
+Optimal solution found: True
+Predicted: 10
+Actual: 10
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.047754526138305664
+Cost: 14.0
+------------------------------
+File: graph_56.txt
+Optimal solution found: True
+Predicted: 1
+Actual: 2
+Ratio: 0.5
+Deviation: -1
+Correct: False
+Time taken: 0.002748250961303711
+Cost: 1.0
+------------------------------
+File: graph_234.txt
+Optimal solution found: True
+Predicted: 1
+Actual: 4
+Ratio: 0.25
+Deviation: -3
+Correct: False
+Time taken: 0.004217386245727539
+Cost: 6.0
+------------------------------
+File: graph_254.txt
+Optimal solution found: True
+Predicted: 1
+Actual: 5
+Ratio: 0.2
+Deviation: -4
+Correct: False
+Time taken: 0.0055255889892578125
+Cost: 10.0
+------------------------------
+File: graph_374.txt
+Optimal solution found: True
+Predicted: 1
+Actual: 3
+Ratio: 0.3333333333333333
+Deviation: -2
+Correct: False
+Time taken: 0.003801107406616211
+Cost: 6.0
+------------------------------
+File: graph_396.txt
+Optimal solution found: True
+Predicted: 1
+Actual: 2
+Ratio: 0.5
+Deviation: -1
+Correct: False
+Time taken: 0.003690958023071289
+Cost: 1.0
+------------------------------
+File: graph_53183.txt
+Optimal solution found: True
+Predicted: 18
+Actual: 18
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.20894503593444824
+Cost: 19.0
+------------------------------
+File: graph_53184.txt
+Optimal solution found: True
+Predicted: 19
+Actual: 19
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.23590540885925293
+Cost: 20.0
+------------------------------
+File: graph_53185.txt
+Optimal solution found: True
+Predicted: 16
+Actual: 16
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.15696358680725098
+Cost: 17.0
+------------------------------
+File: graph_53190.txt
+Optimal solution found: True
+Predicted: 19
+Actual: 19
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.22627544403076172
+Cost: 20.0
+------------------------------
+File: graph_53191.txt
+Optimal solution found: True
+Predicted: 19
+Actual: 19
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.2499842643737793
+Cost: 20.0
+------------------------------
+File: graph_53612.txt
+Optimal solution found: True
+Predicted: 11
+Actual: 11
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.07126855850219727
+Cost: 22.0
+------------------------------
+File: graph_53835.txt
+Optimal solution found: True
+Predicted: 15
+Actual: 15
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.15207338333129883
+Cost: 16.0
+------------------------------
+File: graph_53837.txt
+Optimal solution found: True
+Predicted: 18
+Actual: 18
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.2200450897216797
+Cost: 19.0
+------------------------------
+File: graph_53841.txt
+Optimal solution found: True
+Predicted: 19
+Actual: 19
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.27623653411865234
+Cost: 21.0
+------------------------------
+File: graph_53844.txt
+Optimal solution found: True
+Predicted: 20
+Actual: 20
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.2383735179901123
+Cost: 21.0
+------------------------------
+File: graph_53845.txt
+Optimal solution found: True
+Predicted: 19
+Actual: 19
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.2365856170654297
+Cost: 20.0
+------------------------------
+File: graph_53847.txt
+Optimal solution found: True
+Predicted: 20
+Actual: 20
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.35764336585998535
+Cost: 22.0
+------------------------------
+File: graph_53848.txt
+Optimal solution found: True
+Predicted: 23
+Actual: 23
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.3519594669342041
+Cost: 24.0
+------------------------------
+File: graph_53851.txt
+Optimal solution found: True
+Predicted: 19
+Actual: 21
+Ratio: 0.9047619047619048
+Deviation: -2
+Correct: False
+Time taken: 0.3306117057800293
+Cost: 23.0
+------------------------------
+File: graph_53852.txt
+Optimal solution found: True
+Predicted: 15
+Actual: 15
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.13091588020324707
+Cost: 16.0
+------------------------------
+File: graph_53853.txt
+Optimal solution found: True
+Predicted: 17
+Actual: 17
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.21042895317077637
+Cost: 18.0
+------------------------------
+File: graph_53854.txt
+Optimal solution found: True
+Predicted: 21
+Actual: 21
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.34050869941711426
+Cost: 23.0
+------------------------------
+File: graph_53855.txt
+Optimal solution found: True
+Predicted: 20
+Actual: 20
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.2811625003814697
+Cost: 22.0
+------------------------------
+File: graph_53856.txt
+Optimal solution found: True
+Predicted: 21
+Actual: 21
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.37732696533203125
+Cost: 23.0
+------------------------------
+File: graph_53891.txt
+Optimal solution found: True
+Predicted: 13
+Actual: 13
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.12422394752502441
+Cost: 23.0
+------------------------------
+File: graph_53894.txt
+Optimal solution found: True
+Predicted: 2
+Actual: 3
+Ratio: 0.6666666666666666
+Deviation: -1
+Correct: False
+Time taken: 0.008051156997680664
+Cost: 14.0
+------------------------------
+File: graph_53902.txt
+Optimal solution found: True
+Predicted: 7
+Actual: 7
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.06222105026245117
+Cost: 30.0
+------------------------------
+File: graph_53970.txt
+Optimal solution found: True
+Predicted: 12
+Actual: 12
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.11903524398803711
+Cost: 25.0
+------------------------------
+File: graph_53997.txt
+Optimal solution found: True
+Predicted: 4
+Actual: 5
+Ratio: 0.8
+Deviation: -1
+Correct: False
+Time taken: 0.02873516082763672
+Cost: 19.0
+------------------------------
+File: graph_54007.txt
+Optimal solution found: True
+Predicted: 11
+Actual: 12
+Ratio: 0.9166666666666666
+Deviation: -1
+Correct: False
+Time taken: 0.07906508445739746
+Cost: 19.0
+------------------------------
+File: graph_652.txt
+Optimal solution found: True
+Predicted: 1
+Actual: 4
+Ratio: 0.25
+Deviation: -3
+Correct: False
+Time taken: 0.007222890853881836
+Cost: 12.0
+------------------------------
+File: graph_92.txt
+Optimal solution found: True
+Predicted: 3
+Actual: 6
+Ratio: 0.5
+Deviation: -3
+Correct: False
+Time taken: 0.0104827880859375
+Cost: 14.0
+------------------------------
+File: graph_970.txt
+Optimal solution found: True
+Predicted: 13
+Actual: 13
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.1243438720703125
+Cost: 26.0
+------------------------------
+File: graph_1032.txt
+Optimal solution found: True
+Predicted: 14
+Actual: 14
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.2667725086212158
+Cost: 36.0
+------------------------------
+File: graph_1116.txt
+Optimal solution found: True
+Predicted: 6
+Actual: 6
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.053438425064086914
+Cost: 27.0
+------------------------------
+File: graph_1208.txt
+Optimal solution found: True
+Predicted: 15
+Actual: 15
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.1989126205444336
+Cost: 30.0
+------------------------------
+File: graph_136.txt
+Optimal solution found: True
+Predicted: 1
+Actual: 3
+Ratio: 0.3333333333333333
+Deviation: -2
+Correct: False
+Time taken: 0.007630586624145508
+Cost: 3.0
+------------------------------
+File: graph_148.txt
+Optimal solution found: True
+Predicted: 1
+Actual: 2
+Ratio: 0.5
+Deviation: -1
+Correct: False
+Time taken: 0.0055255889892578125
+Cost: 5.0
+------------------------------
+File: graph_150.txt
+Optimal solution found: True
+Predicted: 1
+Actual: 2
+Ratio: 0.5
+Deviation: -1
+Correct: False
+Time taken: 0.005479574203491211
+Cost: 1.0
+------------------------------
+File: graph_152.txt
+Optimal solution found: True
+Predicted: 1
+Actual: 0
+Ratio: Cannot calculate
+Deviation: 1
+Correct: False
+Time taken: 0.004481077194213867
+------------------------------
+File: graph_1601.txt
+Optimal solution found: True
+Predicted: 10
+Actual: 10
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.4337751865386963
+Cost: 39.0
+------------------------------
+File: graph_3568.txt
+Optimal solution found: True
+Predicted: 10
+Actual: 10
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.25829410552978516
+Cost: 34.0
+------------------------------
+File: graph_3602.txt
+Optimal solution found: True
+Predicted: 11
+Actual: 11
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.1481928825378418
+Cost: 31.0
+------------------------------
+File: graph_53006.txt
+Optimal solution found: True
+Predicted: 8
+Actual: 8
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.07087302207946777
+Cost: 24.0
+------------------------------
+File: graph_53018.txt
+Optimal solution found: True
+Predicted: 10
+Actual: 10
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.24027657508850098
+Cost: 30.0
+------------------------------
+File: graph_53021.txt
+Optimal solution found: True
+Predicted: 10
+Actual: 10
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.13549065589904785
+Cost: 28.0
+------------------------------
+File: graph_53025.txt
+Optimal solution found: True
+Predicted: 9
+Actual: 10
+Ratio: 0.9
+Deviation: -1
+Correct: False
+Time taken: 0.09449338912963867
+Cost: 28.0
+------------------------------
+File: graph_53041.txt
+Optimal solution found: True
+Predicted: 15
+Actual: 15
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.19057893753051758
+Cost: 30.0
+------------------------------
+File: graph_53053.txt
+Optimal solution found: True
+Predicted: 12
+Actual: 12
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.13569235801696777
+Cost: 22.0
+------------------------------
+File: graph_53152.txt
+Optimal solution found: True
+Predicted: 5
+Actual: 5
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.039322614669799805
+Cost: 26.0
+------------------------------
+File: graph_53154.txt
+Optimal solution found: True
+Predicted: 24
+Actual: 24
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.6066815853118896
+Cost: 24.0
+------------------------------
+File: graph_53160.txt
+Optimal solution found: True
+Predicted: 2
+Actual: 3
+Ratio: 0.6666666666666666
+Deviation: -1
+Correct: False
+Time taken: 0.015118837356567383
+Cost: 20.0
+------------------------------
+File: graph_53186.txt
+Optimal solution found: True
+Predicted: 23
+Actual: 24
+Ratio: 0.9583333333333334
+Deviation: -1
+Correct: False
+Time taken: 0.47351551055908203
+Cost: 26.0
+------------------------------
+File: graph_53187.txt
+Optimal solution found: True
+Predicted: 25
+Actual: 25
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.5945744514465332
+Cost: 27.0
+------------------------------
+File: graph_53838.txt
+Optimal solution found: True
+Predicted: 23
+Actual: 23
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.5177574157714844
+Cost: 25.0
+------------------------------
+File: graph_53840.txt
+Optimal solution found: True
+Predicted: 23
+Actual: 23
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.5254580974578857
+Cost: 25.0
+------------------------------
+File: graph_53846.txt
+Optimal solution found: True
+Predicted: 26
+Actual: 26
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.6558442115783691
+Cost: 28.0
+------------------------------
+File: graph_53849.txt
+Optimal solution found: True
+Predicted: 10
+Actual: 12
+Ratio: 0.8333333333333334
+Deviation: -2
+Correct: False
+Time taken: 0.14220333099365234
+Cost: 26.0
+------------------------------
+File: graph_53850.txt
+Optimal solution found: True
+Predicted: 24
+Actual: 24
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.5670509338378906
+Cost: 26.0
+------------------------------
+File: graph_53881.txt
+Optimal solution found: True
+Predicted: 1
+Actual: 4
+Ratio: 0.25
+Deviation: -3
+Correct: False
+Time taken: 0.01214146614074707
+Cost: 22.0
+------------------------------
+File: graph_53883.txt
+Optimal solution found: True
+Predicted: 17
+Actual: 17
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.2622208595275879
+Cost: 33.0
+------------------------------
+File: graph_53890.txt
+Optimal solution found: True
+Predicted: 14
+Actual: 14
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.15617132186889648
+Cost: 26.0
+------------------------------
+File: graph_53892.txt
+Optimal solution found: True
+Predicted: 14
+Actual: 14
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.21670913696289062
+Cost: 35.0
+------------------------------
+File: graph_53953.txt
+Optimal solution found: True
+Predicted: 14
+Actual: 14
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.16637444496154785
+Cost: 28.0
+------------------------------
+File: graph_53954.txt
+Optimal solution found: True
+Predicted: 16
+Actual: 16
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.2460789680480957
+Cost: 32.0
+------------------------------
+File: graph_53974.txt
+Optimal solution found: True
+Predicted: 14
+Actual: 14
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.19572973251342773
+Cost: 31.0
+------------------------------
+File: graph_53996.txt
+Optimal solution found: True
+Predicted: 5
+Actual: 5
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.04757070541381836
+Cost: 24.0
+------------------------------
+File: graph_975.txt
+Optimal solution found: True
+Predicted: 8
+Actual: 8
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.09554648399353027
+Cost: 32.0
+------------------------------
+File: graph_1030.txt
+Optimal solution found: True
+Predicted: 32
+Actual: 32
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 11.003938674926758
+Cost: 90.0
+------------------------------
+File: graph_1039.txt
+Optimal solution found: True
+Predicted: 8
+Actual: 12
+Ratio: 0.6666666666666666
+Deviation: -4
+Correct: False
+Time taken: 0.3909182548522949
+Cost: 48.0
+------------------------------
+File: graph_1041.txt
+Optimal solution found: True
+Predicted: 20
+Actual: 30
+Ratio: 0.6666666666666666
+Deviation: -10
+Correct: False
+Time taken: 27.71340584754944
+Cost: 126.0
+------------------------------
+File: graph_1047.txt
+Optimal solution found: True
+Predicted: 24
+Actual: 27
+Ratio: 0.8888888888888888
+Deviation: -3
+Correct: False
+Time taken: 61.23146843910217
+Cost: 343.0
+------------------------------
+File: graph_1051.txt
+Optimal solution found: True
+Predicted: 14
+Actual: 14
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.18014311790466309
+Cost: 41.0
+------------------------------
+File: graph_1059.txt
+Optimal solution found: True
+Predicted: 27
+Actual: 27
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 1.2154688835144043
+Cost: 54.0
+------------------------------
+File: graph_1061.txt
+Optimal solution found: True
+Predicted: 39
+Actual: 77
+Ratio: 0.5064935064935064
+Deviation: -38
+Correct: False
+Time taken: 5.278082609176636
+Cost: 78.0
+------------------------------
+File: graph_1066.txt
+Optimal solution found: True
+Predicted: 21
+Actual: 21
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.6051661968231201
+Cost: 42.0
+------------------------------
+File: graph_1068.txt
+Optimal solution found: True
+Predicted: 22
+Actual: 22
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.6932945251464844
+Cost: 44.0
+------------------------------
+File: graph_1092.txt
+Optimal solution found: True
+Predicted: 111
+Actual: 218
+Ratio: 0.5091743119266054
+Deviation: -107
+Correct: False
+Time taken: 106.4518210887909
+Cost: 219.0
+------------------------------
+File: graph_1096.txt
+Optimal solution found: True
+Predicted: 25
+Actual: 25
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 1.0435667037963867
+Cost: 50.0
+------------------------------
+File: graph_1098.txt
+Optimal solution found: True
+Predicted: 56
+Actual: 56
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 65.18054294586182
+Cost: 504.0
+------------------------------
+File: graph_1106.txt
+Optimal solution found: True
+Predicted: 20
+Actual: 20
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.459993839263916
+Cost: 40.0
+------------------------------
+File: graph_1108.txt
+Optimal solution found: True
+Predicted: 28
+Actual: 28
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 1.3538331985473633
+Cost: 56.0
+------------------------------
+File: graph_1122.txt
+Optimal solution found: True
+Predicted: 60
+Actual: 60
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 14.578299760818481
+Cost: 120.0
+------------------------------
+File: graph_1128.txt
+Optimal solution found: True
+Predicted: 22
+Actual: 22
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.6560497283935547
+Cost: 44.0
+------------------------------
+File: graph_1136.txt
+Optimal solution found: True
+Predicted: 43
+Actual: 43
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 12.202703714370728
+Cost: 65.0
+------------------------------
+File: graph_1142.txt
+Optimal solution found: True
+Predicted: 15
+Actual: 15
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.749997615814209
+Cost: 90.0
+------------------------------
+File: graph_1163.txt
+Optimal solution found: True
+Predicted: 100
+Actual: 100
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 91.29653978347778
+Cost: 2100.0
+------------------------------
+File: graph_53696.txt
+Optimal solution found: True
+Predicted: 10
+Actual: 10
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.6378922462463379
+Cost: 50.0
+------------------------------
+File: graph_53752.txt
+Optimal solution found: True
+Predicted: 32
+Actual: 32
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 2.0512874126434326
+Cost: 56.0
+------------------------------
+File: graph_53957.txt
+Optimal solution found: True
+Predicted: 44
+Actual: 46
+Ratio: 0.9565217391304348
+Deviation: -2
+Correct: False
+Time taken: 6.490872383117676
+Cost: 88.0
+------------------------------
+File: graph_53982.txt
+Optimal solution found: True
+Predicted: 20
+Actual: 20
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.524468183517456
+Cost: 43.0
+------------------------------
+File: graph_53995.txt
+Optimal solution found: True
+Predicted: 32
+Actual: 32
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 3.729185104370117
+Cost: 80.0
+------------------------------
+File: graph_53999.txt
+Optimal solution found: True
+Predicted: 6
+Actual: 6
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.06883692741394043
+Cost: 30.0
+------------------------------
+File: graph_54006.txt
+Optimal solution found: True
+Predicted: 16
+Actual: 16
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.3625833988189697
+Cost: 44.0
+------------------------------
+File: graph_54009.txt
+Optimal solution found: True
+Predicted: 8
+Actual: 10
+Ratio: 0.8
+Deviation: -2
+Correct: False
+Time taken: 0.34433770179748535
+Cost: 48.0
+------------------------------
+File: graph_949.txt
+Optimal solution found: True
+Predicted: 35
+Actual: 35
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 3.191403388977051
+Cost: 70.0
+------------------------------
+File: graph_951.txt
+Optimal solution found: True
+Predicted: 56
+Actual: 58
+Ratio: 0.9655172413793104
+Deviation: -2
+Correct: False
+Time taken: 14.724063634872437
+Cost: 112.0
+------------------------------
+File: graph_954.txt
+Optimal solution found: True
+Predicted: 19
+Actual: 19
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.4337277412414551
+Cost: 38.0
+------------------------------
+File: graph_956.txt
+Optimal solution found: True
+Predicted: 51
+Actual: 54
+Ratio: 0.9444444444444444
+Deviation: -3
+Correct: False
+Time taken: 10.679887771606445
+Cost: 102.0
+------------------------------
+File: graph_977.txt
+Optimal solution found: True
+Predicted: 15
+Actual: 19
+Ratio: 0.7894736842105263
+Deviation: -4
+Correct: False
+Time taken: 1.0632636547088623
+Cost: 61.0
+------------------------------
+File: graph_979.txt
+Optimal solution found: True
+Predicted: 21
+Actual: 21
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 43.75718331336975
+Cost: 252.0
+------------------------------
+File: graph_1175.txt
+Optimal solution found: True
+Predicted: 40
+Actual: 42
+Ratio: 0.9523809523809523
+Deviation: -2
+Correct: False
+Time taken: 83.53964877128601
+Cost: 691.0
+------------------------------
+File: graph_962.txt
+Optimal solution found: True
+Predicted: 31
+Actual: 34
+Ratio: 0.9117647058823529
+Deviation: -3
+Correct: False
+Time taken: 61.98542284965515
+Cost: 740.0
+------------------------------
+File: graph_1.txt
+Optimal solution found: True
+Predicted: 3
+Actual: 3
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.0024995803833007812
+Cost: 2.0
+------------------------------
+File: graph_2.txt
+Optimal solution found: True
+Predicted: 3
+Actual: 3
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.015081644058227539
+Cost: 3.0
+------------------------------
+File: graph_3.txt
+Optimal solution found: True
+Predicted: 5
+Actual: 5
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.004482269287109375
+Cost: 4.0
+------------------------------
+File: graph_4.txt
+Optimal solution found: True
+Predicted: 4
+Actual: 4
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.0022530555725097656
+Cost: 3.0
+------------------------------
+File: graph_1.txt
+Optimal solution found: True
+Predicted: 3
+Actual: 3
+Ratio: 1.0
+Deviation: 0
+Correct: True
+Time taken: 0.0021605491638183594
+Cost: 2.0
+------------------------------
+
+Summary:
+Total tests: 196
+Successful: 196
+Timed out: 0
+Correct predictions (overall): 137/196 (69.9%)
+Accuracy (on successful): 69.9%
+Average Deviation (on successful): -1.26
+Total ratio between Predicted and Actual: 0.91

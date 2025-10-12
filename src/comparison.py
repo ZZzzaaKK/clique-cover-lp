@@ -272,15 +272,22 @@ def main():
     print(f"Algorithms: {sorted(df['algorithm'].unique())}")
     print(f"Vertex counts: {int(df['vertices'].min())}-{int(df['vertices'].max())}")
 
+    # Prompt user for output directory
+    output_dir = input(
+        "\nEnter directory to save analyses (default: results/analyses): "
+    ).strip()
+    if not output_dir:
+        output_dir = "results/analyses"
+
     # Create output directory
-    os.makedirs("results/analyses", exist_ok=True)
+    os.makedirs(output_dir, exist_ok=True)
 
     # Generate plots
-    generate_plots(df)
-    print("\nPlots generated in results/analyses/")
+    generate_plots(df, output_dir)
+    print(f"\nPlots generated in {output_dir}/")
 
 
-def generate_plots(df):
+def generate_plots(df, output_dir):
     """Generate all comparison plots"""
 
     # Set style
@@ -296,7 +303,7 @@ def generate_plots(df):
     plt.yscale("log")
     plt.xticks(rotation=45, ha="right")
     plt.tight_layout()
-    plt.savefig("results/analyses/time_comparison.png", dpi=150)
+    plt.savefig(os.path.join(output_dir, "time_comparison.png"), dpi=150)
     plt.close()
 
     # Plot 2: Correctness by algorithm
@@ -313,7 +320,7 @@ def generate_plots(df):
     plt.xticks(rotation=45, ha="right")
     plt.legend()
     plt.tight_layout()
-    plt.savefig("results/analyses/correctness_comparison.png", dpi=150)
+    plt.savefig(os.path.join(output_dir, "correctness_comparison.png"), dpi=150)
     plt.close()
 
     # Plot 3: Time vs Problem Size (vertices)
@@ -360,7 +367,11 @@ def generate_plots(df):
     plt.legend(title="algorithm", fontsize=10, title_fontsize=10)
     plt.grid(True, which="both", ls="--", alpha=0.4)
     plt.tight_layout()
-    plt.savefig("results/analyses/time_vs_vertices.png", dpi=150, bbox_inches="tight")
+    plt.savefig(
+        os.path.join(output_dir, "time_vs_vertices.png"),
+        dpi=150,
+        bbox_inches="tight",
+    )
     plt.close()
 
     # Plot 4: Deviation from actual
@@ -376,7 +387,7 @@ def generate_plots(df):
         plt.xticks(rotation=45, ha="right")
         plt.legend()
         plt.tight_layout()
-        plt.savefig("results/analyses/deviation_comparison.png", dpi=150)
+        plt.savefig(os.path.join(output_dir, "deviation_comparison.png"), dpi=150)
         plt.close()
 
     # Plot 5: Time vs Density
@@ -439,7 +450,9 @@ def generate_plots(df):
         plt.grid(True, which="both", ls="--", alpha=0.4)
         plt.tight_layout()
         plt.savefig(
-            "results/analyses/time_vs_density.png", dpi=150, bbox_inches="tight"
+            os.path.join(output_dir, "time_vs_density.png"),
+            dpi=150,
+            bbox_inches="tight",
         )
         plt.close()
 
@@ -495,7 +508,9 @@ def generate_plots(df):
         plt.grid(True, which="both", ls="--", alpha=0.4)
         plt.tight_layout()
         plt.savefig(
-            "results/analyses/time_vs_clique_number.png", dpi=150, bbox_inches="tight"
+            os.path.join(output_dir, "time_vs_clique_number.png"),
+            dpi=150,
+            bbox_inches="tight",
         )
         plt.close()
 
@@ -521,7 +536,7 @@ def generate_plots(df):
     plt.legend()
     plt.grid(True, alpha=0.3)
     plt.tight_layout()
-    plt.savefig("results/analyses/correctness_vs_size.png", dpi=150)
+    plt.savefig(os.path.join(output_dir, "correctness_vs_size.png"), dpi=150)
     plt.close()
 
 
