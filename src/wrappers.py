@@ -1,9 +1,38 @@
 from algorithms.cluster_editing import solve_cluster_editing_ilp, kernelize
+from algorithms.cluster_editing_minimal import (
+    solve_cluster_editing_ilp_minimal,
+    kernelize_edge_cuts,
+)
 from utils import txt_to_networkx
 import networkx as nx
 from algorithms.chalupa import ChalupaHeuristic
 from algorithms.ilp_solver import solve_ilp_clique_cover
 from reductions.reductions import apply_all_reductions
+
+
+def minimal_cluster_editing_wrapper(txt_filepath, time_limit):
+    print(f"{txt_filepath}")
+    G = txt_to_networkx(txt_filepath)
+    try:
+        clusters, cost, modifications = solve_cluster_editing_ilp_minimal(
+            G, None, time_limit
+        )
+    except RuntimeError:
+        return 0, False, []
+    return len(clusters), True, cost, modifications
+
+
+def minimal_reduced_cluster_editing_wrapper(txt_filepath, time_limit):
+    print(f"{txt_filepath}")
+    G = txt_to_networkx(txt_filepath)
+    reduced_graph, reduced_weights, _, _ = kernelize_edge_cuts(G, None)
+    try:
+        clusters, cost, modifications = solve_cluster_editing_ilp_minimal(
+            reduced_graph, reduced_weights, time_limit
+        )
+    except RuntimeError:
+        return 0, False, []
+    return len(clusters), True, cost, modifications
 
 
 def cluster_editing_wrapper(txt_filepath, time_limit):

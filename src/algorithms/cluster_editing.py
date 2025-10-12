@@ -376,7 +376,6 @@ def solve_cluster_editing_ilp(
 
     # Build objective function with weight validation
     WMAX = 1e6  # Maximum allowed weight magnitude
-    obj_const = 0.0
     obj_expr = gp.LinExpr()
 
     for a, b in pairs:
@@ -472,7 +471,6 @@ def _solve_with_cutting_planes(model, x, nodes, pairs, max_cuts_per_round):
     Based on Grötschel & Wakabayashi approach.
     """
     from gurobipy import GRB
-    import gurobipy as gp
 
     iteration = 0
     max_iterations = 100
@@ -524,7 +522,6 @@ def _find_2partition_cuts(model, x, nodes, x_val, max_cuts):
     import gurobipy as gp
 
     cuts_added = 0
-    n = len(nodes)
 
     # Heuristic separation: for each node, try to find violated cuts
     for i_idx, i in enumerate(nodes):

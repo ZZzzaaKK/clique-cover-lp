@@ -4,13 +4,15 @@ import sys
 import time
 from pathlib import Path
 from wrappers import (
-    chalupa_wrapper,
-    reduced_cluster_editing_wrapper,
-    cluster_editing_wrapper,
-    ilp_wrapper,
-    reduced_chalupa_wrapper,
     reduced_ilp_wrapper,
+    ilp_wrapper,
     interactive_reduced_ilp_wrapper,
+    chalupa_wrapper,
+    reduced_chalupa_wrapper,
+    minimal_cluster_editing_wrapper,
+    minimal_reduced_cluster_editing_wrapper,
+    cluster_editing_wrapper,
+    reduced_cluster_editing_wrapper,
 )
 from utils import get_value
 
@@ -81,6 +83,8 @@ class TestRunner:
             if algorithm_func in [
                 cluster_editing_wrapper,
                 reduced_cluster_editing_wrapper,
+                minimal_cluster_editing_wrapper,
+                minimal_reduced_cluster_editing_wrapper,
             ]:
                 cost = result[2]
                 # Add clusters and modifications to current result in results
@@ -208,12 +212,22 @@ def main():
         help="Run interactive reduced ILP solver",
     )
     parser.add_argument(
+        "--minimal-cluster-editing",
+        action="store_true",
+        help="Run minimal cluster editing ILP solver",
+    )
+    parser.add_argument(
+        "--minimal-reduced-cluster-editing",
+        action="store_true",
+        help="Run edge cut based kernelization followed by minimal cluster editing ILP solver",
+    )
+    parser.add_argument(
         "--cluster-editing", action="store_true", help="Run cluster editing ILP solver"
     )
     parser.add_argument(
         "--reduced-cluster-editing",
         action="store_true",
-        help="Run edge cut based kernelization followed by cluster editing ILP solver",
+        help="Run Grötschel based based kernelization followed by cluster editing ILP solver",
     )
     parser.add_argument(
         "--timeout", type=int, default=60, help="Timeout for ILP solvers in seconds"
@@ -241,6 +255,8 @@ def main():
             args.ilp,
             args.reduced_ilp,
             args.interactive_reduced_ilp,
+            args.minimal_cluster_editing,
+            args.minimal_reduced_cluster_editing,
             args.cluster_editing,
             args.reduced_cluster_editing,
             args.all,
@@ -259,6 +275,11 @@ def main():
             ("ilp", ilp_wrapper),
             ("reduced_ilp", reduced_ilp_wrapper),
             ("interactive_reduced_ilp", interactive_reduced_ilp_wrapper),
+            ("minimal_cluster_editing", minimal_cluster_editing_wrapper),
+            (
+                "minimal_reduced_cluster_editing",
+                minimal_reduced_cluster_editing_wrapper,
+            ),
             ("cluster_editing", cluster_editing_wrapper),
             ("reduced_cluster_editing", reduced_cluster_editing_wrapper),
         ]
@@ -274,6 +295,17 @@ def main():
         if args.interactive_reduced_ilp:
             algorithms.append(
                 ("interactive_reduced_ilp", interactive_reduced_ilp_wrapper)
+            )
+        if args.minimal_cluster_editing:
+            algorithms.append(
+                ("minimal_cluster_editing", minimal_cluster_editing_wrapper)
+            )
+        if args.minimal_reduced_cluster_editing:
+            algorithms.append(
+                (
+                    "minimal_reduced_cluster_editing",
+                    minimal_reduced_cluster_editing_wrapper,
+                )
             )
         if args.cluster_editing:
             algorithms.append(("cluster_editing", cluster_editing_wrapper))

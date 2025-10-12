@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 import networkx as nx
-from algorithms.cluster_editing import kernelize_edge_cuts, solve_cluster_editing_ilp
+from algorithms.cluster_editing_minimal import (
+    kernelize_edge_cuts,
+    solve_cluster_editing_ilp_minimal,
+)
 import ast
 import os
 
@@ -220,14 +223,14 @@ def test_triangle_graph():
     print("Triangle graph test:")
     print(f"Original edges: {list(G.edges())}")
 
-    clusters, cost, modifications = solve_cluster_editing_ilp(G, None)
+    clusters, cost, modifications = solve_cluster_editing_ilp_minimal(G, None)
     print(f"Modifications: {modifications}")
     print(f"Cost: {cost}")
 
     reduced_graph, reduced_weights, remaining_k, applied_modifications = (
         kernelize_edge_cuts(G)
     )
-    clusters, cost, modifications = solve_cluster_editing_ilp(
+    clusters, cost, modifications = solve_cluster_editing_ilp_minimal(
         reduced_graph, reduced_weights
     )
     print("After reduction:")
@@ -255,7 +258,7 @@ def test_path_graph():
     print("Path graph P4 test:")
     print(f"Original edges: {list(G.edges())}")
 
-    modifications, cost = solve_cluster_editing_ilp(G, None)
+    clusters, cost, modifications = solve_cluster_editing_ilp_minimal(G, None)
     print(f"Modifications: {modifications}")
     print(f"Cost: {cost}")
 
@@ -284,7 +287,7 @@ def test_weighted():
     print(f"Original edges: {list(G.edges())}")
     print(f"Weights: {weights}")
 
-    modifications, cost = solve_cluster_editing_ilp(G, weights)
+    clusters, cost, modifications = solve_cluster_editing_ilp_minimal(G, weights)
     print(f"Modifications: {modifications}")
     print(f"Cost: {cost}")
 
@@ -332,7 +335,9 @@ def test_curated_graphs():
             print(f"Original edges: {list(graph.edges())}")
             print(f"Expected solutions: {expected_modifications_list}")
 
-            modifications, cost = solve_cluster_editing_ilp(graph, weights)
+            clusters, cost, modifications = solve_cluster_editing_ilp_minimal(
+                graph, weights
+            )
             print(f"ILP solution: {modifications}")
             print(f"Cost: {cost}")
 
@@ -398,7 +403,7 @@ def test_curated_graphs_reduced():
             )
             print(f"Remaining k: {remaining_k}")
             print(f"Applied modifications: {applied_modifications}")
-            modifications, cost = solve_cluster_editing_ilp(
+            clusters, cost, modifications = solve_cluster_editing_ilp_minimal(
                 reduced_graph, reduced_weights
             )
             print(f"ILP solution: {modifications}")
@@ -469,7 +474,9 @@ def test_similarity_data():
             print(f"  {edge}: weight={weight:.3f} (original_score={orig_score:.0f})")
 
         print("\nRunning cluster editing ILP...")
-        modifications, cost = solve_cluster_editing_ilp(graph, weights)
+        modifications, cost, modifications = solve_cluster_editing_ilp_minimal(
+            graph, weights
+        )
 
         print(f"Found {len(modifications)} edge modifications with cost {cost:.3f}")
 
@@ -495,8 +502,8 @@ def test_similarity_data():
 
 if __name__ == "__main__":
     test_triangle_graph()
-    # test_path_graph()
-    # test_weighted()
-    # test_curated_graphs_reduced()
-    # test_curated_graphs()
-    # test_similarity_data()
+    test_path_graph()
+    test_weighted()
+    test_curated_graphs_reduced()
+    test_curated_graphs()
+    test_similarity_data()
