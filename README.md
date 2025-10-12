@@ -14,11 +14,14 @@ For convenience, you can run the script `run_tests.sh`. It first calculates vert
 
 Example Usage:
 ```
-  ./run_tests.sh --ilp --reduced-ilp --chalupa --reduced-chalupa --cluster-editing --reduced-cluster-editing --chromatic-number test_graphs/generated/perturbed
+  ./run_tests.sh --ilp --reduced-ilp --chalupa --reduced-chalupa --minimal-cluster-editing --minimal-reduced-cluster-editing --cluster-editing --reduced-cluster-editing --chromatic-number test_graphs/generated/perturbed
 ```
 This will run all the specified algorithms, which are made available through the `src/wrappers.py` script, on the specified test graph directory and save the results in `results/raw/`. These results are human-readable and already contain interesting information.
 
-## Testing on rfam data
+> [!NOTE]
+> We decided to include two different approaches to the cluster editing ILP and reductions since neither works perfectly. The minimal approach implements only triangle inequalities and has achieved similar performance to the other approach, but the edge cut kernelization conditions are too strict to be passed by any of our test files (especially that 2δ(v) + γ(N[v]) < |N[v]|). The other cluster editing approach is more complex and employs reductions based on Böcker and the cutting plane approach based on Grötschel, but it is currently slower.
+
+## Testing on Rfam data
 
 You can use the script `src/wp5_rfam_to_graph.py` to convert a `.tsv` file containing rfam data into a weighted graph. Pass as positional argument the path to the rfam file (default: `test_graphs/rfam/RF02246.tsv`) and as option the `-m` or `--method` flag to choose the method used to convert from dissimilarity to weight (linear, threshold or exp, default: linear).
 
@@ -56,23 +59,10 @@ The files in the top-level `src/` directory relate to the workflow infrastructur
 - [x] WP2 Kernelizations for vertex clique cover problem
   - [x] Implement reductions
   - [ ] Double-check for difference between reduced-ilp and interactive-reduced-ilp
-- [ ] WP3 Kernelizations for cluster editing problem
-- [ ] WP4 Comparison of vertex clique cover and cluster editing solutions
+- [x] WP3 Kernelizations for cluster editing problem -> no optimal solution found
+- [x] WP4 Comparison of vertex clique cover and cluster editing solutions
 - [ ] Bonus
-- [ ] WP5 Real Data
-
-# Next Steps
-
-- [ ] Check cluster editing implementation
-  - [x] ILP
-    - [x] What's the goal? -> produce modifications to create cluster graph with minimum cost
-    - [x] What's the triangle inequality? -> way to check if vertices are connected in a clique
-    - [ ] What are 2-partition inequalities?
-  - [x] Reduction based on edge cuts -> produces consistent results, results in small, but sometimes noticeable speedup
-  - [ ] Should output number of clusters obtained to compare with vertex clique cover number
-- [x] Rethink Chalupa, where to use upper/lower bound
-- [ ] Double-check interactive scheme
-- [ ] Weighting in Real Data
+- [x] WP5 Real Data
 
 # Work Program
 
