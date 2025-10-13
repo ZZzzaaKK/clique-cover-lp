@@ -2,14 +2,16 @@ import unittest
 import sys
 import os
 import networkx as nx
+
 # import all necessary reduction functions from the reductions module
 from reductions.reductions import (
     apply_isolated_vertex_reduction,
     apply_degree_two_folding,
     apply_twin_folding_or_removal,
     apply_domination_reduction,
-    apply_crown_reduction
+    apply_crown_reduction,
 )
+
 
 # Define the test case class
 class TestIsolatedVertexReduction(unittest.TestCase):
@@ -22,14 +24,22 @@ class TestIsolatedVertexReduction(unittest.TestCase):
 
     def test_isolated_vertex_reduction(self):
         # Use the function from the current context
-        G_reduced, changed, removed, VCC_addition = apply_isolated_vertex_reduction(self.G.copy())
+        G_reduced, changed, removed, VCC_addition = apply_isolated_vertex_reduction(
+            self.G.copy()
+        )
         print("Reductions applied (isolated vertex):", removed)
 
-        self.assertTrue(changed, "Graph should have changed due to isolated vertex removal.")
+        self.assertTrue(
+            changed, "Graph should have changed due to isolated vertex removal."
+        )
         self.assertIn(4, removed, "Isolated vertex 4 should have been removed.")
         self.assertIn(5, removed, "Isolated vertex 5 should have been removed.")
-        self.assertNotIn(4, G_reduced.nodes, "Isolated vertex 4 should not be in the reduced graph.")
-        self.assertNotIn(5, G_reduced.nodes, "Isolated vertex 5 should not be in the reduced graph.")
+        self.assertNotIn(
+            4, G_reduced.nodes, "Isolated vertex 4 should not be in the reduced graph."
+        )
+        self.assertNotIn(
+            5, G_reduced.nodes, "Isolated vertex 5 should not be in the reduced graph."
+        )
 
 
 # Define the test case class
@@ -52,10 +62,16 @@ class TestDegreeTwoFolding(unittest.TestCase):
         v, u, w = folds[0]
         self.assertIn(f"fold_{v}", G_folded.nodes, "Folded node should exist.")
         folded_neighbors = set(G_folded.neighbors(f"fold_{v}"))
-        self.assertEqual(folded_neighbors, {4, 5}, "Folded node should connect to external neighbors of u and w.")
+        self.assertEqual(
+            folded_neighbors,
+            {4, 5},
+            "Folded node should connect to external neighbors of u and w.",
+        )
 
         for node in (v, u, w):
-            self.assertNotIn(node, G_folded.nodes, f"Node {node} should have been removed.")
+            self.assertNotIn(
+                node, G_folded.nodes, f"Node {node} should have been removed."
+            )
 
 
 class TestTwinRemoval(unittest.TestCase):
@@ -64,16 +80,27 @@ class TestTwinRemoval(unittest.TestCase):
         self.G = nx.Graph()
         self.G.add_edges_from([(1, 4), (2, 4), (3, 4)])
         self.G.add_edges_from([(1, 5), (2, 5), (3, 5)])
-#        self.G.add_edges_from([(1, 6), (2, 6), (3, 6)])   # not sure if the reduction removes triple twins
-        self.G.add_edges_from([(1, 2)])
+        self.G.add_edge(1, 2)
 
     def test_twin_removal(self):
-        G_reduced, changed, removed, VCC_addition = apply_twin_folding_or_removal(self.G.copy())
+        G_reduced, changed, removed, VCC_addition = apply_twin_folding_or_removal(
+            self.G.copy()
+        )
         print("Reductions applied (twin removal):", removed)
         self.assertTrue(changed, "Graph should have changed due to twin removal.")
-        self.assertLess(len(G_reduced.nodes), 5, "Graph should have fewer than 6 nodes after twin removal.") # changed from 6 to 5
-        self.assertNotIn(4, G_reduced.nodes, "Node 4 should have been removed as a twin.")
-        self.assertNotIn(5, G_reduced.nodes, "Node 5 should have been removed as a twin.")
+        self.assertLess(
+            len(G_reduced.nodes),
+            5,
+            "Graph should have fewer than 6 nodes after twin removal.",
+        )  # changed from 6 to 5
+        self.assertNotIn(
+            4, G_reduced.nodes, "Node 4 should have been removed as a twin."
+        )
+        self.assertNotIn(
+            5, G_reduced.nodes, "Node 5 should have been removed as a twin."
+        )
+
+
 #        self.assertNotIn(6, G_reduced.nodes, "Node 6 should have been removed as a twin.")
 
 
@@ -81,13 +108,19 @@ class TestTwinFolding(unittest.TestCase):
     def setUp(self):
         # Create a graph with twin nodes
         self.G = nx.Graph()
-        self.G.add_edges_from([(1, 4), (1, 5), (1, 6),
-                               (2, 4), (2, 5), (2, 6)])
+        self.G.add_edges_from([(1, 4), (1, 5), (1, 6), (2, 4), (2, 5), (2, 6)])
+        self.G.add_edges_from([(4, 7), (5, 8)])
+        # self.G.add_edges_from([(7, 8)]) # this should lead to no reduction because of the crossing independence
 
     def test_twin_folding(self):
-        G_reduced, changed, folds, VCC_addition = apply_twin_folding_or_removal(self.G.copy())
-        print("Folded nodes (twin folding):", [new_node for _, _, new_node, _ in folds])
+        G_reduced, changed, folds, VCC_addition = apply_twin_folding_or_removal(
+            self.G.copy()
+        )
+        #        print("Reductions applied (twin_folding):", [name for name, _ in folds])
+        print("Folded nodes:", folds)
+        print(f"edges after folding: {G_reduced.edges}")
         self.assertTrue(changed, "Graph should have changed due to twin folding.")
+        #        self.assertTrue(any("twin_folding" in name.lower() for name, _ in folds), "Twin folding should have been applied.")
         self.assertTrue(len(folds) > 0, "Twin folding should have been applied.")
 
 
@@ -98,10 +131,18 @@ class TestDominationReduction(unittest.TestCase):
         self.G.add_edges_from([(1, 3), (2, 3), (1, 2)])
 
     def test_domination(self):
-        G_reduced, changed, removed, VCC_addition = apply_domination_reduction(self.G.copy())
+        G_reduced, changed, removed, VCC_addition = apply_domination_reduction(
+            self.G.copy()
+        )
         print("Reductions applied (domination):", [name for name, _ in removed])
-        self.assertTrue(changed, "Graph should have changed due to domination reduction.")
-        self.assertLess(len(G_reduced.nodes), 3, "Graph should have fewer than 3 nodes after domination reduction.")
+        self.assertTrue(
+            changed, "Graph should have changed due to domination reduction."
+        )
+        self.assertLess(
+            len(G_reduced.nodes),
+            3,
+            "Graph should have fewer than 3 nodes after domination reduction.",
+        )
 
 
 class TestCrownReduction(unittest.TestCase):
@@ -162,7 +203,9 @@ class TestCrownReduction(unittest.TestCase):
         print(f"Unmatched nodes: {sorted(unmatched_nodes)}")
 
         # Führe Crown Reduction aus
-        G_reduced, changed, crown_sets, VCC_addition = apply_crown_reduction(self.G.copy())
+        G_reduced, changed, crown_sets, VCC_addition = apply_crown_reduction(
+            self.G.copy()
+        )
 
         print("\n=== After Crown Reduction ===")
         print(f"Changed: {changed}")
@@ -180,11 +223,16 @@ class TestCrownReduction(unittest.TestCase):
 
         # Assertions
         self.assertTrue(changed, "Graph should have changed due to crown reduction.")
-        self.assertTrue(len(crown_sets) > 0, "Crown reduction should have found at least one crown.")
+        self.assertTrue(
+            len(crown_sets) > 0, "Crown reduction should have found at least one crown."
+        )
 
         # Verifiziere, dass Knoten entfernt wurden
-        self.assertLess(len(G_reduced.nodes()), len(self.G.nodes()),
-                        "Reduced graph should have fewer nodes.")
+        self.assertLess(
+            len(G_reduced.nodes()),
+            len(self.G.nodes()),
+            "Reduced graph should have fewer nodes.",
+        )
 
 
 class TestCrownReductionAlternative(unittest.TestCase):
@@ -214,7 +262,9 @@ class TestCrownReductionAlternative(unittest.TestCase):
         M = nx.max_weight_matching(self.G)
         print(f"Matching: {M}")
 
-        G_reduced, changed, crown_sets, VCC_addition = apply_crown_reduction(self.G.copy())
+        G_reduced, changed, crown_sets, VCC_addition = apply_crown_reduction(
+            self.G.copy()
+        )
 
         print(f"Changed: {changed}")
         print(f"Crown sets: {crown_sets}")
@@ -230,18 +280,50 @@ class TestCrownReductionAlternative(unittest.TestCase):
             self.assertTrue(len(crown_sets) > 0, "Should have found crown sets")
 
 
-"""
-class TestCrownReduction(unittest.TestCase):
+class TestCrownReduction2(unittest.TestCase):
     def setUp(self):
         # Create a graph for crown reduction
         self.G = nx.Graph()
-        self.G.add_edges_from([(1, 4), (2, 4), (3, 4), (1, 5), (2, 5), (3, 5)])
-    def test_crown_reduction(self):
+        self.G.add_edges_from(
+            [
+                (70, 80),
+                (71, 80),
+                (72, 80),
+                (73, 80),
+                (74, 80),
+                (70, 81),
+                (71, 81),
+                (72, 81),
+                (73, 81),
+                (74, 81),
+                (70, 82),
+                (71, 82),
+                (72, 82),
+                (73, 82),
+                (74, 82),
+                (70, 83),
+                (71, 83),
+                (72, 83),
+                (73, 83),
+                (74, 83),
+            ]
+        )
+        self.G.add_node(1)
+        self.G.add_node(2)
+
+    def test_crown_reduction_2(self):
+        print("Initial graph nodes:", self.G.nodes)
+        print("Initial graph edges:", self.G.edges)
         G_reduced, changed, removed, VCC_addition = apply_crown_reduction(self.G.copy())
-        print("Removed nodes (crown_reduction):", removed)
+        print(f"removed nodes: {removed}")
+        print(f"clique cover addition: {VCC_addition}")
+        print(f"remaining edges: {G_reduced.edges}")
         self.assertTrue(changed, "Graph should have changed due to crown reduction.")
-        self.assertTrue(len(removed) > 0, "Crown reduction should have removed some nodes.")
-"""
+        self.assertTrue(
+            len(removed) > 0, "Crown reduction should have removed some nodes."
+        )
+
+
 # haven't found a graph that applies all reductions yet, so this test is commented out
 """
 
@@ -298,15 +380,22 @@ if current_dir not in sys.path:
 # Define the test suite
 def suite():
     suite = unittest.TestSuite()
-    suite.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(TestIsolatedVertexReduction))
-    suite.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(TestDegreeTwoFolding))
+    suite.addTest(
+        unittest.defaultTestLoader.loadTestsFromTestCase(TestIsolatedVertexReduction)
+    )
+    suite.addTest(
+        unittest.defaultTestLoader.loadTestsFromTestCase(TestDegreeTwoFolding)
+    )
     suite.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(TestTwinRemoval))
     suite.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(TestTwinFolding))
-    suite.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(TestDominationReduction))
+    suite.addTest(
+        unittest.defaultTestLoader.loadTestsFromTestCase(TestDominationReduction)
+    )
     suite.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(TestCrownReduction))
 
-    suite.addTest(TestCrownReduction('test_crown_reduction'))
-    suite.addTest(TestCrownReductionAlternative('test_crown_reduction_alternative'))
+    suite.addTest(TestCrownReduction("test_crown_reduction"))
+    suite.addTest(TestCrownReductionAlternative("test_crown_reduction_alternative"))
+    suite.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(TestCrownReduction2))
     # suite.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(TestAllReductions))
 
     return suite
@@ -319,5 +408,5 @@ def run_tests():
 
 
 # If this script is run directly, execute the tests
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main(verbosity=2)

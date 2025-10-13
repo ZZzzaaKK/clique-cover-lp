@@ -36,7 +36,7 @@ def neighbourhood_is_crossing_independent(G: nx.Graph, v) -> bool:
     are crossing-independent.
 
     That is, for every pair of neighbors (u, w) of v, and for every
-    a ∈ N(u)\\\\{v}, b ∈ N(w)\\\\{v}, the edge (a, b) must not exist.
+    a ∈ N(u)\{v}, b ∈ N(w)\{v}, the edge (a, b) must exist.
     """
     neighbors = list(G.neighbors(v))
 
@@ -45,6 +45,10 @@ def neighbourhood_is_crossing_independent(G: nx.Graph, v) -> bool:
         u_ext = set(G.neighbors(u)) - {v}
         for w in neighbors[i+1:]:
             w_ext = set(G.neighbors(w)) - {v}
+
+            # die direkten Kanten u-w nicht einbeziehen:
+            u_ext.discard(w)
+            w_ext.discard(u)
 
             # check crossing-independence condition
             for a in u_ext - w_ext:
@@ -69,45 +73,42 @@ def apply_degree_two_folding(G: nx.Graph) -> Tuple[nx.Graph, bool, List[Tuple[st
     changed = False
     folds = []
     for v in list(G.nodes()):
-        if G.degree(v) != 2:
-            continue
+        if G.degree(v) == 2:
+            neighbors = list(G.neighbors(v))
+            if len(neighbors) != 2:
+                continue
+            u, w = neighbors
+            if G.has_edge(u, w):
+                continue  # Folding only applies if u and w are not connected
+            if not neighbourhood_is_crossing_independent(G, v):
+                continue  # Ensure the crossing independent condition
 
-        neighbors = list(G.neighbors(v))
-        u, w = neighbors
-        if G.has_edge(u, w):
-            continue  # Folding only applies if u and w are not connected
+            # Get external neighbors of u and w (excluding v)
+            u_neighbors = set(G.neighbors(u)) - {v}
+            w_neighbors = set(G.neighbors(w)) - {v}
+            new_neighbors = (u_neighbors | w_neighbors) - {u, w, v}
 
-        if not neighbourhood_is_crossing_independent(G, v):
-            continue
-
-        # Get external neighbors of u and w (excluding v)
-        u_neighbors = set(G.neighbors(u)) - {v}
-        w_neighbors = set(G.neighbors(w)) - {v}
-        new_neighbors = (u_neighbors | w_neighbors)
-
-        if not new_neighbors:
-            # Case: Isolated P3 (u-v-w). VCC(P3)=2, VCC(G')=0. Diff=2.
-            VCC_addition = 2
-        else:
-            # Default case (e.g., P4, diamond graph). Diff=1.
-            VCC_addition = 1
-
-        # Add new vertex x representing folded structure (if it's not an isolated P3)
-        if new_neighbors:
+            # Add new vertex x representing folded structure
             x = f"fold_{v}"
             G.add_node(x)
             for n in new_neighbors:
                 G.add_edge(x, n)
 
-        # Remove v, u, w
-        G.remove_nodes_from([v, u, w])
+            # Remove v, u, w
+            G.remove_nodes_from([v, u, w])
 
-        folds.append((v, u, w))
-        changed = True
-        return G, changed, folds, VCC_addition # Only one fold per call for consistency
+            folds.append((v, u, w))
+            if G.degree(x) == 0:
+                G.remove_node(x)
+                folds.append(("folded node isolated", x)) # If x is isolated, remove it and note it
+                VCC_addition += 1
+            VCC_addition = 1
+            changed = True
+            return G, changed, folds, VCC_addition # Only one fold per call for consistency
 
 
     return G, changed, folds, VCC_addition
+
 
 
 def apply_twin_folding_or_removal(G: nx.Graph) -> Tuple[nx.Graph, bool, List[Tuple[str, str, str, List[str]]], int]:
@@ -158,7 +159,7 @@ def apply_twin_folding_or_removal(G: nx.Graph) -> Tuple[nx.Graph, bool, List[Tup
         nodes_to_remove = {u, v, w, x, y}
         G.remove_nodes_from(nodes_to_remove)
         folded_twins.append((u, v, w, x, y, new_node))
-        VCC_addition = 3
+        VCC_addition = 2
         changed = True
         return G, changed, folded_twins, VCC_addition  # Only apply one per call for consistency
 
@@ -183,15 +184,11 @@ def apply_domination_reduction(G: nx.Graph) -> Tuple[nx.Graph, bool, List[Tuple[
 
     for i in range(len(nodes)):
         u = nodes[i]
-        if u not in G:
-            continue
         Nu_closed = (set(G.neighbors(u)) | {u})
-        for v in list(G.neighbors(u)):
-            if v not in G:
-                continue
+        for v in set(G.neighbors(u)):
             Nv_closed = (set(G.neighbors(v)) | {v})
             if Nu_closed.issubset(Nv_closed):
-                # v dominates u, so remove v (the dominator)
+                # v dominates u, so remove v
                 G.remove_node(v)
                 dominated.append((v, u))  # v dominates u
                 changed = True
@@ -257,9 +254,6 @@ def apply_crown_reduction(G: nx.Graph) -> Tuple[nx.Graph, bool, List[Any], int]:
         if not H:
             return G, False, [], VCC_addition
 
-        if not H:
-            return G, False, [], VCC_addition
-
         # build bipartite graph B=(H ∪ I, E')
         B = nx.Graph()
         B.add_nodes_from(H, bipartite=0)
@@ -311,27 +305,21 @@ def apply_all_reductions(G, verbose: bool = True, timing: bool = True) -> Tuple[
     trace = []
     VCC_total_addition = 0
     round_number = 1
-
-    outer_did_change = True
-    while outer_did_change:
-        outer_did_change = False
-        for reduction in reductions:
-            inner_did_change = True
-            while inner_did_change:
+    for reduction in reductions:
+        did_change = True
+        while did_change:
+            if verbose:
+                logger.info(f"\n--- Reduction Round {round_number} ({reduction.__name__}) ---")
+            start = time.time() if timing else None
+            G, did_change, details, VCC_addition = reduction(G)
+            end = time.time() if timing else None
+            if did_change:
                 if verbose:
-                    logger.info(f"\n--- Reduction Round {round_number} ({reduction.__name__}) ---")
-                start = time.time() if timing else None
-                G, inner_did_change, details, VCC_addition = reduction(G)
-                end = time.time() if timing else None
-                if inner_did_change:
-                    outer_did_change = True
-                    logger.info(f"Applied {reduction.__name__} with details: {details}. VCC addition: {VCC_addition}")
-                    if verbose:
-                        logger.info(f"Applied {reduction.__name__}: {details}")
-                        if timing:
-                            if start is not None and end is not None:
-                                logger.info(f"Time: {end - start:.4f}s")
-                    trace.append((reduction.__name__, details))
-                    VCC_total_addition += VCC_addition
-                    round_number += 1
+                    logger.info(f"Applied {reduction.__name__}: {details}")
+                    if timing:
+                        if start is not None and end is not None:
+                            logger.info(f"Time: {end - start:.4f}s")
+                trace.append((reduction.__name__, details))
+                VCC_total_addition += VCC_addition
+                round_number += 1
     return G, trace, VCC_total_addition
