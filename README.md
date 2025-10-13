@@ -27,7 +27,7 @@ You can use the script `src/wp5_rfam_to_graph.py` to convert a `.tsv` file conta
 
 ## Analysis
 
-To compare results of different algorithms, you can run `python src/comparison.py <results-file1> <results-file2> ...` with two or more of these results files. This will output analysis plots in the `results/analyses` directory.
+To compare results of different algorithms, you can run `python src/comparison.py <results-file1> <results-file2> ...` with two or more of these results files. This will output analysis plots in the specified directory. You can also run `python src/comparison_enhanced.py` to get statistical analyses in the `results/analyses` directory.
 
 ## Curation
 
