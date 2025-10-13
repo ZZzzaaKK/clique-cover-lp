@@ -10,7 +10,10 @@ Run `python src/generate_test_graphs.py` to generate test cases of differing dis
 
 ## Testing
 
-For convenience, you can run the script `run_tests.sh`. It first calculates vertex clique cover numbers for all graphs in a path that can be specified (default: `test_graphs/generated/perturbed`) via the `src/add_vertex_clique_cover_number.py` script, or chromatic numbers via `src/add_chromatic_number.py` script if you pass the --chromatic-number flag. It then runs through the tests you specify as command line arguments, or all available tests if none were specified. Adding ground truths relies on the Gurobi solver, so you'll need a license for larger graphs. You can also deviate from default path by running with a positional argument like this: `run_tests.sh test_graphs/curated`.
+For convenience, you can run the script `run_tests.sh`. It first calculates vertex clique cover numbers for all graphs in a path that can be specified (default: `test_graphs/generated/perturbed`) via the `src/add_vertex_clique_cover_number.py` script, or chromatic numbers via `src/add_chromatic_number.py` script if you pass the --chromatic-number flag. Note that the current ground truth calculations rely on the reduced ILP algorithms since they are faster and accurate according to our tests. It then runs through the tests you specify as command line arguments, or all available tests if none were specified. Adding ground truths relies on the Gurobi solver, so you'll need a license for larger graphs. You can also deviate from default path by running with a positional argument like this: `run_tests.sh test_graphs/curated`.
+
+> [!WARNING]
+> The --cluster-editing and --reduced-cluster-editing flags in the following example drastically increase the time it takes for all algorithms to finish.
 
 Example Usage:
 ```
@@ -19,7 +22,7 @@ Example Usage:
 This will run all the specified algorithms, which are made available through the `src/wrappers.py` script, on the specified test graph directory and save the results in `results/raw/`. These results are human-readable and already contain interesting information.
 
 > [!NOTE]
-> We decided to include two different approaches to the cluster editing ILP and reductions since neither works perfectly. The minimal approach implements only triangle inequalities and has achieved similar performance to the other approach, but the edge cut kernelization conditions are too strict to be passed by any of our test files (especially that 2δ(v) + γ(N[v]) < |N[v]|). The other cluster editing approach is more complex and employs reductions based on Böcker and the cutting plane approach based on Grötschel, but it is currently slower.
+> We decided to include two different approaches to the cluster editing ILP and reductions since neither works perfectly. The minimal approach implements only triangle inequalities and has achieved similar performance to the other approach, but the edge cut kernelization conditions are too strict to be passed by any of our test files (especially that 2δ(v) + γ(N[v]) < |N[v]|). The other cluster editing approach is more complex and employs reductions based on Böcker and the cutting plane approach based on Grötschel, but it is currently much slower.
 
 ## Testing on Rfam data
 
@@ -27,17 +30,25 @@ You can use the script `src/wp5_rfam_to_graph.py` to convert a `.tsv` file conta
 
 ## Analysis
 
-To compare results of different algorithms, you can run `python src/comparison.py <results-file1> <results-file2> ...` with two or more of these results files. This will output analysis plots in the specified directory. You can also run `python src/comparison_enhanced.py` to get statistical analyses in the `results/analyses` directory.
+To compare results of different algorithms, you can run `python src/comparison.py <results-file1> <results-file2> ...` with two or more of these results files. This will output analysis plots in the `results/analyses` directory.
 
 ## Curation
 
 Curated test cases were found at [houseofgraphs.org](houseofgraphs.org). Each `.txt` file contains the graph structure as well as their invariants. Feel free to add more test cases (choose Invariant values as file format)!
 
-## File Structure
+# Architecture
+
+# File Structure
 
 Files in `src/algorithms` pertain to algorithms, `chalupa.py` and `helpers.py` for the Chalupa heuristic, `cluster_editing.py` for the cluster editing problem, `ilp_solver.py` for the vertex clique cover (VCC) problem. The `src/reductions` directory contains code for reductions pertaining to the VCC problem. The cluster editing reductions are currently contained in the `src/algorithms/cluster_editing.py` file.
 
 The files in the top-level `src/` directory relate to the workflow infrastructure. The files `src/test_cluster_editing.py` and `src/test_reductions.py` were used during development to verify the cluster editing and VCC reduction algorithms. `src/algorithms/helpers.py` contains some convenience functions for test infrastructure.
+
+# Low-hanging fruits before submission
+
+- [ ] Go through all tasks again:
+  - [ ] ILP vs. Chalupa Perturbation Study
+  - [ ] Improve analysis plots
 
 # Current State of Progress
 
@@ -45,14 +56,14 @@ The files in the top-level `src/` directory relate to the workflow infrastructur
   - [x] Generate test cases for different distributions
   - [x] Introduce perturbations
   - [x] Choose reasonable parameters for task completions
-- [x] WP1 Exact vs Heuristic
+- [ ] WP1 Exact vs Heuristic
   - [x] Chalupa
     - [x] How to actually use lower bound? -> Currently just output in results file
   - [x] ILP
   - [x] Compare algorithms
 - [x] WP2 Kernelizations for vertex clique cover problem
   - [x] Implement reductions
-  - [x] Double-check for difference between reduced-ilp and interactive-reduced-ilp
+  - [ ] Double-check for difference between reduced-ilp and interactive-reduced-ilp
 - [x] WP3 Kernelizations for cluster editing problem -> no optimal solution found
 - [x] WP4 Comparison of vertex clique cover and cluster editing solutions
 - [ ] Bonus

@@ -113,9 +113,3 @@ Treewidth: Computation time out
 Twin-Free: Yes
 Vertex Connectivity: 10
 Vertex Cover Number: 45
-
-
-
-
-# Calculated by ILP on complement graph
-Vertex Clique Cover Number: 21

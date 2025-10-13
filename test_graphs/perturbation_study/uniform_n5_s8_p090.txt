@@ -42,6 +42,3 @@
 Perturbation: 0.90
 Number of Vertices: 40
 Number of Edges: 165
-
-# Calculated by ILP on complement graph
-Vertex Clique Cover Number: 14

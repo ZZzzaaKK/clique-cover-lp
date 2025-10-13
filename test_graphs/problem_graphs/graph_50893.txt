@@ -92,6 +92,3 @@ Treewidth: 41
 Twin-Free: Yes
 Vertex Connectivity: 41
 Vertex Cover Number: 41
-
-# Calculated by ILP on complement graph
-Vertex Clique Cover Number: 1

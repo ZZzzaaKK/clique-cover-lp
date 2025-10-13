@@ -7,6 +7,3 @@
 
 # Checked by hand
 Modifications: [{(1, 2), (1, 3), (1, 4)}]
-
-# Calculated by ILP on complement graph
-Vertex Clique Cover Number: 4

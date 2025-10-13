@@ -17,9 +17,3 @@ Density: 0.200
 Number of Components: 2
 Maximum Degree: 4
 Minimum Degree: 0
-
-# Calculated by ILP on complement graph
-Vertex Clique Cover Number: 6
-
-# Calculated by ILP
-Chromatic Number: 3
