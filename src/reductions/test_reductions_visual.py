@@ -201,6 +201,10 @@ class TestTwinFolding(unittest.TestCase):
 #        print("Reductions applied (twin_folding):", [name for name, _ in folds])
         print("Folded nodes:", folds)
         print(f"edges after folding: {G_reduced.edges}")
+
+        # Visualize
+        visualize_before_after(self.G, G_reduced, "Twin Folding")
+
         self.assertTrue(changed, "Graph should have changed due to twin folding.")
 #        self.assertTrue(any("twin_folding" in name.lower() for name, _ in folds), "Twin folding should have been applied.")
         self.assertTrue(len(folds) > 0, "Twin folding should have been applied.")
