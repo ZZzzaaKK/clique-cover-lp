@@ -39,26 +39,20 @@ Files in `src/algorithms` pertain to algorithms, `chalupa.py` and `helpers.py` f
 
 The files in the top-level `src/` directory relate to the workflow infrastructure. The files `src/test_cluster_editing.py` and `src/test_reductions.py` were used during development to verify the cluster editing and VCC reduction algorithms. `src/algorithms/helpers.py` contains some convenience functions for test infrastructure.
 
-# Low-hanging fruits before submission
-
-- [ ] Go through all tasks again:
-  - [ ] ILP vs. Chalupa Perturbation Study
-  - [ ] Improve analysis plots
-
 # Current State of Progress
 
 - [x] WP0 Simulator
   - [x] Generate test cases for different distributions
   - [x] Introduce perturbations
   - [x] Choose reasonable parameters for task completions
-- [ ] WP1 Exact vs Heuristic
+- [x] WP1 Exact vs Heuristic
   - [x] Chalupa
     - [x] How to actually use lower bound? -> Currently just output in results file
   - [x] ILP
   - [x] Compare algorithms
 - [x] WP2 Kernelizations for vertex clique cover problem
   - [x] Implement reductions
-  - [ ] Double-check for difference between reduced-ilp and interactive-reduced-ilp
+  - [x] Double-check for difference between reduced-ilp and interactive-reduced-ilp
 - [x] WP3 Kernelizations for cluster editing problem -> no optimal solution found
 - [x] WP4 Comparison of vertex clique cover and cluster editing solutions
 - [ ] Bonus
