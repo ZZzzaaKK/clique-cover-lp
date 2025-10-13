@@ -89,3 +89,16 @@ Treewidth: 7
 Twin-Free: Yes
 Vertex Connectivity: 3
 Vertex Cover Number: 23
+<<<<<<< HEAD
+||||||| parent of 5404189 (Fix revision in reductions application loop)
+
+
+
+
+# Calculated by ILP on complement graph
+Vertex Clique Cover Number: 20
+=======
+
+# Calculated by ILP on complement graph
+Vertex Clique Cover Number: 20
+>>>>>>> 5404189 (Fix revision in reductions application loop)

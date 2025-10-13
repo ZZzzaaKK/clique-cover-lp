@@ -8,3 +8,10 @@
 
 # Checked by hand
 Modifications: [{(1, 2), (3, 4), (5, 6)}]
+<<<<<<< HEAD
+||||||| parent of 5404189 (Fix revision in reductions application loop)
+=======
+
+# Calculated by ILP on complement graph
+Vertex Clique Cover Number: 3
+>>>>>>> 5404189 (Fix revision in reductions application loop)

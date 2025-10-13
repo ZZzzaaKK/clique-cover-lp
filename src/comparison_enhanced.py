@@ -176,7 +176,7 @@ class ComparisonAnalyzer:
         cluster_keywords = ["cluster", "editing"]
         return any(kw in algo_name.lower() for kw in cluster_keywords)
 
-    def perform_statistical_analysis(self, df: pd.DataFrame) -> Dict:
+    def perform_statistical_analysis(self, df: pd.DataFrame) -> dict:
         """Perform comprehensive statistical analysis (WP4)"""
 
         analysis = {
@@ -573,7 +573,7 @@ class ComparisonAnalyzer:
 
         print(f"Generated 7 individual plots in {output_dir}/")
 
-    def generate_enhanced_plots(self, df: pd.DataFrame, analysis: Dict):
+    def generate_enhanced_plots(self, df: pd.DataFrame, analysis: dict):
         """Generate comprehensive overview plot"""
 
         fig = plt.figure(figsize=(16, 12))
@@ -833,7 +833,7 @@ Best Performance:
 
         plt.close()
 
-    def generate_markdown_report(self, df: pd.DataFrame, analysis: Dict):
+    def generate_markdown_report(self, df: pd.DataFrame, analysis: dict):
         report_path = self.output_dir / f"comparison_report_{self.timestamp}.md"
 
         with open(report_path, "w") as f:
