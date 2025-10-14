@@ -7,11 +7,21 @@ wheels/
 *.egg-info
 .ruff_cache
 
+# macOS system files
+.DS_Store
+**/.DS_Store
+
 # Virtual environments
 .venv
 
 # Generated test cases and figures
 test_graphs/generated
+
+# Images test reductions
+src/reductions_visual_plots/
+src/reductions/reductions_visual_plots/
+
+evaluation_results/
 
 figures/*
 results/*
