@@ -19,3 +19,7 @@ results/*
 
 .idea/
 .basedpyright/
+
+#OSC/MISC
+.DS_Store
+Thumbs.ds
